@@ -7,7 +7,7 @@ from gtk.gdk  import Pixbuf
 
 import os
 import sys
-import getopt 
+import getopt
 
 import saputils
 from sap_gui_error import GUI_Error
@@ -77,7 +77,7 @@ class ModuleView:
     unbind_button.connect("clicked", self.on_unbind_clicked)
 
     self.s = status_text.StatusText()
-    
+
     self.node = None
     self.mi_cr = None
     self.property_table = None
@@ -125,7 +125,7 @@ class ModuleView:
 
     #populate the image
     if self.node.node_type == Node_Type.host_interface:
-      self.draw_icon(self.node.name, 0.0, 1.0, 0.0) 
+      self.draw_icon(self.node.name, 0.0, 1.0, 0.0)
     elif self.node.node_type == Node_Type.slave:
       if self.node.slave_type == Slave_Type.peripheral:
         self.draw_icon(self.node.name, 0.0, 0.0, 1.0)
@@ -183,7 +183,7 @@ class ModuleView:
     self.selected_port = None
     self.selected_pin = None
     self.setup_bind_list()
-  
+
   def on_unbind_clicked(self, widget):
     #print "unbind has been clicked"
     if self.selected_binding is None:
@@ -237,7 +237,7 @@ class ModuleView:
         continue
       if port == "rst":
         continue
-      
+
       if port.partition("_")[0] == "wbs":
         continue
 
@@ -272,8 +272,8 @@ class ModuleView:
           pl.set(it, 1, direction)
 
 
-          
-        
+
+
 
 
   def setup_pin_list(self):
@@ -298,13 +298,13 @@ class ModuleView:
     files = self.sc.get_constraint_file_names()
     netnames = []
     for f in files:
-      nn = saputils.get_net_names(f)  
+      nn = saputils.get_net_names(f)
       for n in nn:
         if n in netnames:
           continue
         netnames.append(n)
 
-    
+
     #now I have a list of net names
     for net in netnames:
       if net == "clk":
@@ -316,7 +316,7 @@ class ModuleView:
       pl.set(it, 0, net)
 
 
-  
+
   def setup_bind_list(self):
     print "setup bind table"
     bt = self.bind_tree
@@ -365,11 +365,11 @@ class ModuleView:
 
 
 
-  
+
 
 
   def setup_property_view(self):
-  
+
     self.property_vbox = gtk.VBox(False, 0)
     self.property_hbox = gtk.HBox(True, 0)
     self.property_vbox.add(self.property_hbox)
@@ -394,7 +394,7 @@ class ModuleView:
       self.property_label.set_text("No Properties")
       self.property_vbox.show_all()
       return
-    
+
     keys = self.node.parameters["parameters"].keys()
     if len(keys) == 0:
       self.property_label.set_text("No Properties")
@@ -405,8 +405,8 @@ class ModuleView:
 
     self.property_label.set_text("Properties")
     parameters = self.node.parameters["parameters"]
-    self.property_table = gtk.Table(  rows = len(keys), 
-                      columns = 1, 
+    self.property_table = gtk.Table(  rows = len(keys),
+                      columns = 1,
                       homogeneous = True)
 
     table = self.property_table
@@ -415,7 +415,7 @@ class ModuleView:
     self.property_dict = {}
     for key in keys:
       value = parameters[key]
-      self.set_property(key, value, True)  
+      self.set_property(key, value, True)
 
     self.property_vbox.pack_end(table, True, False)
 
@@ -441,7 +441,7 @@ class ModuleView:
 
     #pull the data from the table and put it in a key/value pair
     for key in self.property_dict.keys():
-      properties[key] = self.property_dict[key].get_text() 
+      properties[key] = self.property_dict[key].get_text()
       self.property_update_callback(self.node.unique_name, properties)
 
   def set_property(self, name, value, editable):
@@ -488,7 +488,7 @@ class ModuleView:
     self.email.set_text("unknown")
 
     self.slave_prop_view.remove(self.property_vbox)
-    
+
 
     if self.property_table is not None:
       self.property_vbox.remove(self.property_table)
@@ -507,7 +507,7 @@ class ModuleView:
     self.mi_cr = widget.window.cairo_create( )
     mi = self.module_icon
     alloc = mi.get_allocation()
-    icon_width = alloc.width 
+    icon_width = alloc.width
     icon_height = alloc.height
     self.mi_draw( icon_width, icon_height)
 
@@ -519,7 +519,7 @@ class ModuleView:
 
     #populate the image
     if self.node.node_type == Node_Type.host_interface:
-      self.draw_icon(self.node.name, 0.0, 1.0, 0.0, width, height) 
+      self.draw_icon(self.node.name, 0.0, 1.0, 0.0, width, height)
     elif self.node.node_type == Node_Type.slave:
       if self.node.slave_type == Slave_Type.peripheral:
         self.draw_icon(self.node.name, 0.0, 0.0, 1.0, width, height)
@@ -559,14 +559,14 @@ class ModuleView:
 
 
   def get_frame(self):
-    return self.frame 
+    return self.frame
 
 
 
 
 
 def main(argv):
-  
+
   print "main main!"
   mv = ModuleView()
   gtk.main()

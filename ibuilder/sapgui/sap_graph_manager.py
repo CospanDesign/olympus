@@ -13,15 +13,15 @@ def enum(*sequential, **named):
   enums = dict(zip(sequential, range(len(sequential))), **named)
   return type('Enum', (), enums)
 
-Node_Type = enum(  'host_interface', 
-          'master', 
-          'memory_interconnect', 
-          'peripheral_interconnect', 
+Node_Type = enum(  'host_interface',
+          'master',
+          'memory_interconnect',
+          'peripheral_interconnect',
           'slave')
 
-Slave_Type = enum(  'memory', 
+Slave_Type = enum(  'memory',
           'peripheral')
-    
+
 
 
 def get_unique_name(name, node_type, slave_type = Slave_Type.peripheral, slave_index = 0):
@@ -63,7 +63,7 @@ class SapNode:
     nn.parameters = self.parameters
     nn.bindings = self.bindings.copy()
     return nn
-  
+
 
 class SapGraphManager:
   def __init__(self):
@@ -80,10 +80,10 @@ class SapGraphManager:
 
 #Node stuff
   def add_node(self, name, node_type, slave_type=Slave_Type.peripheral, debug=False):
-    
+
     node = SapNode()
     node.name = name
-    node.node_type = node_type 
+    node.node_type = node_type
     node.slave_type = slave_type
     #print "add node bind id: " + str(id(node))
 
@@ -93,7 +93,7 @@ class SapGraphManager:
       s_count = self.get_number_of_peripheral_slaves()
     else:
       s_count = self.get_number_of_memory_slaves()
-  
+
     node.slave_index = s_count
     node.unique_name = get_unique_name(name, node_type, slave_type, node.slave_index)
 
@@ -114,9 +114,9 @@ class SapGraphManager:
     count = self.get_number_of_slaves(slave_type)
     if slave_index >= count:
       if slave_type == Slave_Type.peripheral:
-        raise SlaveError("Slave index %d on peripheral bus is out of range" % (slave_index)) 
+        raise SlaveError("Slave index %d on peripheral bus is out of range" % (slave_index))
       else:
-        raise SlaveError("Slave index %d on memory bus is out of range" % (slave_index)) 
+        raise SlaveError("Slave index %d on memory bus is out of range" % (slave_index))
 
     #move the slave to the end so I can remove it
     if slave_index < count:
@@ -127,27 +127,27 @@ class SapGraphManager:
     self.graph.remove_node(slave_name)
 
   def rename_slave(self, slave_type, slave_index, new_name):
-    current_name = self.get_slave_name_at(slave_index, slave_type) 
+    current_name = self.get_slave_name_at(slave_index, slave_type)
     node = self.get_node(current_name)
 
     unique_name = get_unique_name(new_name, Node_Type.slave, slave_type, slave_index)
-    
+
     node.name = new_name
     node.unique_name = unique_name
     self.graph = nx.relabel_nodes (  self.graph, \
-                  {current_name : unique_name}) 
+                  {current_name : unique_name})
 
-  
+
   def get_host_interface_node(self):
     graph_dict = self.get_nodes_dict()
     for name in graph_dict.keys():
       node = self.get_node(name)
       if node.node_type == Node_Type.host_interface:
         return node
-    
-      
+
+
   def fix_slave_indexes(self):
-    
+
     pcount = self.get_number_of_slaves(Slave_Type.peripheral)
     mcount = self.get_number_of_slaves(Slave_Type.memory)
 
@@ -281,7 +281,7 @@ class SapGraphManager:
 
     from_node.slave_index = to_index
     from_unique = get_unique_name(from_node.name, from_node.node_type, from_node.slave_type, from_node.slave_index)
-      
+
     mapping = {from_node.unique_name : from_unique}
 
     if debug:
@@ -293,8 +293,8 @@ class SapGraphManager:
         print "key: " + name
 
 
-      
-    self.graph = nx.relabel_nodes (  self.graph,  
+
+    self.graph = nx.relabel_nodes (  self.graph,
                     {from_node.unique_name : from_unique})
     from_node = self.get_node(from_unique)
     from_node.slave_index = to_index
@@ -308,7 +308,7 @@ class SapGraphManager:
     to_unique = get_unique_name(to_node.name, to_node.node_type, to_node.slave_type, to_node.slave_index)
     self.graph = nx.relabel_nodes (  self.graph,
                     {to_node.unique_name:to_unique})
-    to_node = self.get_node(to_unique)  
+    to_node = self.get_node(to_unique)
 
     to_node.slave_index = from_index
     to_node.unique_name = to_unique
@@ -318,7 +318,7 @@ class SapGraphManager:
       print "\tslave %s at position %d with name: %s" % (from_node.name, from_node.slave_index, from_node.unique_name)
       print "\tslave %s at position %d with name: %s" % (to_node.name, to_node.slave_index, to_node.unique_name)
 
-      graph_dict = self.get_nodes_dict()  
+      graph_dict = self.get_nodes_dict()
       print "keys"
       for name in graph_dict.keys():
         print "key: " + name
@@ -385,7 +385,7 @@ class SapGraphManager:
 
     from_node.slave_index = to_index
     from_unique = get_unique_name(from_node.name, from_node.node_type, from_node.slave_type, from_node.slave_index)
-      
+
     mapping = {from_node.unique_name : from_unique}
 
     if debug:
@@ -397,8 +397,8 @@ class SapGraphManager:
         print "key: " + name
 
 
-      
-    self.graph = nx.relabel_nodes (  self.graph,  
+
+    self.graph = nx.relabel_nodes (  self.graph,
                     {from_node.unique_name : from_unique})
     from_node = self.get_node(from_unique)
     from_node.slave_index = to_index
@@ -410,7 +410,7 @@ class SapGraphManager:
     self.graph = nx.relabel_nodes (  self.graph,
                     {to_node.unique_name:to_unique})
 
-    to_node = self.get_node(to_unique)  
+    to_node = self.get_node(to_unique)
     to_node.slave_index = from_index
     to_node.unique_name = to_unique
 
@@ -420,7 +420,7 @@ class SapGraphManager:
       print "\tslave %s at position %d with name: %s" % (from_node.name, from_node.slave_index, from_node.unique_name)
       print "\tslave %s at position %d with name: %s" % (to_node.name, to_node.slave_index, to_node.unique_name)
 
-      graph_dict = self.get_nodes_dict()  
+      graph_dict = self.get_nodes_dict()
       print "keys"
       for name in graph_dict.keys():
         print "key: " + name
@@ -478,7 +478,7 @@ class SapGraphManager:
     """
     self.graph.add_edge(node1, node2)
     self.graph[node1][node2]["name"]=""
-  
+
   def set_edge_name(self, node1_name, node2_name, edge_name):
     """
     find the edge connected to the two given nodes
@@ -503,8 +503,8 @@ class SapGraphManager:
       if nb.node_type == Node_Type.slave:
         edge_name = self.get_edge_name(slave_master_name, nb_name)
         slaves[edge_name] = nb.unique_name
-        
-  
+
+
     return slaves
 
   def disconnect_nodes(self, node1_name, node2_name):
@@ -527,7 +527,7 @@ class SapGraphManager:
 
   def get_number_of_peripheral_slaves(self):
     count = 0
-    gd = self.get_nodes_dict()  
+    gd = self.get_nodes_dict()
     for name in gd.keys():
       if   gd[name].node_type == Node_Type.slave and \
         gd[name].slave_type == Slave_Type.peripheral:
@@ -536,7 +536,7 @@ class SapGraphManager:
 
   def get_number_of_memory_slaves(self):
     count = 0
-    gd = self.get_nodes_dict()  
+    gd = self.get_nodes_dict()
     for name in gd.keys():
       if   gd[name].node_type == Node_Type.slave and \
         gd[name].slave_type == Slave_Type.memory:
@@ -572,7 +572,7 @@ class SapGraphManager:
           pdict_out[n]["max_val"] = pdict[d][n]["max_val"]
         if "min_val" in pdict[d][n]:
           pdict_out[n]["min_val"] = pdict[d][n]["min_val"]
-      
+
 
     g[name].parameters["ports"] = {}
     g[name].parameters["ports"] = pdict_out
@@ -580,7 +580,7 @@ class SapGraphManager:
   def get_parameters(self, name):
     g = self.get_nodes_dict()
     return g[name].parameters
-    
+
   def set_config_bindings(self, name, bindings):
     node = self.get_node(name)
     node.bindings.clear()

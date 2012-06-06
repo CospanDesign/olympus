@@ -8,7 +8,7 @@ class OpenDialog:
     builderfile = "open_dialog.glade"
     builder = gtk.Builder()
     builder.add_from_file(builderfile)
-    
+
     self.open_dialog = builder.get_object("open_dialog")
     self.preview_tree = builder.get_object("preview_tree")
     model = gtk.ListStore(str, str)
@@ -113,7 +113,7 @@ class OpenDialog:
 
 
 
-    
+
 
 
 

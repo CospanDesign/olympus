@@ -7,7 +7,7 @@ from types import *
 class GraphDrawingArea(gtk.DrawingArea):
   def __init__(self):
     super (GraphDrawingArea, self).__init__()
-    
+
     self.connect ( "expose_event", self.do_expose_event )
     gobject.timeout_add(50, self.tick)
 
@@ -27,7 +27,7 @@ class GraphDrawingArea(gtk.DrawingArea):
                   0, \
                   self.alloc.width, \
                   self.alloc.height )
-    self.window.invalidate_rect ( rect, True )        
+    self.window.invalidate_rect ( rect, True )
 
     return True # Causes timeout to tick again
 

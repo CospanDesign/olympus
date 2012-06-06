@@ -9,7 +9,7 @@ from gtk.gdk  import Pixbuf
 import os
 import subprocess
 import sys
-import getopt 
+import getopt
 import build_controller
 
 #sap_gui.py
@@ -64,7 +64,7 @@ class SapGuiController:
 
     #instantiate the singleton
     sv = builder.get_object("status_textview")
-    self.status = status_text.StatusText(sv) 
+    self.status = status_text.StatusText(sv)
 #    self.status.set_print_level(3)
     self.status.print_verbose(__file__, "Sap GUI Started!")
 
@@ -122,9 +122,9 @@ class SapGuiController:
     builder.connect_signals(self)
 
     self.window = builder.get_object("main_window")
-    self.main_view = builder.get_object("mainhpanel") 
-    
-    
+    self.main_view = builder.get_object("mainhpanel")
+
+
     self.current_widget = None
 
     #add the project view
@@ -146,7 +146,7 @@ class SapGuiController:
     self.slave_icon_view = siv.SlaveIconView()
     #self.slave_icon_view.show()
     bus_type = self.sc.get_bus_type()
-    slave_file_list = saputils.get_slave_list(bus_type)  
+    slave_file_list = saputils.get_slave_list(bus_type)
     slave_dict = {}
 
     for slave in slave_file_list:
@@ -161,7 +161,7 @@ class SapGuiController:
     self.slave_icon_view.set_slave_list(slave_dict)
     self.slave_icon_view.set_size_request(-1, 300)
     self.slave_icon_view.set_slave_icon_selected_callback(self.on_slave_icon_selected)
-  
+
 #slave icon view
     self.prop_slave_view.add1(self.slave_icon_view)
     self.property_view = pv.PropertyView()
@@ -262,7 +262,7 @@ class SapGuiController:
     """
     self.sc.set_bus_type(bus_template_name)
     self.ppv.setup()
-  
+
   def on_board_changed(self, board_name):
     """
     user selected a different board
@@ -313,13 +313,13 @@ class SapGuiController:
     print "setup the bus view"
     self.set_main_view(self.graph_pane)
     #set the module view as the main view
-    
+
 
   def setup_module_view(self, module_name):
     print "setup the module view"
     gm = self.sc.get_graph_manager()
     current_node = gm.get_node(module_name)
-    
+
     self.module_view.setup(current_node)
     self.set_main_view(self.module_view.get_frame())
 #    alloc = self.main_view.get_allocation()
@@ -327,7 +327,7 @@ class SapGuiController:
 #                  0, \
 #                  alloc.width, \
 #                  alloc.height )
-#    self.main_view.invalidate_rect ( rect, True )        
+#    self.main_view.invalidate_rect ( rect, True )
 
 
   def on_properties_update(self, unique_name, properties):
@@ -341,7 +341,7 @@ class SapGuiController:
       np[key] = properties[key]
 
   def on_bind(self, unique_name, port, pin):
-    from saplib.saperror import SlaveError 
+    from saplib.saperror import SlaveError
     try:
       self.sc.set_binding(unique_name, port, pin)
     except SlaveError as se:
@@ -352,7 +352,7 @@ class SapGuiController:
     self.status.print_info(__file__, "%s is bound to %s" % (port, pin))
 
   def on_unbind(self, unique_name, port):
-    from saplib.saperror import SlaveError 
+    from saplib.saperror import SlaveError
     try:
       self.sc.unbind_port(unique_name, port)
     except SlaveError as se:
@@ -369,10 +369,10 @@ class SapGuiController:
 
     #add the slave into the slave graph
     bus_type = self.sc.get_bus_type()
-    
+
     tags = saputils.get_module_tags(filename, bus_type)
     module_name = tags["module"]
-    filename = sf.find_module_filename(module_name) 
+    filename = sf.find_module_filename(module_name)
     self.property_view.set_node(module_name, filename,  tags)
 
   def on_arbitrator_connected(  self,
@@ -449,11 +449,11 @@ class SapGuiController:
     filename = None
     if "module" in tags.keys():
       module_name = tags["module"]
-      filename = sf.find_module_filename(module_name) 
+      filename = sf.find_module_filename(module_name)
       bus_type = self.sc.get_bus_type()
 
     self.property_view.set_node(name, filename, tags)
-    
+
 
   def on_slave_add(self, filename, slave_type, index):
     """
@@ -465,14 +465,14 @@ class SapGuiController:
     from sap_controller import Slave_Type
 
     #print "filename: " + filename
-    
+
 
     #add the slave into the slave graph
     bus_type = self.sc.get_bus_type()
-    
+
     tags = saputils.get_module_tags(filename, bus_type)
     name_index = 0
-    name = tags["module"] 
+    name = tags["module"]
 
     p_count = self.sc.get_number_of_slaves(Slave_Type.peripheral)
     m_count = self.sc.get_number_of_slaves(Slave_Type.memory)
@@ -481,8 +481,8 @@ class SapGuiController:
     while not done:
       #print "checking names"
       for i in range (0, p_count):
-        sname = self.sc.get_slave_name(Slave_Type.peripheral, i) 
-        if sname == name + str(name_index): 
+        sname = self.sc.get_slave_name(Slave_Type.peripheral, i)
+        if sname == name + str(name_index):
           name_index += 1
           continue
 
@@ -492,7 +492,7 @@ class SapGuiController:
           name_index += 1
           continue
       done = True
-    self.sc.add_slave(name + str(name_index), filename, slave_type, index) 
+    self.sc.add_slave(name + str(name_index), filename, slave_type, index)
     self.gd.force_update()
     self.project_view.setup_project_view()
     return True
@@ -508,10 +508,10 @@ class SapGuiController:
     self.project_view.setup_project_view()
     return True
 
-  def on_slave_move(  self, 
-            from_type, 
-            from_index, 
-            to_type, 
+  def on_slave_move(  self,
+            from_type,
+            from_index,
+            to_type,
             to_index):
     """
     when a previously existing slave is moved
@@ -540,7 +540,7 @@ class SapGuiController:
     opens up a file
     """
     self.open_dialog.show()
-    
+
   def on_open_cb(self, filename):
     print "openning a file"
     filename = self.open_dialog.get_filename()
@@ -604,8 +604,8 @@ class SapGuiController:
     self.bc.run("pa_no_gui.sh")
 #    out = subprocess.call(["bash", "./pa_no_gui.sh"])
 
-#    self.build_thread = build_controller.buildThread(  1, 
-#                              "Build Thread", 
+#    self.build_thread = build_controller.buildThread(  1,
+#                              "Build Thread",
 #                              p)
 #    self.build_thread.start()
 
@@ -613,8 +613,8 @@ class SapGuiController:
     os.chdir(current_dir)
     gobject.timeout_add(50, self.build_tick)
     self.status.print_info(__file__, "started build thread")
-    
-    
+
+
   def build_tick(self):
     if not self.bc.is_running():
       print "not running"
@@ -670,14 +670,14 @@ def main(argv):
       else:
         print "unrecognized command: " + str(opt)
         usage()
-        
+
 
   app = SapGuiController(filename)
   gtk.main()
 
-  
+
 
 
 if __name__ == "__main__":
   main(sys.argv[1:])
-      
+

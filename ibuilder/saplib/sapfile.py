@@ -69,7 +69,7 @@ class SapFile:
         print "Key Error: " + str(err)
       #print "buffer: " + self.buf
     return
-  
+
   def set_tags(self, tags={}):
     """set the tags, or the keyword: data relation mapping"""
     self.tags = tags
@@ -81,24 +81,24 @@ class SapFile:
       return False
     if (len(directory) == 0):
       return False
-    
+
     if (filename.endswith(".v")):
       self.verilog_file_list.append(filename)
-    
-    if (debug):  
+
+    if (debug):
       print "in process file"
     #maybe load a tags??
 
-    #using the location value in the file_dict find the file and 
+    #using the location value in the file_dict find the file and
     #pull it into a buf
 
     self.buf = ""
     file_location = ""
     if file_dict.has_key("location"):
       file_location = os.getenv("SAPLIB_BASE") + "/" + file_dict["location"]
-      if (debug): 
+      if (debug):
         print ("getting file: " + filename + " from location: " + file_location)
-        
+
       result = self.read_file(file_location + "/" +  filename)
       if (not result):
         if debug:
@@ -127,7 +127,7 @@ class SapFile:
 
     if (debug):
       print "Project name: " + self.tags["PROJECT_NAME"]
-      
+
     #if the generation flag is set in the dictionary
     if (file_dict.has_key("gen_script")):
       if (debug):
@@ -140,7 +140,7 @@ class SapFile:
       Gen = getattr(cl, "Gen")
       if debug:
         print "Gen: " + str(Gen)
-      self.gen_module = __import__(file_dict["gen_script"])  
+      self.gen_module = __import__(file_dict["gen_script"])
       gen_success_flag = False
       for name in dir(self.gen_module):
         obj = getattr(self.gen_module, name)
@@ -167,16 +167,16 @@ class SapFile:
         print "FAILED TO EXECUTE GENSCRIPT " + file_dict["gen_script"]
     else:
       #perform the format function
-      self.apply_tags()  
+      self.apply_tags()
 
-    if debug:  
+    if debug:
       print self.buf
     #write the file to the specified directory
     if (len(self.buf) > 0):
       result = self.write_file(directory, filename)
 
     if (self.has_dependencies(filename)):
-      deps = self.get_list_of_dependencies(filename) 
+      deps = self.get_list_of_dependencies(filename)
       for d in deps:
         result = self.find_module_filename(d)
         if (len(result) == 0):
@@ -188,13 +188,13 @@ class SapFile:
           if debug:
             print "found dependency: " + f
           self.verilog_dependency_list.append(f)
-        
+
     return True
 
   def resolve_dependencies(self, filename, debug = True):
     """
-    given a filename determine if there are any modules it depends on, 
-    recursively search for any files found in order to extrapolate all 
+    given a filename determine if there are any modules it depends on,
+    recursively search for any files found in order to extrapolate all
     dependencies
     """
     result = True
@@ -202,7 +202,7 @@ class SapFile:
     if debug:
       print "in resolve dependencies"
     local_file_list = []
-    if debug: 
+    if debug:
       print "working on filename: " + filename
     if (self.has_dependencies(filename, debug = ldebug)):
       if debug:
@@ -239,7 +239,7 @@ class SapFile:
     for f in local_file_list:
       if (not self.verilog_dependency_list.__contains__(f) and
         not self.verilog_file_list.__contains__(f)):
-  
+
         if debug:
           print "found dependency: " + f
         self.verilog_dependency_list.append(f)
@@ -265,11 +265,11 @@ class SapFile:
       filein.close()
     except IOError as err:
       if debug:
-        print "the file is not a full path, searching RTL... ", 
+        print "the file is not a full path, searching RTL... ",
       #didn't find with full path, search for it
-      try: 
+      try:
         filepath = saputils.find_rtl_file_location(filename)
-        filein = open(filepath)  
+        filein = open(filepath)
         fbuf = filein.read()
         filein.close()
       except IOError as err_int:
@@ -317,9 +317,9 @@ class SapFile:
       #if debug:
       #  print "the file is not a full path... searching RTL"
       #didn't find with full path, search for it
-      try: 
+      try:
         filepath = saputils.find_rtl_file_location(filename)
-        filein = open(filepath)  
+        filein = open(filepath)
         fbuf = filein.read()
         filein.close()
       except IOError as err_int:
@@ -359,10 +359,10 @@ class SapFile:
 
     #modules have lines that start with a '.'
     str_list = fbuf.splitlines()
-  
+
     module_token = ""
     done = False
-    while (not done): 
+    while (not done):
       for i in range (0, len(str_list)):
         line = str_list[i]
         #remove white spaces
@@ -389,8 +389,8 @@ class SapFile:
         #get rid of everything before the possible module
         while (len(module_string.partition(";")[2]) > 0):
           module_string = module_string.partition(";")[2]
-              
-        module_string = module_string.partition("(")[0]  
+
+        module_string = module_string.partition("(")[0]
         module_string = module_string.strip("#")
         module_string = module_string.strip()
 
@@ -402,7 +402,7 @@ class SapFile:
           if debug:
             print "adding it to the deps list"
           deps.append(module_string.partition(" ")[0])
-        
+
 
         #mlist = module_string.splitlines()
         #work backwords
@@ -417,11 +417,11 @@ class SapFile:
         #      print "found: " + mstr.partition(" ")[0]
         #    deps.append(mstr.partition(" ")[0])
         #    break
-        
+
 
     return deps
-    
-  
+
+
   def find_module_filename (self, module_name, debug = False):
     filename = ""
     """Returns the filename that contains the module"""
@@ -450,7 +450,7 @@ class SapFile:
         os.chdir(cwd)
         return f
 
-    #put everything back to where its supposed to be  
+    #put everything back to where its supposed to be
     os.chdir(cwd)
     #if debug:
     #  print "didn't find module name"
@@ -461,7 +461,7 @@ class SapFile:
 
   def is_module_in_file(self, filename, module_name, debug = False):
     """check the file for the module"""
-    
+
     fbuf = ""
     #the name is a verilog file, try and open is
     try:
@@ -472,9 +472,9 @@ class SapFile:
       if debug:
         print "the file is not a full path... searching RTL"
       #didn't find with full path, search for it
-      try: 
+      try:
         filepath = saputils.find_rtl_file_location(filename)
-        filein = open(filepath)  
+        filein = open(filepath)
         fbuf = filein.read()
         filein.close()
       except IOError as err_int:
@@ -506,7 +506,7 @@ class SapFile:
         if debug:
           print "found " + module_string + " in " + filename
         return True
-        
+
       elif(len(module_string.partition("module")[2]) > 0):
         if debug:
           print "found another module in the file"

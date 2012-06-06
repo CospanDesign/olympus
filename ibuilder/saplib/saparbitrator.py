@@ -9,8 +9,8 @@ def get_number_of_arbitrator_hosts(module_tags = {}, debug = False):
   returns the number of arbitrator hosts found inside the module
   """
 
-  #go through all the inports and verify that after the first 
-  #'_' there is a a wbm and hte wbm has all the arbitrator 
+  #go through all the inports and verify that after the first
+  #'_' there is a a wbm and hte wbm has all the arbitrator
   #host components
 
   if debug:
@@ -49,7 +49,7 @@ def get_number_of_arbitrator_hosts(module_tags = {}, debug = False):
           wbm_post = name.partition("_")[2]
           if wbm_post in possible_prefix[prefix]:
             possible_prefix[prefix].remove(wbm_post)
-          
+
 
 
   for prefix in possible_prefix.keys():
@@ -69,7 +69,7 @@ def is_arbitrator_host(module_tags = {}, debug = False):
   return (len(get_number_of_arbitrator_hosts(module_tags, debug)) > 0)
 
 def is_arbitrator_required(tags = {}, debug = False):
-  """analyze the project tags to determine if any arbitration is requried""" 
+  """analyze the project tags to determine if any arbitration is requried"""
   if debug:
     print "in is_arbitrator_required()"
   #count the number of times a device is referenced
@@ -78,7 +78,7 @@ def is_arbitrator_required(tags = {}, debug = False):
   slave_tags = tags["SLAVES"]
   for slave in slave_tags:
     if debug:
-      print "found slave " + str(slave) 
+      print "found slave " + str(slave)
     if ("BUS" in slave_tags[slave]):
       if (len(slave_tags[slave]["BUS"]) > 0):
         return True
@@ -108,14 +108,14 @@ def generate_arbitrator_tags(tags = {}, debug = False):
         arb_slave = slave_tags[slave]["BUS"][bus]
         if debug:
           print "adding: " + arb_slave + " to the arb_tags for " + bus
-        
+
         if (not already_existing_arb_bus(arb_tags, arb_slave)):
           #create a new list
           arb_tags[arb_slave] = {}
 
         arb_tags[arb_slave][slave] = bus
 
-  return arb_tags 
+  return arb_tags
 
 def generate_arbitrator_buffer(master_count = 0, debug = False):
 #need to open up the arbitrator file and create a buffer
@@ -147,7 +147,7 @@ def generate_arbitrator_buffer(master_count = 0, debug = False):
   data_buf = ""
   assign_buf = ""
 
-  #generate the ports 
+  #generate the ports
   for i in range (master_count):
     #add the ports
     port_buf = port_buf + "\tm" + str(i) + "_we_i,\n"
@@ -160,9 +160,9 @@ def generate_arbitrator_buffer(master_count = 0, debug = False):
     port_buf = port_buf + "\tm" + str(i) + "_adr_i,\n"
     port_buf = port_buf + "\tm" + str(i) + "_int_o"
     port_buf = port_buf + ",\n"
-      
+
     port_buf = port_buf + "\n\n"
-  
+
   if (debug):
     print "port_buf: " + port_buf
 
@@ -201,7 +201,7 @@ def generate_arbitrator_buffer(master_count = 0, debug = False):
 
   master_sel_buf += "\telse begin\n"
   master_sel_buf += "\t\tcase (master_select)\n"
-    
+
   for i in range(master_count):
     master_sel_buf += "\t\t\tMASTER_" + str(i) + ": begin\n"
     master_sel_buf += "\t\t\t\tif (~m" + str(i) + "_stb_i) begin\n"
@@ -236,7 +236,7 @@ def generate_arbitrator_buffer(master_count = 0, debug = False):
   write_buf += ") begin\n"
   write_buf += "\tcase (master_select)\n"
   for i in range(master_count):
-    write_buf += "\t\tMASTER_" + str(i) + ": begin\n" 
+    write_buf += "\t\tMASTER_" + str(i) + ": begin\n"
     write_buf += "\t\t\ts_we_o <= m" + str(i) + "_we_i;\n"
     write_buf += "\t\tend\n"
 
@@ -254,7 +254,7 @@ def generate_arbitrator_buffer(master_count = 0, debug = False):
   strobe_buf += ") begin\n"
   strobe_buf += "\tcase (master_select)\n"
   for i in range(master_count):
-    strobe_buf += "\t\tMASTER_" + str(i) + ": begin\n" 
+    strobe_buf += "\t\tMASTER_" + str(i) + ": begin\n"
     strobe_buf += "\t\t\ts_stb_o <= m" + str(i) + "_stb_i;\n"
     strobe_buf += "\t\tend\n"
 
@@ -272,7 +272,7 @@ def generate_arbitrator_buffer(master_count = 0, debug = False):
   cycle_buf += ") begin\n"
   cycle_buf += "\tcase (master_select)\n"
   for i in range(master_count):
-    cycle_buf += "\t\tMASTER_" + str(i) + ": begin\n" 
+    cycle_buf += "\t\tMASTER_" + str(i) + ": begin\n"
     cycle_buf += "\t\t\ts_cyc_o <= m" + str(i) + "_cyc_i;\n"
     cycle_buf += "\t\tend\n"
 
@@ -290,7 +290,7 @@ def generate_arbitrator_buffer(master_count = 0, debug = False):
   select_buf += ") begin\n"
   select_buf += "\tcase (master_select)\n"
   for i in range(master_count):
-    select_buf += "\t\tMASTER_" + str(i) + ": begin\n" 
+    select_buf += "\t\tMASTER_" + str(i) + ": begin\n"
     select_buf += "\t\t\ts_sel_o <= m" + str(i) + "_sel_i;\n"
     select_buf += "\t\tend\n"
 
@@ -308,7 +308,7 @@ def generate_arbitrator_buffer(master_count = 0, debug = False):
   address_buf += ") begin\n"
   address_buf += "\tcase (master_select)\n"
   for i in range(master_count):
-    address_buf += "\t\tMASTER_" + str(i) + ": begin\n" 
+    address_buf += "\t\tMASTER_" + str(i) + ": begin\n"
     address_buf += "\t\t\ts_adr_o <= m" + str(i) + "_adr_i;\n"
     address_buf += "\t\tend\n"
 
@@ -326,7 +326,7 @@ def generate_arbitrator_buffer(master_count = 0, debug = False):
   data_buf += ") begin\n"
   data_buf += "\tcase (master_select)\n"
   for i in range(master_count):
-    data_buf += "\t\tMASTER_" + str(i) + ": begin\n" 
+    data_buf += "\t\tMASTER_" + str(i) + ": begin\n"
     data_buf += "\t\t\ts_dat_o <= m" + str(i) + "_dat_i;\n"
     data_buf += "\t\tend\n"
 
@@ -356,7 +356,7 @@ def generate_arbitrator_buffer(master_count = 0, debug = False):
                 SELECT=select_buf,
                 ADDRESS=address_buf,
                 DATA=data_buf,
-                ASSIGN=assign_buf); 
+                ASSIGN=assign_buf);
   return buf
 
 

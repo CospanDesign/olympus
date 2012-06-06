@@ -48,7 +48,7 @@ class PropertiesDialog:
     #attempt to auto detect the tool
     print "auto detect"
 
-    
+
   def on_cancel(self, widget):
     self.prop_dialog.hide()
     print "cancel"
@@ -77,7 +77,7 @@ class PropertiesDialog:
     else:
       print "dont compress"
       self.compress = False
-  
+
   def is_compressed(self):
     return self.compress
 

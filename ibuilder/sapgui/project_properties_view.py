@@ -16,7 +16,7 @@ class ProjectPropertiesView:
 
     self.project_name = builder.get_object("entry_project_name")
     self.project_name.connect("focus-out-event", self.on_name_unfocus)
-    #self.vendor_tool = builder.get_object("combobox_vendor_tool")  
+    #self.vendor_tool = builder.get_object("combobox_vendor_tool")
     self.vendor_tool = gtk.combo_box_new_text()
     self.vendor_tool.show()
     self.vt_hid = None
@@ -90,7 +90,7 @@ class ProjectPropertiesView:
 
   def set_board_change_callback(self, func):
     self.board_change_cb = func
-  
+
   def set_constraint_change_callback(self, func):
     self.constraint_change_cb = func
 
@@ -140,7 +140,7 @@ class ProjectPropertiesView:
     it = combo.get_active_iter()
     name = model.get(it, 0)[0]
     print "board name: " + name
-    
+
     if self.board_change_cb is not None:
       self.board_change_cb(name)
 
@@ -148,22 +148,22 @@ class ProjectPropertiesView:
 
   def on_constraint_file_clicked(self, check_box, name):
     """
-    when a user activates or de-activates a 
+    when a user activates or de-activates a
     constraint file
     """
-    enable = check_box.get_active()  
+    enable = check_box.get_active()
     print "%s set to %s" % (name, str(enable))
     if self.constraint_change_cb:
       self.constraint_change_cb(name, enable)
 
-  
+
 
   def get_frame(self):
     return self.frame
 
   def setup(self):
     project_name = self.sc.get_project_name()
-    self.project_name.set_text(project_name)  
+    self.project_name.set_text(project_name)
     self.setup_vendor_tools_combo()
     self.setup_bus_combo()
     self.setup_board_combo()
@@ -244,16 +244,16 @@ class ProjectPropertiesView:
       if bn == board:
         index = i
       i += 1
-    
+
     self.board.set_model(model)
     self.board.set_active(index)
     if self.board_hid is not None:
       self.board_hid = self.board.connect("changed", self.on_board_changed)
 
 
-#XXX: Go through all the board configuration files to setup all the 
+#XXX: Go through all the board configuration files to setup all the
     #combo boxes associated with a board
-    
+
 
   def setup_fpga_part_number(self):
     self.fpga_pn.set_text(self.sc.get_fpga_part_number())
@@ -267,7 +267,7 @@ class ProjectPropertiesView:
 
       for c in cl:
         ct.remove(c)
-      
+
     #remove all the entries in the list
     cl = []
 
@@ -296,7 +296,7 @@ class ProjectPropertiesView:
       cb.connect("clicked", self.on_constraint_file_clicked, c)
       cl.append(cb)
       index += 1
-            
+
 
     self.constraint_list = cl
 

@@ -35,7 +35,7 @@ class BuildController(object):
     except:
       return None
     return data
-      
+
   def kill_child(self):
     print "kill child"
     self.sub.kill()
@@ -70,4 +70,4 @@ if __name__ == "__main__":
 
   print "finished"
 
-  
+

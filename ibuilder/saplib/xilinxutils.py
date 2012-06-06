@@ -38,7 +38,7 @@ def get_version_list(base_directory = None, debug=False):
       dirs = glob.glob(d + "/*")
       versions = []
       for v in dirs:
-        versions.append(float(v.rpartition("/")[2]))  
+        versions.append(float(v.rpartition("/")[2]))
         break
 
   if debug:
@@ -48,7 +48,7 @@ def get_version_list(base_directory = None, debug=False):
 
 def get_supported_version(fpga_part_number, versions, debug = False):
   """
-  using an FPGA number, determine if the FPGA is a 
+  using an FPGA number, determine if the FPGA is a
   Spartan 3 or a Spartan 6
 
   based off of the fpga_part_number determine what version
@@ -64,9 +64,9 @@ def get_supported_version(fpga_part_number, versions, debug = False):
   num = 0
   length = len(pn)
   i = 0
-  for i in range (0, length): 
+  for i in range (0, length):
     if pn[i].isdigit():
-      i += 1  
+      i += 1
     else:
       break
 
@@ -77,10 +77,10 @@ def get_supported_version(fpga_part_number, versions, debug = False):
   versions.sort()
   if len(versions) == 0:
     raise Exception("no Versions of Xilinx Toolchain")
-  
+
   if num == 6:
     #return the largest version
-    return versions[-1]  
+    return versions[-1]
 
   if num == 3:
     for i in range (0, len(versions)):
@@ -89,6 +89,6 @@ def get_supported_version(fpga_part_number, versions, debug = False):
 
   raise Exception("FPGA Number %d not supported yet!" % num)
 
-    
-  
+
+
 

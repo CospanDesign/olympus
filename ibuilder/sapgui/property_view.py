@@ -7,7 +7,7 @@ from sap_graph_manager import Slave_Type
 class PropertyView(gtk.Frame):
   def __init__(self):
     super (PropertyView, self).__init__()
-    
+
     self.set_label("Properties")
 
     self.txpad = 0
@@ -20,7 +20,7 @@ class PropertyView(gtk.Frame):
     #slave name
     self.node_label = gtk.Label("No Node")
     self.node_label.show()
-    self.vbox.pack_start(  self.node_label, 
+    self.vbox.pack_start(  self.node_label,
                 expand = False,
                 fill = True,
                 padding = self.txpad)
@@ -31,7 +31,7 @@ class PropertyView(gtk.Frame):
                 fill = True,
                 padding = 0)
 
-    
+
     self.module_pos      = 0
     self.filename_pos    = 1
     self.pos        = 2
@@ -66,15 +66,15 @@ class PropertyView(gtk.Frame):
     #value
     for key in self.property_dict.keys():
       text = self.property_dict[key].get_text()
-      self.parameters["parameters"][key] = text 
+      self.parameters["parameters"][key] = text
 
-    
+
   def set_node(self, name = "", filename = "", tags = {}):
     """
-    clears previous slave properties and sets the initial values 
+    clears previous slave properties and sets the initial values
     """
     self.parameters = tags
-    
+
     self.clear_properties()
     self.set_node_name(name)
 
@@ -87,12 +87,12 @@ class PropertyView(gtk.Frame):
       module_name = self.parameters["module"]
       self.set_module_name(module_name)
 
-    
+
     if "parameters" in self.parameters.keys():
       keys = self.parameters["parameters"].keys()
       for key in keys:
         value = self.parameters["parameters"][key]
-        self.set_property(key, value, True)  
+        self.set_property(key, value, True)
 
     self.show_all()
 
@@ -112,13 +112,13 @@ class PropertyView(gtk.Frame):
     self.property_dict = {}
 
     self.pos        = 2
-    self.table = gtk.Table(  rows = 2, 
-                columns = 2, 
+    self.table = gtk.Table(  rows = 2,
+                columns = 2,
                 homogeneous = True)
     label = gtk.Label("Module Name: ")
     self.table.attach(    label,  #name of the child
-                0,    #column left 
-                1,    #column right 
+                0,    #column left
+                1,    #column right
                 0,     #row top
                 1,     #row bottom
                 xoptions = gtk.EXPAND | gtk.FILL,
@@ -144,8 +144,8 @@ class PropertyView(gtk.Frame):
 
     label = gtk.Label("File Name: ")
     self.table.attach(    label,  #name of the child
-                0,    #column left 
-                1,    #column right 
+                0,    #column left
+                1,    #column right
                 1,     #row top
                 2,     #row bottom
                 xoptions = gtk.EXPAND | gtk.FILL,
@@ -154,7 +154,7 @@ class PropertyView(gtk.Frame):
                 ypadding = self.typad)  #y padding
 
 
-  
+
     self.file_name_entry = gtk.Entry()
     self.file_name_entry.set_text("No Filename")
     self.file_name_entry.show()
@@ -191,13 +191,13 @@ class PropertyView(gtk.Frame):
     sets the module name in the slave settings
     """
     self.module_name_entry.set_text(module_name)
-  
+
   def set_file_name(self, file_name):
     """
     sets the file name in the property view
     """
     self.file_name_entry.set_text(file_name)
-  
+
   def set_property(self, name, value, editable):
     """
     sets a name/value pair in the property_view

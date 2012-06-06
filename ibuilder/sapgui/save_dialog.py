@@ -14,13 +14,13 @@ class SaveDialog:
 
     self.save_button.connect("clicked", self.on_save_clicked)
     self.cancel_button.connect("clicked", self.on_cancel_clicked)
-    
+
     self.status = status_text.StatusText()
     self.save_cb = None
     self.filename = ""
 
   def set_slave_callback(self, save_cb):
-    self.save_cb = save_cb 
+    self.save_cb = save_cb
 
   def show(self):
     self.save_dialog.show()

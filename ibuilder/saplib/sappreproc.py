@@ -7,11 +7,11 @@ import string
 
 
 def generate_define_table(filestring="", debug = False):
-  """Read in a file in string format and create a dictionary relating define name and value""" 
+  """Read in a file in string format and create a dictionary relating define name and value"""
   import saputils
   define_dict = {}
   #from a file string find all the defines and generate an entry into a dictionary
-  filestring = saputils.remove_comments(filestring) 
+  filestring = saputils.remove_comments(filestring)
   str_list = filestring.splitlines()
 
   for item in str_list:
@@ -24,7 +24,7 @@ def generate_define_table(filestring="", debug = False):
       item = item.partition("`include")[2]
       item = item.strip()
       item = item.strip("\"")
-      inc_file = saputils.find_rtl_file_location(item)  
+      inc_file = saputils.find_rtl_file_location(item)
       if debug:
         print "include file location: " + inc_file
       try:
@@ -44,7 +44,7 @@ def generate_define_table(filestring="", debug = False):
           if (not define_dict.has_key(key)):
             define_dict[key] = include_defines[key]
 
-        
+
         if debug:
           print "added new items onto the list"
       except TypeError as terr:
@@ -126,8 +126,8 @@ def resolve_defines(work_string="", define_dict={}, debug = False):
       if debug:
         print "Error in resolve_define(): didn't find define status in " + work_string
       return ""
-    
-  
+
+
   return work_string
 
 
@@ -144,7 +144,7 @@ def evaluate_range(in_string = "", define_dict = {}, debug = False):
     if debug:
       print "post: " + post
     in_string = in_string[:in_string.index("[") + 1] + pre + ":" + post + in_string[in_string.index("]")]
-  
+
   if debug:
     print in_string
   return in_string
@@ -158,7 +158,7 @@ def evaluate_range(in_string = "", define_dict = {}, debug = False):
 #  while ("(" in work_string):
 #    #recursively call this function to get rid of all paranthesis
 #    start = work_string.index("(")
-#    end = work_string.index(")") 
+#    end = work_string.index(")")
 #    if debug:
 #      print "first parenthesis: " + work_string[start + 1: end]
 #    np_string = resolve_string(work_string[start + 1:end], define_dict)
@@ -175,7 +175,7 @@ def evaluate_range(in_string = "", define_dict = {}, debug = False):
 #    if debug:
 #      print "found *"
 #    op_index = work_string.index("*")
-#    if debug: 
+#    if debug:
 #      print "index of *: " + str(op_index)
 #    #there is a multiplication
 #    pre = work_string.partition("*")[0]
@@ -187,7 +187,7 @@ def evaluate_range(in_string = "", define_dict = {}, debug = False):
 #    pre = pre.strip()
 #    pre_index = len(pre) - 1
 #    post = post.strip()
-#    post_index = 0 
+#    post_index = 0
 #    #find the beginning of the the operand
 #    while (pre_index > 0):
 #      #find the non point where there is no more number
@@ -220,9 +220,9 @@ def evaluate_range(in_string = "", define_dict = {}, debug = False):
 
 
 def calulate_operator(pre, operator, post):
-  
+
   work_string = ""
-  
+
 
   return work_string
 

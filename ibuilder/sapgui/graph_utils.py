@@ -43,7 +43,7 @@ class box:
 
   def generate_icons(self, debug = False):
     #calculate the size of the slave portion
-    self.arb_slave_width = self.width * self.arb_slave_ratio 
+    self.arb_slave_width = self.width * self.arb_slave_ratio
 
     #get the total number of arbitrators
     arb_total = len(self.arb_master.keys())
@@ -73,7 +73,7 @@ class box:
 
   def connect_arbitrator_master(self, name, slave_name):
     if name not in self.arb_master.keys():
-      raise GUI_Error("arbitrator is not in box")  
+      raise GUI_Error("arbitrator is not in box")
 
     self.arb_master[name].connected = True
     self.arb_master[name].slave = slave_name
@@ -87,7 +87,7 @@ class box:
 
   def disconnect_arbitrator_master(self, name):
     if name not in self.arb_master.keys():
-      raise GUI_Error("arbitrator is not in box")  
+      raise GUI_Error("arbitrator is not in box")
 
     self.arb_master[name].connected = False
     self.arb_master[name].slave = ""
@@ -148,7 +148,7 @@ class box:
     if name not in self.arb_master.keys():
       return None
 
-    return self.arb_master[name].slave 
+    return self.arb_master[name].slave
 
   def set_arb_slave_connected(self, connected):
     self.arb_slave = connected

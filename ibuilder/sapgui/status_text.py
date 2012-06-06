@@ -77,7 +77,7 @@ class StatusText:
 
     buf = "Info (%s): %s\n" % (f, text)
     self.append_text(buf)
- 
+
   def print_debug(self, f, text):
     if _level < 4:
       return
@@ -87,14 +87,14 @@ class StatusText:
       print "_buffer is not instantiated yet"
       return
 
-     buf = "Debug (%s): %s\n" % (f, text)
+    buf = "Debug (%s): %s\n" % (f, text)
     self.append_text(buf)
 
   def print_verbose(self, f, text):
 #    print "level: " + str(_level)
     if _level < 5:
       return
-    
+
     f = f.rpartition("/")[2]
     if _buffer is None:
       print "_buffer is not instantiated yet"

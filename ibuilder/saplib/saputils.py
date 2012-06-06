@@ -27,17 +27,17 @@ Changes:
 
 def create_dir(filename, debug=False):
   """Generate a directory with the specified location"""
-  
+
   #print "os: ", os.name, "..."
   #print "split: ", os.path.split(filename)
   #print "split text: ", os.path.splitext(filename)
   #print "dirname: ", os.path.dirname(filename)
   #print "basename", os.path.basename(filename)
-  #print "join: ", os.path.join(os.path.dirname(filename), 
+  #print "join: ", os.path.join(os.path.dirname(filename),
   #              os.path.basename(filename))
-  #print "cwd: ", os.getcwd()  
+  #print "cwd: ", os.getcwd()
   #print "uname: ", os.uname()
-  
+
   if filename.startswith("~"):
     filename = filename.strip("~")
     filename = os.getenv("HOME") + filename
@@ -48,7 +48,7 @@ def create_dir(filename, debug=False):
   if  (not os.path.exists(filename)):
     if debug:
       print ("Directory doesn't exist attempting to create...")
-    try: 
+    try:
       os.makedirs(filename)
     except os.error:
       if debug:
@@ -64,7 +64,7 @@ def resolve_linux_path(filename):
   if (filename.startswith("~")):
     filename = os.path.expanduser("~") + filename.strip("~")
   return filename
-    
+
 def remove_comments(buf="", debug=False):
   """remove comments from a buffer"""
   #first pass remove the '//' comments
@@ -90,7 +90,7 @@ def remove_comments(buf="", debug=False):
     post_comment = buf_part[2].partition("*/")[2]
     #print "pre_comment: " + pre_comment
     #print "post comment: " + post_comment
-    bufy = pre_comment + post_comment  
+    bufy = pre_comment + post_comment
     buf_part = bufy.partition("/*")
     pre_comment = ""
     post_comment = ""
@@ -100,7 +100,7 @@ def remove_comments(buf="", debug=False):
 
   return bufy
 
-def find_rtl_file_location(filename=""): 
+def find_rtl_file_location(filename=""):
   """read in a filename, and look for the file location within the RTL, return an addres"""
   base_location = os.getenv("SAPLIB_BASE")
   base_location = base_location + "/hdl/rtl"
@@ -119,7 +119,7 @@ def get_module_tags(filename="", bus="", keywords = [], debug=False):
   tags["parameters"] = {}
   tags["arbitrator_masters"] = []
   raw_buf = ""
-    
+
   #need a more robust way of openning the slave
 
 #  keywords = [
@@ -139,7 +139,7 @@ def get_module_tags(filename="", bus="", keywords = [], debug=False):
     buf = slave_file.read()
     raw_buf = buf
 
-  
+
   #find all the metadata
   for key in keywords:
     index = buf.find (key)
@@ -154,16 +154,16 @@ def get_module_tags(filename="", bus="", keywords = [], debug=False):
     if debug:
       print "substring: " + substring
 
-    
+
     if debug:
       print "found " + key + " substring: " + substring
 
     substring = substring.strip()
     substring = substring.strip("//")
     substring = substring.strip("/*")
-    tags["keywords"][key] = substring.partition(":")[2] 
-      
-        
+    tags["keywords"][key] = substring.partition(":")[2]
+
+
 
   #remove all the comments from the code
   buf = remove_comments(buf)
@@ -186,7 +186,7 @@ def get_module_tags(filename="", bus="", keywords = [], debug=False):
       print tags["module"]
 
     break
-  
+
   #find all the ports
   #find the index of all the processing block
   substrings = buf.splitlines()
@@ -197,7 +197,7 @@ def get_module_tags(filename="", bus="", keywords = [], debug=False):
 
   if debug:
     print "filename: " + filename
-  
+
   filestring = ""
   try:
     f = open(filename)
@@ -208,12 +208,12 @@ def get_module_tags(filename="", bus="", keywords = [], debug=False):
     return
 
   ldebug = debug
-  define_dict = sappreproc.generate_define_table(filestring, ldebug)  
+  define_dict = sappreproc.generate_define_table(filestring, ldebug)
 
   #find all the IO's
   for io in ports:
     tags["ports"][io] = {}
-    substrings = buf.splitlines()  
+    substrings = buf.splitlines()
     for substring in substrings:
 #      if debug:
 #        print "working on substring: " + substring
@@ -241,7 +241,7 @@ def get_module_tags(filename="", bus="", keywords = [], debug=False):
       if (len(substring.partition("]")[2]) != 0):
         #we have a range to work with?
         length_string = substring.partition("]")[0] + "]"
-        substring = substring.partition("]")[2] 
+        substring = substring.partition("]")[2]
         substring = substring.strip()
         length_string = length_string.strip()
         if debug:
@@ -266,7 +266,7 @@ def get_module_tags(filename="", bus="", keywords = [], debug=False):
         tags["ports"][io][substring]["size"] = (max_val + 1) - min_val
       else:
         tags["ports"][io][substring]["size"] = 1
-      
+
       #print io + ": " + substring
 
 
@@ -283,7 +283,7 @@ def get_module_tags(filename="", bus="", keywords = [], debug=False):
   #find all the parameters
   substrings = buf.splitlines()
   for substring in substrings:
-    substring = substring.strip()  
+    substring = substring.strip()
     if ("parameter" in substring):
       if debug:
         print "found parameter!"
@@ -306,7 +306,7 @@ def get_module_tags(filename="", bus="", keywords = [], debug=False):
     print "output count: " + str(output_count)
     print "inout count: " + str(inout_count)
     print "\n"
-      
+
   if debug:
     print "module name: " + tags["module"]
     for key in tags["keywords"].keys():
@@ -330,7 +330,7 @@ def get_board_names (debug = False):
   base_location = os.getenv("SAPLIB_BASE")
   base_location = base_location + "/hdl/boards"
   boards = []
-  
+
   for root, dirs, names in os.walk(base_location):
     if debug:
       print "Dirs: " + str(dirs)
@@ -357,16 +357,16 @@ def get_constraint_filenames (board_name, debug = False):
       s = name.partition(".")[2].lower()
 
       if debug:
-        print "last: " + s  
+        print "last: " + s
       if s == "ucf":
-        cfiles.append(name)  
+        cfiles.append(name)
         if debug:
           print "constraint file: %s" % name
 
   return cfiles
-  
 
-  
+
+
 def get_board_config (board_name, debug = False):
   """
   returns a dictionary of board specific
@@ -394,7 +394,7 @@ def get_board_config (board_name, debug = False):
       if debug:
         print "filename: %s" % filename
       break
-  
+
   if len(filename) == 0:
     if debug:
       print "didn't find board config file"
@@ -404,7 +404,7 @@ def get_board_config (board_name, debug = False):
   #open up the config file
   try:
     file_in = open(filename)
-    buf = file_in.read() 
+    buf = file_in.read()
     board_dict = json.loads(buf)
     file_in.close()
   except:
@@ -452,7 +452,7 @@ def get_net_names(constraint_filename, debug = False):
   #open up the ucf file
   try:
     file_in = open(filename)
-    buf = file_in.read() 
+    buf = file_in.read()
     file_in.close()
   except:
     #fail
@@ -483,18 +483,18 @@ def get_net_names(constraint_filename, debug = False):
     token = token.replace('>', ']')
 #    if debug:
 #      print "possible net name: " + token
-    
+
     if token not in nets:
       nets.append(token)
 
 
 
   return nets
-      
 
 
 
-  
+
+
 def read_clock_rate(constraint_filename, debug = False):
   """returns a string of the clock rate 50MHz = 50000000"""
   base_location = os.getenv("SAPLIB_BASE")
@@ -523,7 +523,7 @@ def read_clock_rate(constraint_filename, debug = False):
   #open up the ucf file
   try:
     file_in = open(filename)
-    buf = file_in.read() 
+    buf = file_in.read()
     file_in.close()
   except:
     #fail
@@ -546,7 +546,7 @@ def read_clock_rate(constraint_filename, debug = False):
     if ("timespec" in line) and ("ts_clk" in line):
       if debug:
         print "found timespec"
-      #this is the "clk" clock, now read the clock value 
+      #this is the "clk" clock, now read the clock value
       if debug:
         print "found TIMESPEC"
       line = line.partition("period")[2].strip()
@@ -564,7 +564,7 @@ def read_clock_rate(constraint_filename, debug = False):
       if debug:
         for line in clock_lines:
           print "line: " + line
-        
+
       if (clock_lines[1] == "mhz"):
         clock_rate = clock_lines[0] + "000000"
       if (clock_lines[1] == "khz"):
@@ -592,7 +592,7 @@ def read_clock_rate(constraint_filename, debug = False):
           print "line: " + line
         clock_rate = str(int(1/(string.atoi(line) * 1e-9)))
         break;
-  
+
   if debug:
     print "Clock Rate: " + clock_rate
   return clock_rate
@@ -601,11 +601,11 @@ def read_clock_rate(constraint_filename, debug = False):
 def get_slave_list(bus = "wishbone", debug = False):
   if debug:
     print "in get slave list"
-  base_dir = os.getenv("SAPLIB_BASE")  
+  base_dir = os.getenv("SAPLIB_BASE")
   directory = base_dir + "/hdl/rtl/" + bus + "/slave"
 
   file_list = _get_file_recursively(directory)
-  
+
   if debug:
     print "verilog files: "
   for f in file_list:
@@ -650,8 +650,8 @@ def _get_file_recursively(directory):
   file_list = []
   for f in file_dir_list:
     if (os.path.isdir(f)):
-      if   (f.split("/")[-1] != "sim"): 
-        file_list += _get_file_recursively(f) 
+      if   (f.split("/")[-1] != "sim"):
+        file_list += _get_file_recursively(f)
     elif (os.path.isfile(f)):
       if f.endswith(".v"):
         file_list.append(f)

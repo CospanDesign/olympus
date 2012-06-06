@@ -29,14 +29,14 @@ def get_testfile_list():
   testnames = []
 
   for root, dir, testfile in os.walk(sys.path[0] + "/tests"):
-    testfiles = testfile  
+    testfiles = testfile
 
 
 
   if (testfiles.__contains__("__init__.py")):
     testfiles.remove("__init__.py")
-  
-  testnames = []  
+
+  testnames = []
 #
   for testfile in testfiles:
     if (testfile.__contains__('test_') and (not testfile.__contains__('swp')) and (not testfile.__contains__(".pyc"))):
@@ -72,7 +72,7 @@ def test (arg):
     print "Searching for test"
     tl = unittest.TestLoader()
     pt = tl.discover(sys.path[0] + "/tests", pattern = arg)
-    paths = [  sys.path[0] + "/tests"] 
+    paths = [  sys.path[0] + "/tests"]
     for p in paths:
       print "searching " + p + "...",
       pt = tl.discover(p, pattern = arg)
@@ -87,7 +87,7 @@ def test (arg):
     else:
       print "Found test"
       print "Running %d tests..." % (pt.countTestCases())
-      pt.debug()  
+      pt.debug()
       print "All tests Passed!"
 
 
@@ -146,6 +146,6 @@ def main(argv):
       for arg in args:
         test(arg)
 
-    
+
 if __name__ == "__main__":
   main(sys.argv[1:])

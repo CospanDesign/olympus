@@ -26,7 +26,7 @@ def setup_box(name, r = 0.0, g = 0.0, b = 1.0):
   does all the heavy lifting of setting up a box in a pix buffer
   """
   color_depth = 8
-  icon_width = 10 
+  icon_width = 10
   icon_height = 10
 
   pixbuf = Pixbuf(  gtk.gdk.COLORSPACE_RGB, #color space
@@ -83,7 +83,7 @@ class ProjectView(gtk.ScrolledWindow):
 
   def __init__(self, sc):
     super(ProjectView, self).__init__()
-    
+
     self.sc = sc
     self.sgm = sc.get_graph_manager()
 
@@ -102,7 +102,7 @@ class ProjectView(gtk.ScrolledWindow):
   def set_project_item_callback(self, project_item_callback):
     self.project_item_selected_callback = project_item_callback
 
-  def on_item_change(self, widget, path, view_column): 
+  def on_item_change(self, widget, path, view_column):
     """whenever an item is activated"""
     #print "item changed to: " + str(path)
     item = self.model[path]
@@ -184,7 +184,7 @@ class ProjectView(gtk.ScrolledWindow):
       pixbuf = setup_box(node.name, 1.0, 0.0, 1.0)
       self.model.append(mit, [node.name, pixbuf, un])
 
-  
+
     if self.project_tree.get_column(0) is None:
       self.project_tree.append_column(self.project_column)
 

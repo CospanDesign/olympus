@@ -39,13 +39,13 @@ class SapProject:
 
     #now we have a buffer call the read config string
     result = self.read_config_string(json_string)
-    return result 
+    return result
 
   def read_template(self, template_file_name="", debug=False):
     """Read the template file associatd with this bus"""
     if (debug):
       print "Debug enabled"
-    try: 
+    try:
       if (debug):
         print "attempting local"
       filein = open(template_file_name, "r")
@@ -59,7 +59,7 @@ class SapProject:
     #if the project doesn't have a .json file association
     if (not template_file_name.endswith(".json")):
       template_file_name = template_file_name + ".json"
-    
+
       try:
         if (debug):
           print "attempting local + .json"
@@ -73,7 +73,7 @@ class SapProject:
 
     #see if there is a environmental setting for SAPLIB_BASE
     if (len(os.getenv("SAPLIB_BASE")) > 0):
-      file_name = os.getenv("SAPLIB_BASE") + "/templates/" + template_file_name  
+      file_name = os.getenv("SAPLIB_BASE") + "/templates/" + template_file_name
       try:
         if (debug):
           print "attempting environmental variable SAPLIB_BASE"
@@ -100,7 +100,7 @@ class SapProject:
       except IOError as err:
         filein = None
 
-    #try the default location  
+    #try the default location
     file_name = "../templates/" + template_file_name
     try:
       if (debug):
@@ -112,7 +112,7 @@ class SapProject:
       return True
     except IOError as err:
       filein = None
-    
+
     return False
 
   def generate_project(self, config_file_name, debug=False):
@@ -123,7 +123,7 @@ class SapProject:
       if (debug):
         print "failed to read in project config file"
       return False
-    
+
 
     board_dict = saputils.get_board_config(self.project_tags["board"])
     cfiles = []
@@ -151,13 +151,13 @@ class SapProject:
     self.filegen.set_tags(self.project_tags)
 
     #generate the project directories and files
-    saputils.create_dir(self.project_tags["BASE_DIR"])    
+    saputils.create_dir(self.project_tags["BASE_DIR"])
     if debug:
       print "generated the first dir"
 
     #generate the arbitrator tags, this is important because the top
     #needs the arbitrator tags
-    arb_tags = saparbitrator.generate_arbitrator_tags(self.project_tags, False) 
+    arb_tags = saparbitrator.generate_arbitrator_tags(self.project_tags, False)
     self.project_tags["ARBITRATORS"] = arb_tags
 
 
@@ -170,10 +170,10 @@ class SapProject:
 
     if debug:
       print "generating project directories finished"
-  
+
     if debug:
       print "generate the arbitrators"
-    
+
     self.generate_arbitrators()
 
     #Generate all the slaves
@@ -232,14 +232,14 @@ class SapProject:
     if (exists(os.getcwd() + "/" + constraint_fname)):
       return os.getcwd() + "/" + constraint_fname
     #search through the board directory
-    if (exists(sap_abs_base + "/hdl/boards/" + board_name + "/" + constraint_fname)): 
+    if (exists(sap_abs_base + "/hdl/boards/" + board_name + "/" + constraint_fname)):
       return sap_abs_base + "/hdl/boards/" + board_name + "/" + constraint_fname
     return ""
-    
-  def recursive_structure_generator(self, 
-                parent_dict = {}, 
-                key="", 
-                parent_dir = "",  
+
+  def recursive_structure_generator(self,
+                parent_dict = {},
+                key="",
+                parent_dir = "",
                 debug=False):
     """recursively generate all directories and files"""
     if (parent_dict[key].has_key("dir") and parent_dict[key]["dir"]):
@@ -271,7 +271,7 @@ class SapProject:
 
     #we have some arbitrators, add the tag to the project
     #  (this is needed for gen_top)
-#    arb_tags = saparbitrator.generate_arbitrator_tags(self.project_tags, False) 
+#    arb_tags = saparbitrator.generate_arbitrator_tags(self.project_tags, False)
 #    self.project_tags["ARBITRATORS"] = arb_tags
 
     #for each of the items in the arbitrator list create a file tags
@@ -280,13 +280,13 @@ class SapProject:
     for i in range (0, len(arb_tags.keys())):
       key = arb_tags.keys()[i]
       arb_size = len(arb_tags[key]) + 1
-      if (arb_size in arb_size_list): 
+      if (arb_size in arb_size_list):
         continue
       #we don't already have this size, so add it into the list
       arb_size_list.append(arb_size)
       fn = "arbitrator_" + str(arb_size) + "_masters.v"
       d = self.project_tags["BASE_DIR"] + "/rtl/bus/arbitrators"
-      
+
       self.filegen.buf = saparbitrator.generate_arbitrator_buffer(arb_size)
       if debug:
         print "arbitrator buffer: " + self.filegen.buf

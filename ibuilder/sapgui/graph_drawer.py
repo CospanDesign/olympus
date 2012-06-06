@@ -19,7 +19,7 @@ def enum(*sequential, **named):
   return type('Enum', (), enums)
 
 #different ways to draw a box
-BOX_STYLE = enum(  'OUTLINE', 
+BOX_STYLE = enum(  'OUTLINE',
           'SOLID')
 
 def motion_notify_event (widget, event):
@@ -60,7 +60,7 @@ def button_release_event (widget, event):
 Custom Cairo Drawing surface
 """
 
-class GraphDrawer ( GraphDrawingArea ):   
+class GraphDrawer ( GraphDrawingArea ):
   def __init__(self, sgm):
     GraphDrawingArea.__init__(self)
     self.val = 0
@@ -188,12 +188,12 @@ class GraphDrawer ( GraphDrawingArea ):
     if y < (self.prev_height / 2.0):
       if self.debug:
         print "in peripheral bus"
-      drop_type = Slave_Type.peripheral  
+      drop_type = Slave_Type.peripheral
       sl = self.boxes["pslaves"]
     else:
       drop_type = Slave_Type.memory
       sl = self.boxes["mslaves"]
-    
+
     drop_index = 0
     for slave_box in sl:
       if y < slave_box.y + (slave_box.height / 2.0):
@@ -207,7 +207,7 @@ class GraphDrawer ( GraphDrawingArea ):
     if (self.slave_add_callback is not None):
       self.slave_add_callback(text, drop_type, drop_index)
 
-    
+
     f = text.rpartition("/")[2]
     tp = "memory"
     if drop_type == Slave_Type.peripheral:
@@ -244,7 +244,7 @@ class GraphDrawer ( GraphDrawingArea ):
     if self.en_arb_view:
       return False
 
-    #can only moved 
+    #can only moved
     if node is None:
       return False
 
@@ -256,7 +256,7 @@ class GraphDrawer ( GraphDrawingArea ):
       return False
 
     return True
-    
+
   def start_moving(self):
     if self.moving == 1:
       return
@@ -270,9 +270,9 @@ class GraphDrawer ( GraphDrawingArea ):
       else:
         b = self.boxes["mslaves"][node.slave_index]
 
-      self.rel_x = self.p_x - b.x 
+      self.rel_x = self.p_x - b.x
       self.rel_y = self.p_y - b.y
-      
+
       #tell everyone we are moving
       self.moving = 1
 
@@ -386,14 +386,14 @@ class GraphDrawer ( GraphDrawingArea ):
                         node.slave_index,
                         drop_type,
                         drop_index)
-  
+
   def button_press(self):
     node_name = self.get_selected_name(self.p_x, self.p_y)
     if len(node_name) > 0:
       if node_name == "back":
         self.back_selected_callback()
         return
-      
+
       if node_name == "remove":
         if self.debug:
           print "remove selected"
@@ -414,7 +414,7 @@ class GraphDrawer ( GraphDrawingArea ):
         self.arbitrator_connected_callback(  self.selected_master,
                           self.selected_arb_master,
                           node_name)
-      
+
 
 
       self.selected_node = self.sgm.get_node(node_name)
@@ -435,7 +435,7 @@ class GraphDrawer ( GraphDrawingArea ):
 
         #print "arbitrator master: %s selected"% (arb_master)
         self.selected_master_node = sn
-        
+
         b = None
         if sn.slave_type == Slave_Type.peripheral:
           b = self.boxes["pslaves"][sn.slave_index]
@@ -444,7 +444,7 @@ class GraphDrawer ( GraphDrawingArea ):
           b = self.boxes["mslaves"][sn.slave_index]
 
         connected_slave = b.get_connected_slave(arb_master)
-        
+
         self.slave_arbitrator_select_callback(node_name, arb_master, connected_slave)
 
       self.slave_select_callback(  name,
@@ -531,9 +531,9 @@ class GraphDrawer ( GraphDrawingArea ):
       box_x = (column_width - box_width) / 2.0
       box_y = (height / 2.0) - box_height / 2.0
 
-      b.set_location_and_size(  box_x, 
-                    box_y, 
-                    box_width, 
+      b.set_location_and_size(  box_x,
+                    box_y,
+                    box_width,
                     box_height)
       b.set_color(0.0, 1.0, 0.0)
 
@@ -545,9 +545,9 @@ class GraphDrawer ( GraphDrawingArea ):
       box_x = (column_width - box_width) / 2.0 + column_width
       box_y = (column_width - box_width) / 2.0
 
-      b.set_location_and_size(  box_x, 
-                    box_y, 
-                    box_width, 
+      b.set_location_and_size(  box_x,
+                    box_y,
+                    box_width,
                     box_height)
       b.set_color(1.0, 0.5, 0.0)
 
@@ -555,14 +555,14 @@ class GraphDrawer ( GraphDrawingArea ):
     b = self.boxes["pic"]
     b.set_name("Peripherals")
     box_width = column_width * self.box_width_ratio
-    box_height = (height / 2.0) - (column_width - box_width) 
+    box_height = (height / 2.0) - (column_width - box_width)
 
     box_x = 0
     if self.en_arb_view:
-      box_x = (column_width - box_width) / 2.0 
+      box_x = (column_width - box_width) / 2.0
     else:
-      box_x = (column_width - box_width) / 2.0 + 2 * column_width 
-    box_y = ((column_width - box_width) / 2.0) 
+      box_x = (column_width - box_width) / 2.0 + 2 * column_width
+    box_y = ((column_width - box_width) / 2.0)
 
     b.set_location_and_size(box_x, box_y, box_width, box_height)
     b.set_color(1.0, 1.0, 0.0)
@@ -570,15 +570,15 @@ class GraphDrawer ( GraphDrawingArea ):
     #memory interconnect
     b = self.boxes["mic"]
     b.set_name("Memories")
-    box_width = column_width * self.box_width_ratio 
-    box_height = (height / 2.0) - (column_width - box_width) 
+    box_width = column_width * self.box_width_ratio
+    box_height = (height / 2.0) - (column_width - box_width)
 
     box_x = 0
     if self.en_arb_view:
-      box_x = (column_width - box_width) / 2.0 
+      box_x = (column_width - box_width) / 2.0
     else:
-      box_x = (column_width - box_width) / 2.0 + (2 * column_width) 
-    box_y = (column_width - box_width) / 2.0 + height / 2.0 
+      box_x = (column_width - box_width) / 2.0 + (2 * column_width)
+    box_y = (column_width - box_width) / 2.0 + height / 2.0
 
     b.set_location_and_size(box_x, box_y, box_width, box_height)
     b.set_color(1.0, 1.0, 0.0)
@@ -590,16 +590,16 @@ class GraphDrawer ( GraphDrawingArea ):
       b = self.boxes["pslaves"][i]
       node = self.sgm.get_slave_at(i, Slave_Type.peripheral)
       b.set_name(node.name)
-      box_width = column_width * self.box_width_ratio 
-      box_height = box_width * self.pslave_height_ratio  
+      box_width = column_width * self.box_width_ratio
+      box_height = box_width * self.pslave_height_ratio
       box_x = (column_width - box_width) / 2.0 + \
-          (column_width * 3) 
+          (column_width * 3)
       box_y = (column_width - box_width) / 2.0 + \
           i * ((column_width - box_width) + box_height)
 
       b.set_location_and_size(box_x, box_y, box_width, box_height)
       b.set_color(0.0, 0.0, 1.0)
-    
+
 
       #setup the arbitrator masters
       arbs = node.parameters["arbitrator_masters"]
@@ -616,7 +616,7 @@ class GraphDrawer ( GraphDrawingArea ):
       #the DRT should never be an arbitrator slave
       if self.en_arb_view and i == 0:
         box_x = (column_width - box_width) / 2.0 + \
-            (column_width * 1) 
+            (column_width * 1)
 
         b.set_location_and_size(  box_x,
                       box_y,
@@ -644,9 +644,9 @@ class GraphDrawer ( GraphDrawingArea ):
           if   self.selected_master_node == node or \
             s_name == self.connected_slave or \
             i == 0:
-  
+
             box_x = (column_width - box_width) / 2.0 + \
-              (column_width * 1) 
+              (column_width * 1)
 
             b.set_location_and_size(  box_x,
                           box_y,
@@ -656,7 +656,7 @@ class GraphDrawer ( GraphDrawingArea ):
 
         if self.debug:
           print "add arbitrator master"
-        b.add_arbitrator_master(arb, is_connected, s_name) 
+        b.add_arbitrator_master(arb, is_connected, s_name)
 
       #generate an arbitrator box if this is the selected slave
       if self.en_arb_view and self.connected_slave == node.unique_name:
@@ -666,7 +666,7 @@ class GraphDrawer ( GraphDrawingArea ):
         b.name = "arbitrator"
 
         box_x = (column_width - box_width) / 2.0 + \
-            (column_width * 2) 
+            (column_width * 2)
 
         b.set_color(1.0, 1.0, 1.0)
         b.set_location_and_size(  box_x,
@@ -681,9 +681,9 @@ class GraphDrawer ( GraphDrawingArea ):
       b = self.boxes["mslaves"][i]
       node = self.sgm.get_slave_at(i, Slave_Type.memory)
       b.set_name(node.name)
-      box_width = column_width * self.box_width_ratio 
-      box_height = box_width * self.mslave_height_ratio  
-      box_x = (column_width - box_width) / 2.0 + (column_width * 3) 
+      box_width = column_width * self.box_width_ratio
+      box_height = box_width * self.mslave_height_ratio
+      box_x = (column_width - box_width) / 2.0 + (column_width * 3)
       box_y = (column_width - box_width) / 2.0 + \
           i * ((column_width - box_width) + box_height) + \
           height / 2
@@ -720,13 +720,13 @@ class GraphDrawer ( GraphDrawingArea ):
             b.arb_slave = True
             continue
 
-  
+
           if self.en_arb_view:
             if   self.selected_master_node == node or \
               s_name == self.connected_slave:
 
               box_x = (column_width - box_width) / 2.0 + \
-              (column_width * 1) 
+              (column_width * 1)
 
               b.set_location_and_size(  box_x,
                             box_y,
@@ -745,7 +745,7 @@ class GraphDrawer ( GraphDrawingArea ):
         b.name = "arbitrator"
 
         box_x = (column_width - box_width) / 2.0 + \
-            (column_width * 2) 
+            (column_width * 2)
 
         b.set_color(1.0, 1.0, 1.0)
         b.set_location_and_size(  box_x,
@@ -758,7 +758,7 @@ class GraphDrawer ( GraphDrawingArea ):
     self.debug = debug
 
   def draw(self, width, height):
-    
+
     #compare the current width and height with the previous
     #if there is a different calculate the size of all the boxes
     ps_count = self.sgm.get_number_of_slaves(Slave_Type.peripheral)
@@ -769,7 +769,7 @@ class GraphDrawer ( GraphDrawingArea ):
       self.prev_ps_count != ps_count or \
       self.prev_ms_count != ms_count  or \
       self.regenerate_boxes:
-      
+
       if self.debug:
         print "calculate"
       self.regenerate_boxes = False
@@ -782,7 +782,7 @@ class GraphDrawer ( GraphDrawingArea ):
     self.prev_ps_count = ps_count
     self.prev_ms_count = ms_count
 
-  
+
     #if debug flag enabled write the debug in the top left
     if self.debug:
       self.display_debug(width, height)
@@ -805,7 +805,7 @@ class GraphDrawer ( GraphDrawingArea ):
     self.connected_slave = connected_slave
     self.en_arb_view = enable
 
-    
+
   def draw_arbitrator_view(self, width, height):
     self.draw_mem_interconnect()
     self.draw_periph_interconnect()
@@ -817,7 +817,7 @@ class GraphDrawer ( GraphDrawingArea ):
 
     self.draw_back()
     self.draw_connections(width, height)
-  
+
     return
 
   def draw_bus_view(self, width, height):
@@ -831,7 +831,7 @@ class GraphDrawer ( GraphDrawingArea ):
     self.draw_moving()
     return
 
-  def draw_arbitrator(self):  
+  def draw_arbitrator(self):
     b = self.boxes["arbitrator"]
     self.draw_box(b, b.x, b.y, style = BOX_STYLE.OUTLINE)
 
@@ -847,13 +847,13 @@ class GraphDrawer ( GraphDrawingArea ):
     b.y = bm.y
     self.draw_box(b, b.x, b.y, style = BOX_STYLE.OUTLINE)
 
-  def draw_back(self):  
+  def draw_back(self):
     b = self.boxes["back"]
     self.draw_box(b, b.x, b.y, style = BOX_STYLE.OUTLINE)
     #draw the arrow
     cr = self.cr
     cr.set_line_cap(cairo.LINE_CAP_ROUND)
-    
+
     cr.set_line_width(5.0)
     cr.set_source_rgb(0.0, 0.0, 0.0)
     cr.move_to (b.x, b.y + b.height / 2.0)
@@ -865,7 +865,7 @@ class GraphDrawer ( GraphDrawingArea ):
     cr.set_line_width(2.0)
     cr.stroke
 
-  def draw_host_interface(self):  
+  def draw_host_interface(self):
     cr = self.cr
     b = self.boxes["host_interface"]
 
@@ -934,7 +934,7 @@ class GraphDrawer ( GraphDrawingArea ):
 
     else:
       b = self.boxes["mslaves"][node.slave_index]
-      
+
     self.mov_x = self.p_x - self.rel_x
     self.mov_y = self.p_y - self.rel_y
 
@@ -1048,7 +1048,7 @@ class GraphDrawer ( GraphDrawingArea ):
 
 
 #      print "text pos (x, y) = %d, %d" % (x + text_x, y + text_y)
-    
+
 
   def draw_wb_lines(self, width, height):
     #draw the column lines
@@ -1057,8 +1057,8 @@ class GraphDrawer ( GraphDrawingArea ):
     column_width = self.get_column_width(width)
     cr.set_line_width(2)
     cr.set_line_cap(cairo.LINE_CAP_SQUARE)
-    cr.set_dash([self.dash_size/self.dash_total_size, self.dash_size/self.dash_width], 0) 
-    
+    cr.set_dash([self.dash_size/self.dash_total_size, self.dash_size/self.dash_width], 0)
+
     for i in range (1, 4):
       cr.move_to(column_width * i, 0)
       cr.line_to(column_width * i, height)
@@ -1070,7 +1070,7 @@ class GraphDrawer ( GraphDrawingArea ):
     #draw the graph
     cr.stroke()
     cr.set_dash([], 0)
-    
+
 
 
   def debug_line(self, debug_string):
@@ -1118,7 +1118,7 @@ class GraphDrawer ( GraphDrawingArea ):
 
     cr.set_line_width(2)
     cr.set_line_cap(cairo.LINE_CAP_SQUARE)
-    cr.set_dash([], 0) 
+    cr.set_dash([], 0)
 
     hi_b = self.boxes["host_interface"]
     m_b = self.boxes["master"]
@@ -1213,38 +1213,38 @@ class GraphDrawer ( GraphDrawingArea ):
   def get_selected_name(self, x, y):
     name = ""
 
-    if self.en_arb_view:  
+    if self.en_arb_view:
       b = self.boxes["back"]
       if b.in_bounding_box(x, y):
         name = "back"
-      
+
       b = self.boxes["remove"]
       if b.in_bounding_box(x, y):
         name = "remove"
-    
+
     else:
 
       #check host interface
       b = self.boxes["host_interface"]
-      if b.in_bounding_box(x, y):  
+      if b.in_bounding_box(x, y):
         #return the name
         name = gm.get_unique_name("Host Interface", Node_Type.host_interface)
-    
+
       #check master
       b = self.boxes["master"]
-      if b.in_bounding_box(x, y):  
+      if b.in_bounding_box(x, y):
         name = gm.get_unique_name("Master", Node_Type.master)
 
     #check memory interconnect
     b = self.boxes["mic"]
-    if b.in_bounding_box(x, y):  
+    if b.in_bounding_box(x, y):
       name = gm.get_unique_name("Memory", Node_Type.memory_interconnect)
 
 
 
     #check peripheral interconnect
     b = self.boxes["pic"]
-    if b.in_bounding_box(x, y):  
+    if b.in_bounding_box(x, y):
       name = gm.get_unique_name("Peripherals", Node_Type.peripheral_interconnect)
 
 
@@ -1253,7 +1253,7 @@ class GraphDrawer ( GraphDrawingArea ):
     for i in range (0, len(self.boxes["pslaves"])):
       pname = self.sgm.get_slave_name_at(i, Slave_Type.peripheral)
       b = self.boxes["pslaves"][i]
-      if b.in_bounding_box(x, y):  
+      if b.in_bounding_box(x, y):
         name = pname
 
 
@@ -1261,7 +1261,7 @@ class GraphDrawer ( GraphDrawingArea ):
     for i in range (0, len(self.boxes["mslaves"])):
       mname = self.sgm.get_slave_name_at(i, Slave_Type.memory)
       b = self.boxes["mslaves"][i]
-      if b.in_bounding_box(x, y):  
+      if b.in_bounding_box(x, y):
         name = mname
 
     return name
@@ -1279,7 +1279,7 @@ class GraphDrawer ( GraphDrawingArea ):
       b = self.boxes["pslaves"][slave_index]
     else:
       b = self.boxes["mslaves"][slave_index]
-    
+
     if b.in_arb_master_icon(x, y):
       return True
 
@@ -1299,10 +1299,10 @@ class GraphDrawer ( GraphDrawingArea ):
       b = self.boxes["mslaves"][slave_index]
 
     return b.get_arb_master_name(x, y)
-    
 
 
-  
+
+
 
 
 def run (Widget):
@@ -1316,7 +1316,7 @@ def run (Widget):
   window.add(widget)
   window.present()
   gtk.main()
-  
+
 
 if __name__ == "__main__":
   print "in main"

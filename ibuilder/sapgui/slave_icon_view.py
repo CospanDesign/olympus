@@ -19,7 +19,7 @@ def setup_box(name, r = 0.0, g = 0.0, b = 1.0):
   does all the heavy lifting of setting up a box in a pix buffer
   """
   color_depth = 8
-  icon_width = 128 
+  icon_width = 128
   icon_height = 64
 
   pixbuf = Pixbuf(  gtk.gdk.COLORSPACE_RGB, #color space
@@ -90,20 +90,20 @@ class SlaveIconView(gtk.ScrolledWindow):
     self.icon_view.enable_model_drag_source( \
               gtk.gdk.BUTTON1_MASK, \
               [], \
-              gtk.gdk.ACTION_COPY) 
+              gtk.gdk.ACTION_COPY)
 
     self.icon_view.connect("drag-data-get", self.on_drag_data_get)
-    self.icon_view.connect("drag-begin", self.on_drag_begin) 
+    self.icon_view.connect("drag-begin", self.on_drag_begin)
     self.icon_view.connect("selection-changed", self.on_item_change)
-  
+
     self.slave_icon_selected_callback = None
 
   def set_slave_icon_selected_callback(self, callback):
     self.slave_icon_selected_callback = callback
 
-  def on_item_change(self, widget): 
+  def on_item_change(self, widget):
     """whenever an item is activated"""
-    paths = self.icon_view.get_selected_items()   
+    paths = self.icon_view.get_selected_items()
     if len(paths) > 0:
       path = paths[0]
       item = self.model[path]
@@ -140,7 +140,7 @@ class SlaveIconView(gtk.ScrolledWindow):
       pixbuf = setup_box(name, r, g, b)
       self.model.append([pixbuf, slave_dict[name]["filename"]])
 #      self.model.append([pixbuf, name])
-  
+
 
   def set_slave_list(self, slave_dict):
     self.model = gtk.ListStore(Pixbuf, str)
@@ -148,13 +148,13 @@ class SlaveIconView(gtk.ScrolledWindow):
     self.setup_slave_icon_model(slave_dict)
     self.icon_view.set_model(self.model)
     self.icon_view.drag_source_add_text_targets()
-    
+
 #    targets = gtk.TargetList.new([])
 #    targets.add_image_targets(TARGET_ENTRY_PIXBUF, True)
 #    self.icon_view.drag_source_set_target_list(targets)
 
 
-    
+
   def get_slave_target_list(self):
     print "get target source"
 
