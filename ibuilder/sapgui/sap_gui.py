@@ -41,7 +41,7 @@ class SapGuiController:
     Display the Sap GUI
     """
 
-    os.environ["SAPLIB_BASE"] = sys.path[0] + "/../saplib"
+    os.environ["SAPLIB_BASE"] = os.path.join(sys.path[0], os.pardir, "saplib")
     from saplib import saputils
     import sap_controller as sc
     import graph_drawer
@@ -632,10 +632,10 @@ class SapGuiController:
 
 
 def main(argv):
-  os.environ["SAPLIB_BASE"] = sys.path[0] + "/../saplib"
-  sys.path.append(sys.path[0] + "/..")
-  sys.path.append(sys.path[0] + "/../saplib")
-  sys.path.append(sys.path[0] + '/../saplib/gen_scripts')
+  os.environ["SAPLIB_BASE"] = os.path.join(sys.path[0], os.pardir, "saplib")
+  sys.path.append(os.path.join(sys.path[0], os.pardir))
+  sys.path.append(os.path.join(sys.path[0], os.pardir, "saplib"))
+  sys.path.append(os.path.join(sys.path[0], os.pardir, "saplib", "gen_scripts"))
 
   filename = ""
 #  print "sys.path: " + str(sys.path)
