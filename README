@@ -11,12 +11,6 @@ They can be used to:
 
 Unfortunately FPGA require a lot of resources and knowledge before one can get the coveted initial "blinky" analogy up and running. Not only does one need to know about the physical constraints of an FPGA but understand how it interacts with a hardware description language.
 
-What Olympus is NOT:
-
--A general FPGA development environment
--A platform for soft core processors. There are may projects that already do that including OpenCores and Papilion.
--Used to develop stand alone FPGA platforms, independent of the host
-
 
 What Olympus is:
 
@@ -25,6 +19,12 @@ What Olympus is:
 -A platform to build interfaces to complex sensors.
 	-Cameras
 	-LCD screens
+
+What Olympus is NOT:
+
+-A general FPGA development environment
+-A platform for soft core processors. There are may projects that already do that including OpenCores and Papilion.
+-Used to develop stand alone FPGA platforms, independent of the host
 
 
 Description: The suite is split into three subgroups
