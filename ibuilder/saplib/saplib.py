@@ -23,7 +23,6 @@
 
 The command line interface will call this module in order to
 create project configuration files and generate the entire project
-
 """
 
 """Changes:
