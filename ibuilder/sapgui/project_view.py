@@ -11,48 +11,43 @@ import sap_graph_manager
 from sap_graph_manager import Node_Type
 from sap_graph_manager import Slave_Type
 
-
-
 """
 Thanks to Osmo Maatta post in a forums that helped me
-get a cairo image into a pixbuf
+get a cairo image into a Pixbuf!
 """
 
 def COLOR16_TO_CAIRO(x):
   return ((x) * (1.00 / 0xFFFF))
 
 def setup_box(name, r = 0.0, g = 0.0, b = 1.0):
-  """
-  does all the heavy lifting of setting up a box in a pix buffer
-  """
+  """Does all the heavy lifting of setting up a box in a pix buffer."""
   color_depth = 8
   icon_width = 10
   icon_height = 10
 
-  pixbuf = Pixbuf(  gtk.gdk.COLORSPACE_RGB, #color space
-            True,          #has alpha
-            color_depth,      #color depth
-            icon_width,        #width
-            icon_height)      #height
+  pixbuf = Pixbuf(gtk.gdk.COLORSPACE_RGB, # color space
+                  True,                   # has alpha
+                  color_depth,            # color depth
+                  icon_width,             # width
+                  icon_height)            # height
 
-  #pixbuf = gtk.gdk.pixbuf_new_from_file_at_size("./images/slave_icon.png", 64, 128)
+#  pixbuf = gtk.gdk.pixbuf_new_from_file_at_size("./images/slave_icon.png", 64, 128)
 
   pix_data = pixbuf.get_pixels_array()
-  surface = cairo.ImageSurface.create_for_data(\
-              pix_data, \
-              cairo.FORMAT_RGB24, \
-              pixbuf.get_width(), \
-              pixbuf.get_height(), \
-              pixbuf.get_rowstride())
+  surface = cairo.ImageSurface.create_for_data(pix_data, \
+                                               cairo.FORMAT_RGB24, \
+                                               pixbuf.get_width(), \
+                                               pixbuf.get_height(), \
+                                               pixbuf.get_rowstride())
 
   color = gtk.gdk.Color(0x0000, 0x0000, 0xFFFF) # Blue
   cr = cairo.Context(surface)
   cr.set_operator(cairo.OPERATOR_OVER)
 
-  cr.set_source_rgba(  COLOR16_TO_CAIRO(b * 0xFFFF), \
-            COLOR16_TO_CAIRO(g * 0xFFFF), \
-            COLOR16_TO_CAIRO(r * 0xFFFF), \
-            1.0) # alpha = 1.0
+  cr.set_source_rgba(COLOR16_TO_CAIRO(b * 0xFFFF), \
+                     COLOR16_TO_CAIRO(g * 0xFFFF), \
+                     COLOR16_TO_CAIRO(r * 0xFFFF), \
+                     1.0) # alpha = 1.0
   cr.rectangle(0, 0, icon_width, icon_height)
   cr.fill()
   cr.set_source_rgb(0.0, 0.0, 0.0)
@@ -62,7 +57,6 @@ def setup_box(name, r = 0.0, g = 0.0, b = 1.0):
 
   cr.set_source_rgba(0.0, 0.0, 0.0, 1.0)
   cr.set_font_size(10)
-
 
   x_bearing, y_bearing, twidth, theight = cr.text_extents(name)[:4]
   text_x = 0.5 - twidth / 2 - x_bearing
@@ -77,10 +71,7 @@ def setup_box(name, r = 0.0, g = 0.0, b = 1.0):
 
   return pixbuf
 
-
-
 class ProjectView(gtk.ScrolledWindow):
-
   def __init__(self, sc):
     super(ProjectView, self).__init__()
 
@@ -89,7 +80,7 @@ class ProjectView(gtk.ScrolledWindow):
 
     self.model = None
 
-    #setup the visual components
+    # Setup the visual components.
     self.project_tree = gtk.TreeView()
 
 #    self.set_size_request(200, -1)
@@ -103,19 +94,17 @@ class ProjectView(gtk.ScrolledWindow):
     self.project_item_selected_callback = project_item_callback
 
   def on_item_change(self, widget, path, view_column):
-    """whenever an item is activated"""
-    #print "item changed to: " + str(path)
+    """Whenever an item is activated."""
+#    print "item changed to: " + str(path)
     item = self.model[path]
     itr = self.model.get_iter(path)
     text = self.model.get_value(itr, 2)
-    #print "text: " + str(text)
+#    print "text: " + str(text)
     if self.project_item_selected_callback is not None:
       self.project_item_selected_callback(text)
 
   def setup_project_view(self):
-    """
-    generate all the nodes
-    """
+    """Generate all the nodes."""
     self.project_column = gtk.TreeViewColumn()
     self.project_column.set_title("Project Tree")
     cell = gtk.CellRendererText()
@@ -128,41 +117,39 @@ class ProjectView(gtk.ScrolledWindow):
     self.project_image_column.pack_start(cell, True)
     self.project_image_column.add_attribute(cell, "image", 1)
 
-
-
     self.model = gtk.TreeStore(str, gtk.gdk.Pixbuf, str)
-    #insert the root node
+    # Insert the root node.
     name = self.sc.get_project_name()
     pixbuf = setup_box(name, 1.0, 1.0, 1.0)
     it = self.model.append(None, [name, pixbuf, "base"])
 
-    #insert the project Properties View
+    # Insert the project Properties View.
     name = "Project"
     pixbuf = setup_box(name, 1.0, 1.0, 1.0)
     self.model.append(it, [name, pixbuf, "project"])
 
-    #insert the bus view
+    # Insert the bus view.
     name = "Bus"
     pixbuf = setup_box(name, 1.0, 1.0, 1.0)
     bit = self.model.append(it, [name, pixbuf, "bus"])
 
-    #insert the host interface
+    # Insert the host interface.
     name = "Host Interface"
 #    un = self.sgm.get_host_interface_node().unique_name
     pixbuf = setup_box(name, 0.0, 1.0, 0.0)
     self.model.append(bit, [name, pixbuf, "host_interface"])
 
-    #insert the master
+    # Insert the master.
     name = "Master"
     pixbuf = setup_box(name, 1.0, 1.0, 0.0)
     mstr_it = self.model.append(bit, [name, pixbuf, "master"])
 
-    #insert the peripheral bus
+    # Insert the peripheral bus.
     name = "Peripherals"
     pixbuf = setup_box(name, 0.5, 1.0, 0.0)
     pit = self.model.append(mstr_it, [name, pixbuf, "peripherals"])
 
-    #insert the memory bus
+    # Insert the memory bus.
     name = "Memory"
     pixbuf = setup_box(name, 0.5, 1.0, 0.0)
     mit = self.model.append(mstr_it, [name, pixbuf, "memory"])
@@ -170,20 +157,18 @@ class ProjectView(gtk.ScrolledWindow):
     ps_count = self.sgm.get_number_of_slaves(Slave_Type.peripheral)
     ms_count = self.sgm.get_number_of_slaves(Slave_Type.memory)
 
-
-    #append the peripheral slaves
-    for i in range (0, ps_count):
+    # Append the peripheral slaves.
+    for i in xrange(ps_count):
       node = self.sgm.get_slave_at(i, Slave_Type.peripheral)
       un = self.sgm.get_slave_name_at(i, Slave_Type.peripheral)
       pixbuf = setup_box(node.name, 0.0, 0.0, 1.0)
       self.model.append(pit, [node.name, pixbuf, un])
 
-    for i in range (0, ms_count):
+    for i in xrange(ms_count):
       node = self.sgm.get_slave_at(i, Slave_Type.memory)
       un = self.sgm.get_slave_name_at(i, Slave_Type.memory)
       pixbuf = setup_box(node.name, 1.0, 0.0, 1.0)
       self.model.append(mit, [node.name, pixbuf, un])
-
 
     if self.project_tree.get_column(0) is None:
       self.project_tree.append_column(self.project_column)
@@ -192,7 +177,5 @@ class ProjectView(gtk.ScrolledWindow):
 #      self.project_tree.insert_column(self.project_image_column, 1)
 
     self.project_tree.set_model(self.model)
-
     self.project_tree.expand_all()
-
 
