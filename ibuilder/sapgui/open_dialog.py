@@ -22,14 +22,16 @@ class OpenDialog:
     self.filename = ""
     self.open_cb = None
 
-
   def set_open_callback(self, open_cb):
+    '''Assigns the callback to be used when a file was opened.'''
     self.open_cb = open_cb
 
   def get_filename(self):
+    '''Gets the filename of the selected file (or empty string if none).'''
     return self.filename
 
   def on_open_clicked(self, widget):
+    '''Called when the user selected a file to open.'''
     self.filename = ""
     f = self.open_dialog.get_filenames()
     if len(f) == 0:
@@ -43,47 +45,45 @@ class OpenDialog:
       self.open_cb(self.filename)
 
   def on_cancel_clicked(self, widget):
+    '''Called when the user opened the dialog, then changed her mind.  Users!'''
     self.filename = ""
     print "canceled"
     self.open_dialog.hide()
 
   def on_file_changed(self, widget):
+    '''Called when the user clicked (but hasn't yet okay'd) a different file
+    in the open dialog.'''
     f = self.open_dialog.get_filenames()
     temp = ""
     if len(f) > 0:
       temp = f[0]
       self.setup_preview(temp)
 
-
-
   def hide(self):
+    '''Hides this open dialog.  See also show().'''
     self.open_dialog.hide()
 
   def show(self):
+    '''Shows this open dialog.  See also hide().'''
     self.open_dialog.show()
 
-
   def setup_preview(self, filename):
+    '''Attempt to load in the JSON file.  If filename doesn't exist, throws an
+    error up to the caller.'''
     print "setting up preview"
-    #attempt to load in the json file
-    #reset the preview sap controller
+    # Reset the preview sap controller.
     sc = self.sc
     sc.new_design()
-    #load the design in the file
-    try:
-      sc.load_config_file(filename)
-    except IOError as err:
-      #print "%s is not a config file" % filename
-      return
-    except:
-      return
+
+    # Load the design in the file (Potentially throws exception).
+    sc.load_config_file(filename)
 
     sc.initialize_graph()
     pt = self.preview_tree
     model = self.preview_tree.get_model()
     model.clear()
 
-    #create the columns
+    # Create the columns.
     name_column = gtk.TreeViewColumn()
     name_column.set_title("Name")
     cell = gtk.CellRendererText()
@@ -96,7 +96,7 @@ class OpenDialog:
     property_column.pack_start(cell, True)
     property_column.add_attribute(cell, "text", 1)
 
-    #add the columns if they are needed
+    # Add the columns if they are needed.
     if pt.get_column(0) is None:
       pt.insert_column(name_column, 0)
 
@@ -110,10 +110,4 @@ class OpenDialog:
     it = model.append()
     model.set(it, 0, "Board")
     model.set(it, 1, sc.get_board_name())
-
-
-
-
-
-
 
