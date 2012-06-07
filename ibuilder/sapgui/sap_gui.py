@@ -60,7 +60,7 @@ class SapGuiController:
     builder = gtk.Builder()
     builder.add_from_file(builderfile)
 
-    #instantiate the singleton
+    # Instantiate the singleton.
     sv = builder.get_object("status_textview")
     self.status = status_text.StatusText(sv)
 #    self.status.set_print_level(3)
@@ -327,11 +327,8 @@ class SapGuiController:
     self.module_view.setup(current_node)
     self.set_main_view(self.module_view.get_frame())
 #    alloc = self.main_view.get_allocation()
-#    rect = gtk.gdk.Rectangle (  0, \
-#                  0, \
-#                  alloc.width, \
-#                  alloc.height )
-#    self.main_view.invalidate_rect ( rect, True )
+#    rect = gtk.gdk.Rectangle (0, 0, alloc.width, alloc.height)
+#    self.main_view.invalidate_rect(rect, True)
 
 
   def on_properties_update(self, unique_name, properties):
@@ -570,15 +567,12 @@ class SapGuiController:
       return False
 
     data = self.bc.read()
-
     if data is None:
       # Perhaps this time there just isn't any data?
       return True
 
     print data
-
     return True # Causes timeout to tick again
-
 
 def main(argv):
   os.environ["SAPLIB_BASE"] = os.path.join(sys.path[0], os.pardir, "saplib")
@@ -589,12 +583,10 @@ def main(argv):
   filename = ""
 #  print "sys.path: " + str(sys.path)
 
-
   global _debug
   _debug = False
   global _test_view
   _test_view = False
-
 
   if (len(argv) > 0):
     try:
@@ -620,12 +612,8 @@ def main(argv):
         print "unrecognized command: " + str(opt)
         usage()
 
-
   app = SapGuiController(filename)
   gtk.main()
-
-
-
 
 if __name__ == "__main__":
   main(sys.argv[1:])
