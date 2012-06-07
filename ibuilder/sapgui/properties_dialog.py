@@ -45,9 +45,8 @@ class PropertiesDialog:
     self.prop_dialog.show()
 
   def on_auto_detect(self, widget):
-    #attempt to auto detect the tool
+    '''Attempts to auto-detect the tool.'''
     print "auto detect"
-
 
   def on_cancel(self, widget):
     self.prop_dialog.hide()
@@ -55,7 +54,7 @@ class PropertiesDialog:
 
   def on_accept(self, widget):
     self.prop_dialog.hide()
-    #save all variables
+    # Save all variables.
     print "accept"
 
   def remote_check_change(self, widget):
