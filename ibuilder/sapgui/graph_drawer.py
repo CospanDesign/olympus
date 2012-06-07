@@ -7,7 +7,7 @@ from gtk import gdk
 import math
 from types import *
 from graph_drawing_area import GraphDrawingArea
-from graph_utils import box
+from graph_utils import Box
 import sap_graph_manager as gm
 from sap_graph_manager import NodeType
 from sap_graph_manager import SlaveType
@@ -82,18 +82,18 @@ class GraphDrawer(GraphDrawingArea):
 
     # Boxes
     self.boxes = {}
-    self.boxes["host_interface"] = box()
-    self.boxes["master"] = box()
-    self.boxes["pic"] = box()
-    self.boxes["mic"] = box()
+    self.boxes["host_interface"] = Box()
+    self.boxes["master"] = Box()
+    self.boxes["pic"] = Box()
+    self.boxes["mic"] = Box()
     self.boxes["pslaves"] = []
     self.boxes["mslaves"] = []
-    self.boxes["trash"] = box()
-    self.boxes["arbitrator"] = box()
-    self.boxes["back"] = box()
-    self.boxes["remove"] = box()
+    self.boxes["trash"] = Box()
+    self.boxes["arbitrator"] = Box()
+    self.boxes["back"] = Box()
+    self.boxes["remove"] = Box()
 
-    self.temp_box = box()
+    self.temp_box = Box()
     self.status = status_text.StatusText()
 
     # Initial prev_width, prev_height
@@ -105,10 +105,10 @@ class GraphDrawer(GraphDrawingArea):
     ms_count = self.sgm.get_number_of_slaves(SlaveType.MEMORY)
 
     for i in xrange(ps_count):
-      self.boxes["pslaves"].append(box())
+      self.boxes["pslaves"].append(Box())
 
     for i in xrange(ms_count):
-      self.boxes["mslaves"].append(box())
+      self.boxes["mslaves"].append(Box())
 
 
     self.prev_ps_count = ps_count
@@ -432,10 +432,10 @@ class GraphDrawer(GraphDrawingArea):
     self.boxes["mslaves"] = []
 
     for i in range (0, ps_count):
-      self.boxes["pslaves"].append(box())
+      self.boxes["pslaves"].append(Box())
 
     for i in range (0, ms_count):
-      self.boxes["mslaves"].append(box())
+      self.boxes["mslaves"].append(Box())
 
     self.regenerate_boxes = True
 #    self.generate_boxes(self.prev_width, self.prev_height)
@@ -789,7 +789,7 @@ class GraphDrawer(GraphDrawingArea):
 
   def draw_periph_slaves(self):
     for i in xrange(len(self.boxes["pslaves"])):
-      #if there is a box moving don't draw it here
+      # If there is a box moving don't draw it here.
       if self.moving and not (self.selected_node is None):
         if self.selected_node.slave_type == SlaveType.PERIPHERAL\
           and self.selected_node.slave_index == i:
@@ -838,7 +838,7 @@ class GraphDrawer(GraphDrawingArea):
 
     self.draw_box(b, self.mov_x, self.mov_y, style = BoxStyle.OUTLINE)
 
-  def draw_box (  self, box, x, y, style = BoxStyle.OUTLINE):
+  def draw_box(self, box, x, y, style = BoxStyle.OUTLINE):
 #    x,y = box.x,box.y
     width,height = box.width,box.height
     text = box.name
