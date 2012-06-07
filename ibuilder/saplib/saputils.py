@@ -1,12 +1,25 @@
-import os
-import sys
-import string
-import glob
-import sappreproc
-import saparbitrator
-import json
+#Distributed under the MIT licesnse.
+#Copyright (c) 2011 Dave McCoy (dave.mccoy@cospandesign.com)
 
-"""utilites that don't really belong in any of the sap classes"""
+#Permission is hereby granted, free of charge, to any person obtaining a copy of
+#this software and associated documentation files (the "Software"), to deal in 
+#the Software without restriction, including without limitation the rights to 
+#use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies 
+#of the Software, and to permit persons to whom the Software is furnished to do 
+#so, subject to the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all 
+#copies or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+#AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
+#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE 
+#SOFTWARE.
+
+"""Utilites that are used by all modules."""
 
 """
 Changes:
@@ -22,34 +35,51 @@ Changes:
   -Added get_board_config to get all the configuration for a specified board
 05/12/2012
   -Added get_board_names to get all the board names
+06/07/2012
+  -Added documentation and licsense
 """
 
+__author__ = 'dave.mccoy@cospandesign.com (Dave McCoy)'
 
-def create_dir(filename, debug=False):
-  """Generate a directory with the specified location"""
+import os
+import sys
+import string
+import glob
+import json
+import sappreproc
+import saparbitrator
 
-  #print "os: ", os.name, "..."
-  #print "split: ", os.path.split(filename)
-  #print "split text: ", os.path.splitext(filename)
-  #print "dirname: ", os.path.dirname(filename)
-  #print "basename", os.path.basename(filename)
-  #print "join: ", os.path.join(os.path.dirname(filename),
-  #              os.path.basename(filename))
-  #print "cwd: ", os.getcwd()
-  #print "uname: ", os.uname()
 
-  if filename.startswith("~"):
-    filename = filename.strip("~")
-    filename = os.getenv("HOME") + filename
+def create_dir(dirname, debug=False):
+  """Generate a directory with the specified location
+  
+  Generate a directory even if the parent directories don't exist
+
+  Args:
+    dirname: name of the directory to create
+      example: "~/project"
+
+  Returns:
+    True = Success
+    False = Fail
+
+  Raises:
+    os.error: failed to create directory
+  """
+
+  if dirname.startswith("~"):
+    dirname = dirname.strip("~")
+    dirname = os.getenv("HOME") + dirname
 
   if debug:
-    print "Directory to create: ", filename
+    print "Directory to create: ", dirname
 
-  if  (not os.path.exists(filename)):
+  if  (not os.path.exists(dirname)):
     if debug:
       print ("Directory doesn't exist attempting to create...")
+#XXX: this error should be raised for the user
     try:
-      os.makedirs(filename)
+      os.makedirs(dirname)
     except os.error:
       if debug:
         print "Error: failed to create the directory"
@@ -59,14 +89,36 @@ def create_dir(filename, debug=False):
   return True
 
 
+#XXX: Is there a native function within Python that does this?
 def resolve_linux_path(filename):
-  """returns a filename, if the tilde is in the name it generates the absolute filename"""
+  """Returns filename with an absolute path.
+
+  Args:
+    filename: String of the file, this could be a relative path
+      or an absolute path
+
+  Returns:
+    A filename with an absolute path
+
+  Raises:
+    Nothing
+  """
   if (filename.startswith("~")):
     filename = os.path.expanduser("~") + filename.strip("~")
   return filename
 
 def remove_comments(buf="", debug=False):
-  """remove comments from a buffer"""
+  """Remove comments from a buffer.
+  
+  Args:
+    buf = Buffer to remove the comments from
+    
+  Returns:
+    A buffer with no verilog comments in it
+    
+  Raises:
+    Nothing
+  """
   #first pass remove the '//' comments
   lines = buf.splitlines()
   if debug:
@@ -101,7 +153,18 @@ def remove_comments(buf="", debug=False):
   return bufy
 
 def find_rtl_file_location(filename=""):
-  """read in a filename, and look for the file location within the RTL, return an addres"""
+  """Finds a RTL file in the cbuilder rtl directory.
+
+  Args:
+    filename: the name of a verilog file to search for
+
+  Returns:
+    If found, The absolute path of the verilog module file,
+    Otherwise an empty string
+
+  Raises:
+    Nothing
+  """
   base_location = os.getenv("SAPLIB_BASE")
   base_location = base_location + "/hdl/rtl"
 #  print "rtl dir: " + base_location
@@ -109,9 +172,37 @@ def find_rtl_file_location(filename=""):
     if filename in names:
 #      print "Filename: " + filename
       return os.path.join(root, filename)
+
+#XXX: This should probably return none, and not an empty string upon failure
+#XXX:   perhaps even raise an error
   return ""
 
 def get_module_tags(filename="", bus="", keywords = [], debug=False):
+  """Gets the tags for the module within the specified filename
+
+  Given a module within a filename search through the module and 
+  find:
+    metadata
+      \"DRT_ID\"
+      \"DRT_FLAGS\"
+    ports: Inputs/Outputs of this module
+    module: Name of the module
+    parameters: Configuration parameters within the module
+    arbitrator_masters: Any arbitrator masters within the module
+
+  Args:
+    filename: Name of the module to interrogate
+    bus: A string declaring the bus type, this can be
+      \"wishbone\" or \"axie\"
+    keywords:
+      Besides the standard metadata any additional values to search for
+
+  Returns:
+    A dictionary of module tags
+
+  Raises
+    Nothing
+  """
   tags = {}
   tags["keywords"] = {}
   tags["ports"] = {}
@@ -203,6 +294,7 @@ def get_module_tags(filename="", bus="", keywords = [], debug=False):
     f = open(filename)
     filestring = f.read()
     f.close()
+#XXX: This should probably allow the calling function to handle a failure
   except:
     print "Failed to open test filename"
     return
@@ -324,9 +416,7 @@ def get_module_tags(filename="", bus="", keywords = [], debug=False):
 
 
 def get_board_names (debug = False):
-  """
-  returns a list of all the board names
-  """
+  """Returns a list of all the board names"""
   base_location = os.getenv("SAPLIB_BASE")
   base_location = base_location + "/hdl/boards"
   boards = []
@@ -342,10 +432,7 @@ def get_board_names (debug = False):
 
 
 def get_constraint_filenames (board_name, debug = False):
-  """
-  returns a list of ucf files for the specified board
-  name
-  """
+  """Returns a list of ucf files for the specified board name"""
   base_location = os.getenv("SAPLIB_BASE")
   base_location = base_location + "/hdl/boards/" + board_name
   cfiles = []
@@ -368,9 +455,17 @@ def get_constraint_filenames (board_name, debug = False):
 
 
 def get_board_config (board_name, debug = False):
-  """
-  returns a dictionary of board specific
-  information in a dictionary forma
+  """Returns a dictionary of board specific information
+  
+  Args:
+    board_name: the name of the board to get the information from
+      Example: \"sycamore1\"
+      
+  Returns:
+    A dictionary of the board configuration data
+
+  Raises:
+    Nothing
   """
   base_location = os.getenv("SAPLIB_BASE")
   base_location = base_location + "/hdl/boards"
@@ -407,6 +502,7 @@ def get_board_config (board_name, debug = False):
     buf = file_in.read()
     board_dict = json.loads(buf)
     file_in.close()
+#XXX: This should probably raise an error to the calling function
   except:
     #fail
     if debug:
@@ -422,8 +518,17 @@ def get_board_config (board_name, debug = False):
 
 
 def get_net_names(constraint_filename, debug = False):
-  """
-  gets a list of net
+  """Gets a list of net in a given constraint file
+
+  Args:
+    constrint_filename: name of a constraint file with an absolute path
+
+  Returns:
+    A list of constraint for the module 
+    NOTE: This file fails quietly and shouldn't this needs to be fixed!
+
+  Raises:
+    Nothing
   """
   base_location = os.getenv("SAPLIB_BASE")
   base_location = base_location + "/hdl/boards"
@@ -456,6 +561,7 @@ def get_net_names(constraint_filename, debug = False):
     file_in.close()
   except:
     #fail
+#XXX: This should probably allow the calling function to handle a failure
     if debug:
       print "failed to open file: " + filename
     return ""
@@ -487,16 +593,25 @@ def get_net_names(constraint_filename, debug = False):
     if token not in nets:
       nets.append(token)
 
-
-
   return nets
 
 
-
-
-
 def read_clock_rate(constraint_filename, debug = False):
-  """returns a string of the clock rate 50MHz = 50000000"""
+  """Returns a string of the clock rate 
+
+  Searches through the specified constraint file to determine if there
+  is a specified clock. If no clock is specified then return 50MHz = 50000000
+
+  Args:
+    constraint_filename: the name of the constraint file to search through
+
+  Returns:
+    A string representation of the clock rate
+    NOTE: on error this fails quietly this should probably be different
+
+  Raises:
+    Nothing
+  """
   base_location = os.getenv("SAPLIB_BASE")
   base_location = base_location + "/hdl/boards"
   filename = ""
@@ -526,6 +641,7 @@ def read_clock_rate(constraint_filename, debug = False):
     buf = file_in.read()
     file_in.close()
   except:
+#XXX: This should probably allow the calling function to handle a failure
     #fail
     if debug:
       print "failed to open file: " + filename
@@ -599,6 +715,19 @@ def read_clock_rate(constraint_filename, debug = False):
 
 
 def get_slave_list(bus = "wishbone", debug = False):
+  """Gets a list of slaves
+
+  Args:
+    bus: a string declaring the bus type, this can be
+      \"wishbone\" or \"axie\"
+
+  Returns:
+    A list of slaves
+
+  Raises:
+    Nothing
+  """
+
   if debug:
     print "in get slave list"
   base_dir = os.getenv("SAPLIB_BASE")
@@ -621,9 +750,12 @@ def get_slave_list(bus = "wishbone", debug = False):
       fin = open(f, "r")
       data = fin.read()
       fin.close()
+
+#XXX: This should probably allow the calling function to handle a failure
     except IOError as err:
       if debug:
         print "failed to open: " + str(err)
+        return None
 
     if "DRT_ID" not in data:
       continue
