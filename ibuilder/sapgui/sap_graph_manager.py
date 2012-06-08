@@ -19,10 +19,10 @@ NodeType = enum('HOST_INTERFACE',
                 'PERIPHERAL_INTERCONNECT',
                 'SLAVE')
 
-SlaveType = enum('MEMORY', 'PERIPHERAl')
+SlaveType = enum('MEMORY', 'PERIPHERAL')
 
 
-def get_unique_name(name, node_type, slave_type = Slave_Type.peripheral, slave_index = 0):
+def get_unique_name(name, node_type, slave_type = SlaveType.PERIPHERAL, slave_index = 0):
   if node_type == Node_Type.slave:
     unique_name = name + "_" + str(slave_type) + "_" + str(slave_index)
   else:
@@ -33,7 +33,7 @@ class SapNode:
   name = ""
   unique_name = ""
   node_type = Node_Type.slave
-  slave_type = Slave_Type.peripheral
+  slave_type = SlaveType.PERIPHERAL
   slave_index = 0
   parameters={}
   bindings={}
@@ -42,7 +42,7 @@ class SapNode:
     self.name = ""
     self.unique_name = ""
     self.node_type = Node_Type.slave
-    self.slave_type = Slave_Type.peripheral
+    self.slave_type = SlaveType.PERIPHERAL
     self.slave_index = 0
     self.parameters={}
     self.bindings={}
@@ -69,7 +69,7 @@ class SapGraphManager:
     self.graph = nx.Graph()
 
   def add_node(self, name, node_type,
-               slave_type = Slave_Type.peripheral, debug = False):
+               slave_type = SlaveType.PERIPHERAL, debug = False):
     '''Adds a node to this graph.'''
     node = SapNode()
     node.name = name
@@ -77,7 +77,7 @@ class SapGraphManager:
     node.slave_type = slave_type
 #    print "add node bind id: " + str(id(node))
 
-    if slave_type == Slave_Type.peripheral:
+    if slave_type == SlaveType.PERIPHERAL:
       s_count = self.get_number_of_peripheral_slaves()
     else:
       s_count = self.get_number_of_memory_slaves()
@@ -95,12 +95,12 @@ class SapGraphManager:
 
   def remove_slave(self, slave_index, slave_type):
     # Can't remove the DRT so if the index is 0 then don't try.
-    if slave_type == Slave_Type.peripheral and slave_index == 0:
+    if slave_type == SlaveType.PERIPHERAL and slave_index == 0:
       raise SlaveError ("DRT cannot be removed")
 
     count = self.get_number_of_slaves(slave_type)
     if slave_index >= count:
-      if slave_type == Slave_Type.peripheral:
+      if slave_type == SlaveType.PERIPHERAL:
         raise SlaveError("Slave index %d on peripheral bus is out of range" % \
             (slave_index))
       else:
@@ -133,16 +133,16 @@ class SapGraphManager:
         return node
 
   def fix_slave_indexes(self):
-    pcount = self.get_number_of_slaves(Slave_Type.peripheral)
-    mcount = self.get_number_of_slaves(Slave_Type.memory)
+    pcount = self.get_number_of_slaves(SlaveType.PERIPHERAL)
+    mcount = self.get_number_of_slaves(SlaveType.MEMORY)
 
     for i in xrange(pcount):
-      name = self.get_slave_name_at(i, Slave_Type.peripheral)
+      name = self.get_slave_name_at(i, SlaveType.PERIPHERAL)
       node = self.get_node(name)
       node.slave_index = i
 
     for i in xrange(mcount):
-      name = self.get_slave_name_at(i, Slave_Type.memory)
+      name = self.get_slave_name_at(i, SlaveType.MEMORY)
       node = self.get_node(name)
       node.slave_index = i
 
@@ -174,7 +174,7 @@ class SapGraphManager:
           print "success"
         return key
 
-    if slave_type == Slave_Type.peripheral:
+    if slave_type == SlaveType.PERIPHERAL:
       raise SlaveError("Unable to locate slave %d on peripheral bus" % (index))
     else:
       raise SlaveError("Unable to locate slave %d on memory bus" % (index))
@@ -186,7 +186,7 @@ class SapGraphManager:
     if slave_type is None:
       raise SlaveError ("Slave Type must be specified")
 
-    if slave_type == Slave_Type.peripheral:
+    if slave_type == SlaveType.PERIPHERAL:
       self.move_peripheral_slave(from_index, to_index, debug)
     else:
       self.move_memory_slave(from_index, to_index, debug)
@@ -216,7 +216,7 @@ class SapGraphManager:
       if debug:
         print "Checking: %s" % (graph_dict[key].name)
       if graph_dict[key].node_type != Node_Type.slave or \
-          graph_dict[key].slave_type != Slave_Type.peripheral:
+          graph_dict[key].slave_type != SlaveType.PERIPHERAL:
         continue
 
       if debug:
@@ -235,7 +235,7 @@ class SapGraphManager:
     to_node = None
     for key in graph_dict.keys():
       if graph_dict[key].node_type != Node_Type.slave or \
-          graph_dict[key].slave_type != Slave_Type.peripheral or \
+          graph_dict[key].slave_type != SlaveType.PERIPHERAL or \
           graph_dict[key].slave_index != to_index:
         continue
       to_node = graph_dict[key]
@@ -311,7 +311,7 @@ class SapGraphManager:
     from_node = None
     for key in graph_dict.keys():
       if graph_dict[key].node_type != Node_Type.slave or \
-          graph_dict[key].slave_type != Slave_Type.memory or \
+          graph_dict[key].slave_type != SlaveType.MEMORY or \
           graph_dict[key].slave_index != from_index:
         continue
       from_node = graph_dict[key]
@@ -324,7 +324,7 @@ class SapGraphManager:
     to_node = None
     for key in graph_dict.keys():
       if graph_dict[key].node_type != Node_Type.slave or \
-          graph_dict[key].slave_type != Slave_Type.memory or \
+          graph_dict[key].slave_type != SlaveType.MEMORY or \
           graph_dict[key].slave_index != to_index:
         continue
       to_node = graph_dict[key]
@@ -464,7 +464,7 @@ class SapGraphManager:
     if slave_type is None:
       raise SaveError("Slave type must be specified")
 
-    if slave_type == Slave_Type.peripheral:
+    if slave_type == SlaveType.PERIPHERAL:
       return self.get_number_of_peripheral_slaves()
 
     return self.get_number_of_memory_slaves()
@@ -475,7 +475,7 @@ class SapGraphManager:
     gd = self.get_nodes_dict()
     for name in gd.keys():
       if   gd[name].node_type == Node_Type.slave and \
-        gd[name].slave_type == Slave_Type.peripheral:
+        gd[name].slave_type == SlaveType.PERIPHERAL:
         count += 1
     return count
 
@@ -485,7 +485,7 @@ class SapGraphManager:
     gd = self.get_nodes_dict()
     for name in gd.keys():
       if   gd[name].node_type == Node_Type.slave and \
-        gd[name].slave_type == Slave_Type.memory:
+        gd[name].slave_type == SlaveType.MEMORY:
         count += 1
     return count
 

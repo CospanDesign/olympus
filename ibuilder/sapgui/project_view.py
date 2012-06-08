@@ -154,19 +154,19 @@ class ProjectView(gtk.ScrolledWindow):
     pixbuf = setup_box(name, 0.5, 1.0, 0.0)
     mit = self.model.append(mstr_it, [name, pixbuf, "memory"])
 
-    ps_count = self.sgm.get_number_of_slaves(Slave_Type.peripheral)
-    ms_count = self.sgm.get_number_of_slaves(Slave_Type.memory)
+    ps_count = self.sgm.get_number_of_slaves(SlaveType.PERIPHERAL)
+    ms_count = self.sgm.get_number_of_slaves(SlaveType.MEMORY)
 
     # Append the peripheral slaves.
     for i in xrange(ps_count):
-      node = self.sgm.get_slave_at(i, Slave_Type.peripheral)
-      un = self.sgm.get_slave_name_at(i, Slave_Type.peripheral)
+      node = self.sgm.get_slave_at(i, SlaveType.PERIPHERAL)
+      un = self.sgm.get_slave_name_at(i, SlaveType.PERIPHERAL)
       pixbuf = setup_box(node.name, 0.0, 0.0, 1.0)
       self.model.append(pit, [node.name, pixbuf, un])
 
     for i in xrange(ms_count):
-      node = self.sgm.get_slave_at(i, Slave_Type.memory)
-      un = self.sgm.get_slave_name_at(i, Slave_Type.memory)
+      node = self.sgm.get_slave_at(i, SlaveType.MEMORY)
+      un = self.sgm.get_slave_name_at(i, SlaveType.MEMORY)
       pixbuf = setup_box(node.name, 1.0, 0.0, 1.0)
       self.model.append(mit, [node.name, pixbuf, un])
 

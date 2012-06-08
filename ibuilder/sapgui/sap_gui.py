@@ -445,20 +445,20 @@ class SapGuiController:
     name_index = 0
     name = tags["module"]
 
-    p_count = self.sc.get_number_of_slaves(Slave_Type.peripheral)
-    m_count = self.sc.get_number_of_slaves(Slave_Type.memory)
+    p_count = self.sc.get_number_of_slaves(SlaveType.PERIPHERAL)
+    m_count = self.sc.get_number_of_slaves(SlaveType.MEMORY)
 
     # Check peripheral bus for the name.
     done = False
     while not done:
 #      print "checking names"
       for i in xrange(p_count):
-        sname = self.sc.get_slave_name(Slave_Type.peripheral, i)
+        sname = self.sc.get_slave_name(SlaveType.PERIPHERAL, i)
         if sname == name + str(name_index):
           name_index += 1
           continue   # XXX needed?  Just continues for loop ...
       for i in xrange(m_count):
-        sname = self.sc.get_slave_name(Slave_Type.memory, i)
+        sname = self.sc.get_slave_name(SlaveType.MEMORY, i)
         if sname == name + str(name_index):
           name_index += 1
           continue   # XXX needed?  Just continues for loop ...

@@ -123,7 +123,7 @@ class ModuleView:
     if self.node.node_type == Node_Type.host_interface:
       self.draw_icon(self.node.name, 0.0, 1.0, 0.0)
     elif self.node.node_type == Node_Type.slave:
-      if self.node.slave_type == Slave_Type.peripheral:
+      if self.node.slave_type == SlaveType.PERIPHERAL:
         self.draw_icon(self.node.name, 0.0, 0.0, 1.0)
       else:
         self.draw_icon(self.node.name, 1.0, 0.0, 1.0)
@@ -482,7 +482,7 @@ class ModuleView:
     if self.node.node_type == Node_Type.host_interface:
       self.draw_icon(self.node.name, 0.0, 1.0, 0.0, width, height)
     elif self.node.node_type == Node_Type.slave:
-      if self.node.slave_type == Slave_Type.peripheral:
+      if self.node.slave_type == SlaveType.PERIPHERAL:
         self.draw_icon(self.node.name, 0.0, 0.0, 1.0, width, height)
       else:
         self.draw_icon(self.node.name, 1.0, 0.0, 1.0, width, height)

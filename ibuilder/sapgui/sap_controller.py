@@ -61,7 +61,7 @@ class SapController:
     self.sgm.add_node("Master", Node_Type.master)
     self.sgm.add_node("Memory", Node_Type.memory_interconnect)
     self.sgm.add_node("Peripherals", Node_Type.peripheral_interconnect)
-    self.add_slave("DRT", None, Slave_Type.peripheral, slave_index = 0)
+    self.add_slave("DRT", None, SlaveType.PERIPHERAL, slave_index = 0)
 
     # Get all the unique names for accessing nodes.
     hi_name = get_unique_name("Host Interface", Node_Type.host_interface)
@@ -70,7 +70,7 @@ class SapController:
     pi_name = get_unique_name("Peripherals", Node_Type.peripheral_interconnect)
     drt_name = get_unique_name("DRT",
                                Node_Type.slave,
-                               Slave_Type.peripheral,
+                               SlaveType.PERIPHERAL,
                                slave_index = 0)
 
     # Attach all the appropriate nodes.
@@ -106,7 +106,7 @@ class SapController:
 
         uname = self.add_slave(  slave_name,
                     file_name,
-                    Slave_Type.peripheral)
+                    SlaveType.PERIPHERAL)
 
         # Add the bindings from the config file.
         skeys = self.project_tags["SLAVES"][slave_name].keys()
@@ -134,7 +134,7 @@ class SapController:
         file_name = saputils.find_rtl_file_location(file_name)
         uname =  self.add_slave(  slave_name,
                     file_name,
-                    Slave_Type.memory,
+                    SlaveType.MEMORY,
                     slave_index = -1)
 
         # Add the bindings from the config file.
@@ -169,45 +169,45 @@ class SapController:
 
             h_name = ""
             h_index = -1
-            h_type = Slave_Type.peripheral
+            h_type = SlaveType.PERIPHERAL
             s_name = ""
             s_index = -1
-            s_type = Slave_Type.peripheral
+            s_type = SlaveType.PERIPHERAL
 
             # Now to attach the arbitrator.
-            p_count = self.get_number_of_slaves(Slave_Type.peripheral)
-            m_count = self.get_number_of_slaves(Slave_Type.memory)
+            p_count = self.get_number_of_slaves(SlaveType.PERIPHERAL)
+            m_count = self.get_number_of_slaves(SlaveType.MEMORY)
 
             # Find the host and slave nodes.
             for i in range (0, p_count):
-              self.sgm.get_slave_name_at(i, Slave_Type.peripheral)
-              sn = self.sgm.get_slave_name_at(i, Slave_Type.peripheral)
+              self.sgm.get_slave_name_at(i, SlaveType.PERIPHERAL)
+              sn = self.sgm.get_slave_name_at(i, SlaveType.PERIPHERAL)
               slave = self.sgm.get_node(sn)
 
               if slave.name == host_name:
                 h_name = slave.unique_name
                 h_index = i
-                h_type = Slave_Type.peripheral
+                h_type = SlaveType.PERIPHERAL
 
               if slave.name == slave_name:
                 s_name = slave.unique_name
                 s_index = i
-                s_type = Slave_Type.peripheral
+                s_type = SlaveType.PERIPHERAL
 
             for i in range (0, m_count):
-              self.sgm.get_slave_name_at(i, Slave_Type.memory)
-              sn = self.sgm.get_slave_name_at(i, Slave_Type.memory)
+              self.sgm.get_slave_name_at(i, SlaveType.MEMORY)
+              sn = self.sgm.get_slave_name_at(i, SlaveType.MEMORY)
               slave = self.sgm.get_node(sn)
 
               if slave.name == host_name:
                 h_name = slave.unique_name
                 h_index = i
-                h_type = Slave_Type.memory
+                h_type = SlaveType.MEMORY
 
               if slave.name == slave_name:
                 s_name = slave.unique_name
                 s_index = i
-                s_type = Slave_Type.memory
+                s_type = SlaveType.MEMORY
 
             # Now I have all the materialst to attach the arbitrator.
             self.add_arbitrator(h_type, h_index, arb_name, s_type, s_index)
@@ -218,7 +218,7 @@ class SapController:
     if slave_type is None:
       raise SlaveError("slave type was not specified")
 
-    if slave_type == Slave_Type.peripheral:
+    if slave_type == SlaveType.PERIPHERAL:
       return self.get_number_of_peripheral_slaves()
 
     return self.get_number_of_memory_slaves()
@@ -249,12 +249,12 @@ class SapController:
   def apply_slave_tags_to_project(self, debug = False):
     """Apply the slave tags to the project tags."""
     # Get all the slaves.
-    p_count = self.get_number_of_slaves(Slave_Type.peripheral)
-    m_count = self.get_number_of_slaves(Slave_Type.memory)
+    p_count = self.get_number_of_slaves(SlaveType.PERIPHERAL)
+    m_count = self.get_number_of_slaves(SlaveType.MEMORY)
 #    bind_dict = self.get_master_bind_dict()
 
     for i in range(0, p_count):
-      sc_slave = self.sgm.get_slave_at(i, Slave_Type.peripheral)
+      sc_slave = self.sgm.get_slave_at(i, SlaveType.PERIPHERAL)
       uname = sc_slave.unique_name
       name = sc_slave.name
 #      print "name: " + str(name)
@@ -309,7 +309,7 @@ class SapController:
 
     # Memory BUS
     for i in range(0, m_count):
-      sc_slave = self.sgm.get_slave_at(i, Slave_Type.memory)
+      sc_slave = self.sgm.get_slave_at(i, SlaveType.MEMORY)
       uname = sc_slave.unique_name
       name = sc_slave.name
 #      print "name: " + str(name)
@@ -510,11 +510,11 @@ class SapController:
 #      bind_dict[key] = hib["bind"][key]
 
     # Get all the peripheral slave bindings.
-    p_count = self.get_number_of_slaves(Slave_Type.peripheral)
-    m_count = self.get_number_of_slaves(Slave_Type.memory)
+    p_count = self.get_number_of_slaves(SlaveType.PERIPHERAL)
+    m_count = self.get_number_of_slaves(SlaveType.MEMORY)
 
     for i in xrange(p_count):
-      slave = self.sgm.get_slave_at(i, Slave_Type.peripheral)
+      slave = self.sgm.get_slave_at(i, SlaveType.PERIPHERAL)
       pb = self.sgm.get_node_bindings(slave.unique_name)
       for key in pb.keys():
         bind_dict[key] = pb[key]
@@ -525,7 +525,7 @@ class SapController:
 
     # Get all the memory slave bindings.
     for i in xrange(m_count):
-      slave = self.sgm.get_slave_at(i, Slave_Type.memory)
+      slave = self.sgm.get_slave_at(i, SlaveType.MEMORY)
       mb = self.sgm.get_node_bindings(slave.unique_name)
       for key in mb.keys():
         bind_dict[key] = mb[key]
@@ -746,7 +746,7 @@ class SapController:
     if slave_index == -1:
       slave_index = s_count
     else: # Add the slave wherever.
-      if slave_type == Slave_Type.peripheral:
+      if slave_type == SlaveType.PERIPHERAL:
         if slave_index == 0 and name != "DRT":
           raise gm.SlaveError("Only the DRT can be at position 0")
         s_count = self.sgm.get_number_of_peripheral_slaves()
@@ -754,12 +754,12 @@ class SapController:
         slave = self.sgm.get_node(uname)
         if slave_index < s_count - 1:
           self.sgm.move_peripheral_slave(  slave.slave_index, slave_index)
-      elif slave_type == Slave_Type.memory:
+      elif slave_type == SlaveType.MEMORY:
         s_count = self.sgm.get_number_of_memory_slaves()
         uname = get_unique_name(name, Node_Type.slave, slave_type, s_count - 1)
         slave = self.sgm.get_node(uname)
         if slave_index < s_count - 1:
-          self.sgm.move_slave(slave.slave_index, slave_index, Slave_Type.memory)
+          self.sgm.move_slave(slave.slave_index, slave_index, SlaveType.MEMORY)
 
 #    print "slave index: " + str(slave_index)
 
@@ -777,7 +777,7 @@ class SapController:
         # Check if there are already some parameter declarations within the
         # project tags.
         slaves = {}
-        if slave_type == Slave_Type.peripheral:
+        if slave_type == SlaveType.PERIPHERAL:
           if "SLAVES" in self.project_tags.keys():
             slaves = self.project_tags["SLAVES"]
         else:
@@ -794,19 +794,19 @@ class SapController:
 
     return uname
 
-  def remove_slave(self, slave_type = Slave_Type.peripheral, slave_index=0):
+  def remove_slave(self, slave_type = SlaveType.PERIPHERAL, slave_index=0):
     """Removes slave from specified index."""
     self.sgm.remove_slave(slave_index, slave_type)
     return
 
   def move_slave(self, slave_name = None,
-                from_slave_type = Slave_Type.peripheral,
+                from_slave_type = SlaveType.PERIPHERAL,
                 from_slave_index = 0,
-                to_slave_type = Slave_Type.peripheral,
+                to_slave_type = SlaveType.PERIPHERAL,
                 to_slave_index = 0):
     """Move slave from one place to another, the slave can be moved from one
     bus to another and the index position can be moved."""
-    if to_slave_type == Slave_Type.peripheral and to_slave_index == 0:
+    if to_slave_type == SlaveType.PERIPHERAL and to_slave_index == 0:
       return
     if slave_name is None:
       gm.SlaveError("a slave name must be specified")
