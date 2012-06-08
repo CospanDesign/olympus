@@ -1,7 +1,7 @@
 import gtk
 import gobject
-from sap_graph_manager import Node_Type
-from sap_graph_manager import Slave_Type
+from sap_graph_manager import NodeType
+from sap_graph_manager import SlaveType
 
 
 class PropertyView(gtk.Frame):

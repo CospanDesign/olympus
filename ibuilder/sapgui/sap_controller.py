@@ -6,8 +6,8 @@ from saplib import saplib
 import sapfile
 import saputils
 import sap_graph_manager as gm
-from sap_graph_manager import Slave_Type
-from sap_graph_manager import Node_Type
+from sap_graph_manager import SlaveType
+from sap_graph_manager import NodeType
 from sap_graph_manager import get_unique_name
 from saperror import ModuleNotFound
 from saperror import SlaveError
@@ -57,19 +57,19 @@ class SapController:
       self.set_bus_type("axie")
 
     # Add the nodes that are always present.
-    self.sgm.add_node("Host Interface", Node_Type.host_interface)
-    self.sgm.add_node("Master", Node_Type.master)
-    self.sgm.add_node("Memory", Node_Type.memory_interconnect)
-    self.sgm.add_node("Peripherals", Node_Type.peripheral_interconnect)
+    self.sgm.add_node("Host Interface", NodeType.HOST_INTERFACE)
+    self.sgm.add_node("Master", NodeType.MASTER)
+    self.sgm.add_node("Memory", NodeType.MEMORY_INTERCONNECT)
+    self.sgm.add_node("Peripherals", NodeType.PERIPHERAL_INTERCONNECT)
     self.add_slave("DRT", None, SlaveType.PERIPHERAL, slave_index = 0)
 
     # Get all the unique names for accessing nodes.
-    hi_name = get_unique_name("Host Interface", Node_Type.host_interface)
-    m_name = get_unique_name("Master", Node_Type.master)
-    mi_name = get_unique_name("Memory", Node_Type.memory_interconnect)
-    pi_name = get_unique_name("Peripherals", Node_Type.peripheral_interconnect)
+    hi_name = get_unique_name("Host Interface", NodeType.HOST_INTERFACE)
+    m_name = get_unique_name("Master", NodeType.MASTER)
+    mi_name = get_unique_name("Memory", NodeType.MEMORY_INTERCONNECT)
+    pi_name = get_unique_name("Peripherals", NodeType.PERIPHERAL_INTERCONNECT)
     drt_name = get_unique_name("DRT",
-                               Node_Type.slave,
+                               NodeType.SLAVE,
                                SlaveType.PERIPHERAL,
                                slave_index = 0)
 
@@ -464,11 +464,11 @@ class SapController:
     """Sets the host interface type.  If host_interface_name is not a valid
     module name (or cannot be found for whatever reason), throws a
     ModuleNotFound exception."""
-    hi_name = get_unique_name("Host Interface", Node_Type.host_interface)
+    hi_name = get_unique_name("Host Interface", NodeType.HOST_INTERFACE)
 
     node_names = self.sgm.get_node_names()
     if hi_name not in node_names:
-      self.sgm.add_node("Host Interface", Node_Type.host_interface)
+      self.sgm.add_node("Host Interface", NodeType.HOST_INTERFACE)
 
     # Check if the host interface is valid.
     sf = sapfile.SapFile()
@@ -497,7 +497,7 @@ class SapController:
       bind_dict[key] = pb[key]
 
     # Get host interface bindings.
-    hi_name = get_unique_name("Host Interface", Node_Type.host_interface)
+    hi_name = get_unique_name("Host Interface", NodeType.HOST_INTERFACE)
 
     hib = self.sgm.get_node_bindings(hi_name)
 
@@ -627,7 +627,7 @@ class SapController:
 #    del bind_dict[port_name]
 
   def get_host_interface_name(self):
-    hi_name = get_unique_name("Host Interface", Node_Type.host_interface)
+    hi_name = get_unique_name("Host Interface", NodeType.HOST_INTERFACE)
     hi = self.sgm.get_node(hi_name)
     return hi.parameters["module"]
 
@@ -739,7 +739,7 @@ class SapController:
     # Check if the slave_index makes sense.  If slave index s -1 then add it
     # to the next available location
     s_count = self.sgm.get_number_of_slaves(slave_type)
-    self.sgm.add_node(name, Node_Type.slave, slave_type)
+    self.sgm.add_node(name, NodeType.SLAVE, slave_type)
 
     slave = None
 
@@ -750,20 +750,20 @@ class SapController:
         if slave_index == 0 and name != "DRT":
           raise gm.SlaveError("Only the DRT can be at position 0")
         s_count = self.sgm.get_number_of_peripheral_slaves()
-        uname = get_unique_name(name, Node_Type.slave, slave_type, s_count - 1)
+        uname = get_unique_name(name, NodeType.SLAVE, slave_type, s_count - 1)
         slave = self.sgm.get_node(uname)
         if slave_index < s_count - 1:
           self.sgm.move_peripheral_slave(  slave.slave_index, slave_index)
       elif slave_type == SlaveType.MEMORY:
         s_count = self.sgm.get_number_of_memory_slaves()
-        uname = get_unique_name(name, Node_Type.slave, slave_type, s_count - 1)
+        uname = get_unique_name(name, NodeType.SLAVE, slave_type, s_count - 1)
         slave = self.sgm.get_node(uname)
         if slave_index < s_count - 1:
           self.sgm.move_slave(slave.slave_index, slave_index, SlaveType.MEMORY)
 
 #    print "slave index: " + str(slave_index)
 
-    uname = get_unique_name(name, Node_Type.slave, slave_type, slave_index)
+    uname = get_unique_name(name, NodeType.SLAVE, slave_type, slave_index)
 
     slave = self.sgm.get_node(uname)
 #    print "slave unique name: " + uname

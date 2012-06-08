@@ -8,8 +8,8 @@ from gtk import gdk
 import sap_controller
 import sap_graph_manager
 
-from sap_graph_manager import Node_Type
-from sap_graph_manager import Slave_Type
+from sap_graph_manager import NodeType
+from sap_graph_manager import SlaveType
 
 """
 Thanks to Osmo Maatta post in a forums that helped me

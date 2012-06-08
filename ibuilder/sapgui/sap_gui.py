@@ -82,7 +82,7 @@ class SapGuiController:
     self.open_dialog = open_dialog.OpenDialog()
     self.open_dialog.set_open_callback(self.on_open_cb)
     self.save_dialog = save_dialog.SaveDialog()
-    self.save_dialog.set_slave_callback(self.on_save_cb)
+    self.save_dialog.set_save_callback(self.on_save_cb)
     self.properties_dialog = properties_dialog.PropertiesDialog()
 
     self.build_thread = None
@@ -434,7 +434,7 @@ class SapGuiController:
     one of the slave buses."""
 #    print "entered on slave add"
     from saplib import saputils
-    from sap_controller import Slave_Type
+    from sap_controller import SlaveType
 
 #    print "filename: " + filename
 

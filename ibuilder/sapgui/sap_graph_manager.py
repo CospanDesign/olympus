@@ -23,7 +23,7 @@ SlaveType = enum('MEMORY', 'PERIPHERAL')
 
 
 def get_unique_name(name, node_type, slave_type = SlaveType.PERIPHERAL, slave_index = 0):
-  if node_type == Node_Type.slave:
+  if node_type == NodeType.SLAVE:
     unique_name = name + "_" + str(slave_type) + "_" + str(slave_index)
   else:
     unique_name = name + "_" + str(node_type)
@@ -32,7 +32,7 @@ def get_unique_name(name, node_type, slave_type = SlaveType.PERIPHERAL, slave_in
 class SapNode:
   name = ""
   unique_name = ""
-  node_type = Node_Type.slave
+  node_type = NodeType.SLAVE
   slave_type = SlaveType.PERIPHERAL
   slave_index = 0
   parameters={}
@@ -41,7 +41,7 @@ class SapNode:
   def __init__(self):
     self.name = ""
     self.unique_name = ""
-    self.node_type = Node_Type.slave
+    self.node_type = NodeType.SLAVE
     self.slave_type = SlaveType.PERIPHERAL
     self.slave_index = 0
     self.parameters={}
@@ -119,7 +119,7 @@ class SapGraphManager:
     current_name = self.get_slave_name_at(slave_index, slave_type)
     node = self.get_node(current_name)
 
-    unique_name = get_unique_name(new_name, Node_Type.slave, slave_type, slave_index)
+    unique_name = get_unique_name(new_name, NodeType.SLAVE, slave_type, slave_index)
 
     node.name = new_name
     node.unique_name = unique_name
@@ -129,7 +129,7 @@ class SapGraphManager:
     graph_dict = self.get_nodes_dict()
     for name in graph_dict.keys():
       node = self.get_node(name)
-      if node.node_type == Node_Type.host_interface:
+      if node.node_type == NodeType.HOST_INTERFACE:
         return node
 
   def fix_slave_indexes(self):
@@ -158,7 +158,7 @@ class SapGraphManager:
 
     for key in graph_dict.keys():
       node = graph_dict[key]
-      if node.node_type != Node_Type.slave:
+      if node.node_type != NodeType.SLAVE:
         continue
 
       if node.slave_type != slave_type:
@@ -215,7 +215,7 @@ class SapGraphManager:
     for key in graph_dict.keys():
       if debug:
         print "Checking: %s" % (graph_dict[key].name)
-      if graph_dict[key].node_type != Node_Type.slave or \
+      if graph_dict[key].node_type != NodeType.SLAVE or \
           graph_dict[key].slave_type != SlaveType.PERIPHERAL:
         continue
 
@@ -234,7 +234,7 @@ class SapGraphManager:
     # Find the slave at the to_index.
     to_node = None
     for key in graph_dict.keys():
-      if graph_dict[key].node_type != Node_Type.slave or \
+      if graph_dict[key].node_type != NodeType.SLAVE or \
           graph_dict[key].slave_type != SlaveType.PERIPHERAL or \
           graph_dict[key].slave_index != to_index:
         continue
@@ -310,7 +310,7 @@ class SapGraphManager:
     # Find the slave at the from_index.
     from_node = None
     for key in graph_dict.keys():
-      if graph_dict[key].node_type != Node_Type.slave or \
+      if graph_dict[key].node_type != NodeType.SLAVE or \
           graph_dict[key].slave_type != SlaveType.MEMORY or \
           graph_dict[key].slave_index != from_index:
         continue
@@ -323,7 +323,7 @@ class SapGraphManager:
     # Find the slave at the to_index.
     to_node = None
     for key in graph_dict.keys():
-      if graph_dict[key].node_type != Node_Type.slave or \
+      if graph_dict[key].node_type != NodeType.SLAVE or \
           graph_dict[key].slave_type != SlaveType.MEMORY or \
           graph_dict[key].slave_index != to_index:
         continue
@@ -438,7 +438,7 @@ class SapGraphManager:
   def is_slave_connected_to_slave(self, slave):
     for nb_name in self.graph.neighbors(slave):
       nb = self.get_node(nb_name)
-      if nb.node_type == Node_Type.slave:
+      if nb.node_type == NodeType.SLAVE:
         return True
     return False
 
@@ -446,7 +446,7 @@ class SapGraphManager:
     slaves = {}
     for nb_name in self.graph.neighbors(slave_master_name):
       nb = self.get_node(nb_name)
-      if nb.node_type == Node_Type.slave:
+      if nb.node_type == NodeType.SLAVE:
         edge_name = self.get_edge_name(slave_master_name, nb_name)
         slaves[edge_name] = nb.unique_name
     return slaves
@@ -474,7 +474,7 @@ class SapGraphManager:
     count = 0
     gd = self.get_nodes_dict()
     for name in gd.keys():
-      if   gd[name].node_type == Node_Type.slave and \
+      if   gd[name].node_type == NodeType.SLAVE and \
         gd[name].slave_type == SlaveType.PERIPHERAL:
         count += 1
     return count
@@ -484,7 +484,7 @@ class SapGraphManager:
     count = 0
     gd = self.get_nodes_dict()
     for name in gd.keys():
-      if   gd[name].node_type == Node_Type.slave and \
+      if   gd[name].node_type == NodeType.SLAVE and \
         gd[name].slave_type == SlaveType.MEMORY:
         count += 1
     return count

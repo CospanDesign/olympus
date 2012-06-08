@@ -10,6 +10,7 @@ import sys
 import getopt
 
 if __name__ == '__main__':
+  # Gets the main (test) method working.
   sys.path.append(os.pardir)
   sys.path.append(os.path.join(os.pardir, 'saplib'))
 import saputils
@@ -18,8 +19,8 @@ from sap_gui_error import GUI_Error
 import sap_graph_manager as sgm
 import sap_controller as sc
 
-from sap_graph_manager import Slave_Type
-from sap_graph_manager import Node_Type
+from sap_graph_manager import SlaveType
+from sap_graph_manager import NodeType
 
 import status_text
 
@@ -120,9 +121,9 @@ class ModuleView:
     self.email.set_text("not implemented")
 
     # Populate the image.
-    if self.node.node_type == Node_Type.host_interface:
+    if self.node.node_type == NodeType.HOST_INTERFACE:
       self.draw_icon(self.node.name, 0.0, 1.0, 0.0)
-    elif self.node.node_type == Node_Type.slave:
+    elif self.node.node_type == NodeType.SLAVE:
       if self.node.slave_type == SlaveType.PERIPHERAL:
         self.draw_icon(self.node.name, 0.0, 0.0, 1.0)
       else:
@@ -479,9 +480,9 @@ class ModuleView:
       return
 
     # Populate the image.
-    if self.node.node_type == Node_Type.host_interface:
+    if self.node.node_type == NodeType.HOST_INTERFACE:
       self.draw_icon(self.node.name, 0.0, 1.0, 0.0, width, height)
-    elif self.node.node_type == Node_Type.slave:
+    elif self.node.node_type == NodeType.SLAVE:
       if self.node.slave_type == SlaveType.PERIPHERAL:
         self.draw_icon(self.node.name, 0.0, 0.0, 1.0, width, height)
       else:
