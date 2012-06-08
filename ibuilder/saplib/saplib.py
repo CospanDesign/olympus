@@ -25,12 +25,12 @@ The command line interface will call this module in order to
 create project configuration files and generate the entire project
 """
 
+__author__ = 'dave.mccoy@cospandesign.com (Dave McCoy)'
+
 """Changes:
   06/07/2012
     -Added Documentation and licsense
 """
-
-__author__ = 'dave.mccoy@cospandesign.com (Dave McCoy)'
 
 import os
 import sys
