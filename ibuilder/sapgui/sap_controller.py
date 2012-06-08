@@ -16,29 +16,21 @@ def enum(*sequential, **named):
   enums = dict(zip(sequential, range(len(sequential))), **named)
   return type('Enum', (), enums)
 
-
 class SapController:
   def __init__(self):
     self.new_design()
     self.filename = ""
     return
 
-
   def load_config_file(self, file_name, debug=False):
-    """
-    Loads a sycamore configuration file into memory
-    """
+    """Loads a sycamore configuration file into memory.  Throws an exception
+    if the file cannot be found."""
     json_string = ""
-    try:
-      #open up the specified JSON project config file
-      filein = open (file_name)
-      #copy it into a buffer
-      json_string = filein.read()
-      filein.close()
-    except IOError as err:
-      raise IOError(str(err))
-#      print "File Error: " + str(err)
-#      return False
+    # Open up the specified JSON project config file and copy it into the
+    # buffer (may throw an exception).
+    filein = open (file_name)
+    json_string = filein.read()
+    filein.close()
 
     self.project_tags = json.loads(json_string)
     self.filename = file_name
@@ -53,60 +45,41 @@ class SapController:
     self.filename = file_name
 
   def initialize_graph(self, debug=False):
-    """
-    Initializes the graph and project tags
-    """
+    """Initializes the graph and project tags."""
 
-    #clear any previous data
+    # Clear any previous data.
     self.sgm.clear_graph()
 
-
-    #set the bus type
+    # Set the bus type.
     if self.project_tags["TEMPLATE"] == "wishbone_template.json":
       self.set_bus_type("wishbone")
     elif self.project_tags["TEMPLATE"] == "axie_template.json":
       self.set_bus_type("axie")
 
+    # Add the nodes that are always present.
+    self.sgm.add_node("Host Interface", Node_Type.host_interface)
+    self.sgm.add_node("Master", Node_Type.master)
+    self.sgm.add_node("Memory", Node_Type.memory_interconnect)
+    self.sgm.add_node("Peripherals", Node_Type.peripheral_interconnect)
+    self.add_slave("DRT", None, Slave_Type.peripheral, slave_index = 0)
 
-    #add the nodes that are always present
-    self.sgm.add_node(  "Host Interface",
-              Node_Type.host_interface)
+    # Get all the unique names for accessing nodes.
+    hi_name = get_unique_name("Host Interface", Node_Type.host_interface)
+    m_name = get_unique_name("Master", Node_Type.master)
+    mi_name = get_unique_name("Memory", Node_Type.memory_interconnect)
+    pi_name = get_unique_name("Peripherals", Node_Type.peripheral_interconnect)
+    drt_name = get_unique_name("DRT",
+                               Node_Type.slave,
+                               Slave_Type.peripheral,
+                               slave_index = 0)
 
-    self.sgm.add_node(  "Master",
-              Node_Type.master)
-    self.sgm.add_node(  "Memory",
-              Node_Type.memory_interconnect)
-    self.sgm.add_node(  "Peripherals",
-              Node_Type.peripheral_interconnect)
-
-    self.add_slave(    "DRT",
-              None,
-              Slave_Type.peripheral,
-              slave_index = 0)
-
-    #get all the unique names for accessing nodes
-    hi_name = get_unique_name(  "Host Interface",
-                  Node_Type.host_interface)
-
-    m_name = get_unique_name(  "Master",
-                  Node_Type.master)
-    mi_name = get_unique_name(  "Memory",
-                  Node_Type.memory_interconnect)
-    pi_name = get_unique_name(  "Peripherals",
-                  Node_Type.peripheral_interconnect)
-    drt_name = get_unique_name(  "DRT",
-                  Node_Type.slave,
-                  Slave_Type.peripheral,
-                  slave_index = 0)
-
-    #attach all the appropriate nodes
+    # Attach all the appropriate nodes.
     self.sgm.connect_nodes(hi_name, m_name)
     self.sgm.connect_nodes(m_name, mi_name)
     self.sgm.connect_nodes(m_name, pi_name)
     self.sgm.connect_nodes(pi_name, drt_name)
 
-
-    #get module data for the DRT
+    # Get module data for the DRT.
     try:
       file_name = saputils.find_rtl_file_location("device_rom_table.v")
     except ModuleNotFound as ex:
@@ -116,8 +89,7 @@ class SapController:
     parameters = saputils.get_module_tags(  filename = file_name, bus=self.get_bus_type())
     self.sgm.set_parameters(drt_name, parameters)
 
-
-    #attempt to load data from the tags
+    # Attempt to load data from the tags.
     sp_count = self.sgm.get_number_of_peripheral_slaves()
     if debug:
       print "loading %d peripheral slaves" % sp_count
@@ -132,13 +104,11 @@ class SapController:
         if file_name is not None:
           file_name = saputils.find_rtl_file_location(file_name)
 
-
-
         uname = self.add_slave(  slave_name,
                     file_name,
                     Slave_Type.peripheral)
 
-        #add the bindings from the config file
+        # Add the bindings from the config file.
         skeys = self.project_tags["SLAVES"][slave_name].keys()
 #        print "adding bindings"
 #        if "bind" not in skeys:
@@ -152,7 +122,7 @@ class SapController:
         else:
           self.project_tags["SLAVES"][slave_name]["bind"] = {}
 
-    #load all the memory slaves
+    # Load all the memory slaves.
     sm_count = self.sgm.get_number_of_memory_slaves()
     if debug:
       print "loading %d peripheral slaves" % sm_count
@@ -167,7 +137,7 @@ class SapController:
                     Slave_Type.memory,
                     slave_index = -1)
 
-        #add the bindings from the config file
+        # Add the bindings from the config file.
         mkeys = self.project_tags["MEMORY"][slave_name].keys()
         if "bind" in mkeys:
           bindings = self.project_tags["MEMORY"][slave_name]["bind"]
@@ -175,8 +145,7 @@ class SapController:
         else:
           self.project_tags["MEMORY"][slave_name]["bind"] = {}
 
-
-    #check if there is a host insterface defined
+    # Check if there is a host interface defined.
     if "INTERFACE" in self.project_tags:
       file_name = saputils.find_rtl_file_location(self.project_tags["INTERFACE"]["filename"])
       parameters = saputils.get_module_tags(  filename = file_name, bus=self.get_bus_type())
@@ -205,12 +174,11 @@ class SapController:
             s_index = -1
             s_type = Slave_Type.peripheral
 
-
-            #now to attach the arbitrator
+            # Now to attach the arbitrator.
             p_count = self.get_number_of_slaves(Slave_Type.peripheral)
             m_count = self.get_number_of_slaves(Slave_Type.memory)
 
-            #find the host and slave nodes
+            # Find the host and slave nodes.
             for i in range (0, p_count):
               self.sgm.get_slave_name_at(i, Slave_Type.peripheral)
               sn = self.sgm.get_slave_name_at(i, Slave_Type.peripheral)
@@ -225,7 +193,6 @@ class SapController:
                 s_name = slave.unique_name
                 s_index = i
                 s_type = Slave_Type.peripheral
-
 
             for i in range (0, m_count):
               self.sgm.get_slave_name_at(i, Slave_Type.memory)
@@ -242,12 +209,8 @@ class SapController:
                 s_index = i
                 s_type = Slave_Type.memory
 
-            #now I have all the materialst to attach the arbitrator
-            self.add_arbitrator(  h_type,
-                        h_index,
-                        arb_name,
-                        s_type,
-                        s_index)
+            # Now I have all the materialst to attach the arbitrator.
+            self.add_arbitrator(h_type, h_index, arb_name, s_type, s_index)
 
     return True
 
@@ -260,7 +223,6 @@ class SapController:
 
     return self.get_number_of_memory_slaves()
 
-
   def get_number_of_memory_slaves(self):
     return self.sgm.get_number_of_memory_slaves()
 
@@ -268,14 +230,12 @@ class SapController:
     return self.sgm.get_number_of_peripheral_slaves()
 
   def save_config_file(self, file_name):
-    """
-    Saves a module stored in memory to a file
-    """
+    """Saves a module stored in memory to a file."""
 
-    #if there are no slaves on the memory interconnect
-    #then don't generate the structure in the JSON file for it
+    # If there are no slaves on the memory interconnect then don't generate
+    # the structure in the JSON file for it.
 
-    json_string = json.dumps(self.project_tags, sort_keys=True, indent = 4)
+    json_string = json.dumps(self.project_tags, sort_keys = True, indent = 4)
     try:
       file_out = open(file_name, 'w')
       file_out.write(json_string)
@@ -287,10 +247,8 @@ class SapController:
     return True
 
   def apply_slave_tags_to_project(self, debug = False):
-    """
-    apply the slave tags to the project tags
-    """
-    #get all the slaves
+    """Apply the slave tags to the project tags."""
+    # Get all the slaves.
     p_count = self.get_number_of_slaves(Slave_Type.peripheral)
     m_count = self.get_number_of_slaves(Slave_Type.memory)
 #    bind_dict = self.get_master_bind_dict()
@@ -299,7 +257,7 @@ class SapController:
       sc_slave = self.sgm.get_slave_at(i, Slave_Type.peripheral)
       uname = sc_slave.unique_name
       name = sc_slave.name
-      #print "name: " + str(name)
+#      print "name: " + str(name)
       if name == "DRT":
         continue
       if name not in self.project_tags["SLAVES"].keys():
@@ -309,17 +267,16 @@ class SapController:
       if "bind" not in pt_slave.keys():
         pt_slave["bind"] = {}
 
-      #overrite the current arbitrator dictionary
+      # Overwrite the current arbitrator dictionary.
       if "BUS" in pt_slave.keys():
         pt_slave["BUS"] = {}
 
       if "arbitrator_masters" in sc_slave.parameters.keys():
-
         ams = sc_slave.parameters["arbitrator_masters"]
         if len(ams) > 0:
-          #add the BUS keyword to the arbitrator master
+          # Add the BUS keyword to the arbitrator master.
           pt_slave["BUS"] = {}
-          #add all the items from the sc version
+          # Add all the items from the sc version.
           for a in ams:
             if debug:
               print "arbitrator name: %s" % a
@@ -328,14 +285,14 @@ class SapController:
             arb_name = self.sgm.get_node(arb_slave).name
             if arb_slave is not None:
               pt_slave["BUS"][a] = arb_name
-          #pt_slave["BUS"]
+#          pt_slave["BUS"]
 
-      #clear the current bindings in the project tags
+      # Clear the current bindings in the project tags.
       pt_slave["bind"] = {}
 
       bindings = self.sgm.get_node_bindings(uname)
 #      bind = sc_slave.bindings
-      #print "bind id: " + str(id(bindings))
+#      print "bind id: " + str(id(bindings))
       if debug:
         print "bind contents: " + str(bindings)
       for p in bindings.keys():
@@ -343,19 +300,19 @@ class SapController:
         pt_slave["bind"][p]["port"] = bindings[p]["pin"]
         pt_slave["bind"][p]["direction"] = bindings[p]["direction"]
 
-      #add filenames
+      # Add filenames.
       module = sc_slave.parameters["module"]
       sf = sapfile.SapFile()
       filename = sf.find_module_filename(module)
       pt_slave["filename"] = filename
 
 
-#Memory BUS
+    # Memory BUS
     for i in range(0, m_count):
       sc_slave = self.sgm.get_slave_at(i, Slave_Type.memory)
       uname = sc_slave.unique_name
       name = sc_slave.name
-      #print "name: " + str(name)
+#      print "name: " + str(name)
       if name not in self.project_tags["MEMORY"].keys():
         self.project_tags["MEMORY"][name] = {}
 
@@ -363,17 +320,16 @@ class SapController:
       if "bind" not in pt_slave.keys():
         pt_slave["bind"] = {}
 
-      #overrite the current arbitrator dictionary
+      # Overwrite the current arbitrator dictionary.
       if "BUS" in pt_slave.keys():
         pt_slave["BUS"] = {}
 
       if "arbitrator_masters" in sc_slave.parameters.keys():
-
         ams = sc_slave.parameters["arbitrator_masters"]
         if len(ams) > 0:
-          #add the BUS keyword to the arbitrator master
+          # Add the BUS keyword to the arbitrator master.
           pt_slave["BUS"] = {}
-          #add all the items from the sc version
+          # Add all the items from the sc version.
           for a in ams:
             if debug:
               print "arbitrator name: %s" % a
@@ -382,13 +338,13 @@ class SapController:
             arb_name = self.sgm.get_node(arb_slave).name
             if arb_slave is not None:
               pt_slave["BUS"][a] = arb_name
-          #pt_slave["BUS"]
+#          pt_slave["BUS"]
 
-      #clear the current bindings in the project tags
+      # Clear the current bindings in the project tags.
       pt_slave["bind"] = {}
 
       bindings = self.sgm.get_node_bindings(uname)
-      #print "bind id: " + str(id(bindings))
+#      print "bind id: " + str(id(bindings))
       if debug:
         print "bind contents: " + str(bindings)
       for p in bindings.keys():
@@ -397,19 +353,14 @@ class SapController:
         pt_slave["bind"][p]["direction"] = bindings[p]["direction"]
 
   def set_project_location(self, location):
-    """
-    sets the location of the project to output
-    """
+    """Sets the location of the project to output."""
     self.project_tags["BASE_DIR"] = location
 
   def get_project_location(self):
     return self.project_tags["BASE_DIR"]
 
-
   def set_project_name(self, name):
-    """
-    sets the name of the output project
-    """
+    """Sets the name of the output project."""
     self.project_tags["PROJECT_NAME"] = name
 
   def get_project_name(self):
@@ -428,9 +379,7 @@ class SapController:
     return self.board_dict["build_tool"]
 
   def set_board_name(self, board_name):
-    """
-    sets the name of the board to use
-    """
+    """Sets the name of the board to use."""
     if "board" not in self.project_tags.keys():
       self.project_tags["board"] = ""
 
@@ -440,7 +389,6 @@ class SapController:
   def get_board_name(self):
     if "board" in self.project_tags.keys():
         return self.project_tags["board"]
-
     return "undefined"
 
   def get_constraint_file_names(self):
@@ -460,20 +408,18 @@ class SapController:
       cfiles.remove(constraint_file)
 
   def set_project_constraint_files(self, constraint_files):
-    #print "project constraint files: " + str(constarint_files)
+#    print "project constraint files: " + str(constarint_files)
     self.project_tags["constraint_files"] = constraint_files
 
   def get_project_constraint_files(self):
-    """
-    if the user has specified constraint files then return that
-    list, otherwise get the default constraint files from
-    the board config file and populate the user constraint
-    files with that and then return that
-    """
+    """Returns the list files with the users constraints (if specified).  If
+    no user-constraints exist, returns the default contraint files from the
+    board config file, populate the user constraint files with those
+    constraints, and then return the newly-populated user constraint files."""
     pt = self.project_tags
     if "constraint_files" in pt.keys():
       if len(pt["constraint_files"]) == 0:
-        #user has not specified constraint files so load the default values
+        # User has not specified constraint files so load the default values.
         pt["constraint_files"] = self.board_dict["default_constraint_files"]
 
     return pt["constraint_files"]
@@ -489,9 +435,7 @@ class SapController:
 #        return self.project_tags["CONSTRAINTS"]["device"]
 
   def new_design(self):
-    """
-    Initialize an empty design
-    """
+    """Initialize an empty design."""
     self.sgm = gm.SapGraphManager()
     self.bus_type = "wishbone"
     self.tags = {}
@@ -508,70 +452,52 @@ class SapController:
     self.project_tags["board"] = "sycamore1"
     self.project_tags["bind"] = {}
     self.project_tags["constraint_files"] = []
-    return
 
   def set_bus_type(self, bus_type):
-    """
-    Set the bus type to Wishbone or Axie
-    """
+    """Set the bus type to Wishbone or Axie."""
     self.bus_type = bus_type
-    return
 
   def get_bus_type(self):
     return self.bus_type
 
   def set_host_interface(self, host_interface_name, debug = False):
-    """
-    sets the host interface type
-    """
-    hi_name = get_unique_name(  "Host Interface",
-                  Node_Type.host_interface)
+    """Sets the host interface type.  If host_interface_name is not a valid
+    module name (or cannot be found for whatever reason), throws a
+    ModuleNotFound exception."""
+    hi_name = get_unique_name("Host Interface", Node_Type.host_interface)
 
     node_names = self.sgm.get_node_names()
     if hi_name not in node_names:
-      self.sgm.add_node(  "Host Interface",
-                Node_Type.host_interface)
+      self.sgm.add_node("Host Interface", Node_Type.host_interface)
 
-    #check if the host interface is valid
-    file_name = ""
-    try:
-      sf = sapfile.SapFile()
-      file_name = sf.find_module_filename(host_interface_name)
-    except ModuleNotFound as ex:
-      if debug:
-        print "Invalid Module Name: %s" % (host_interface_name)
-
-#XXX: Need to inform the user that the Host Interface Selected was
-#not valid
-        return False
-
+    # Check if the host interface is valid.
+    sf = sapfile.SapFile()
+    file_name = sf.find_module_filename(host_interface_name)
     file_name = saputils.find_rtl_file_location(file_name)
 
-    #if the host interface is valid then get all the tags
-    parameters = saputils.get_module_tags(  filename = file_name, bus=self.get_bus_type())
-    #and set them up
+    # If the host interface is valid then get all the tags ...
+    parameters = saputils.get_module_tags(filename = file_name,
+                                          bus = self.get_bus_type())
+    # ... and set them up.
     self.sgm.set_parameters(hi_name, parameters)
     return True
 
   def get_master_bind_dict(self):
-    """
-    combine the dictionary from
-      project
-      host interface
-      peripheral slaves
-      memory slaves
-    """
+    """Combine the dictionary from:
+      - project
+      - host interface
+      - peripheral slaves
+      - memory slaves"""
 #    print "get_master_bind_dict"
     bind_dict = {}
 
-    #get project bindings
+    # Get project bindings.
     pb = self.project_tags["bind"]
     for key in pb.keys():
       bind_dict[key] = pb[key]
 
-    #get host interface bindings
-    hi_name = get_unique_name(  "Host Interface",
-                  Node_Type.host_interface)
+    # Get host interface bindings.
+    hi_name = get_unique_name("Host Interface", Node_Type.host_interface)
 
     hib = self.sgm.get_node_bindings(hi_name)
 
@@ -583,11 +509,11 @@ class SapController:
 #    for key in hib["bind"].keys():
 #      bind_dict[key] = hib["bind"][key]
 
-    #get all the peripheral slave bindings
+    # Get all the peripheral slave bindings.
     p_count = self.get_number_of_slaves(Slave_Type.peripheral)
     m_count = self.get_number_of_slaves(Slave_Type.memory)
 
-    for i in range(0, p_count):
+    for i in xrange(p_count):
       slave = self.sgm.get_slave_at(i, Slave_Type.peripheral)
       pb = self.sgm.get_node_bindings(slave.unique_name)
       for key in pb.keys():
@@ -597,8 +523,8 @@ class SapController:
 #      for key in slave["bind"].keys():
 #        bind_dict[key] = slave["bind"][key]
 
-    #get all the memory slave bindings
-    for i in range(0, m_count):
+    # Get all the memory slave bindings.
+    for i in xrange(m_count):
       slave = self.sgm.get_slave_at(i, Slave_Type.memory)
       mb = self.sgm.get_node_bindings(slave.unique_name)
       for key in mb.keys():
@@ -611,11 +537,8 @@ class SapController:
 
     return bind_dict
 
-
   def set_binding(self, node_name, port_name, pin_name):
-    """
-    add a binding between the port and the pin
-    """
+    """Add a binding between the port and the pin."""
     node = self.sgm.get_node(node_name)
     ports = node.parameters["ports"]
 
@@ -623,26 +546,23 @@ class SapController:
     if ":" in port_name:
       raise SlaveError("Sorry I don't support vectors yet :( port_name = %s" % port_name)
 
-
-
     if pn not in ports.keys():
       raise SlaveError("port %s is not in node %s" % (port_name, node.name))
 
-
-    #if pin_name not in pt:
-    #  raise SlaveError("pin %s is not in the constraints" % (pin_name))
+#    if pin_name not in pt:
+#      raise SlaveError("pin %s is not in the constraints" % (pin_name))
 
     direction = ports[pn]["direction"]
 
     bind_dict = self.get_master_bind_dict()
-    #print "bind dict keys: " + str(bind_dict.keys())
+#    print "bind dict keys: " + str(bind_dict.keys())
     for pname in bind_dict.keys():
-      if port_name == bind_dict[pname]["pin"]:
 #    if port_name in bind_dict.keys():
+      if port_name == bind_dict[pname]["pin"]:
         raise SlaveError("port %s is already bound")
 
-    #also check if there is a vector in the binding list
-    #and see if I'm in range of that vector
+    # Also check if there is a vector in the binding list and see if I'm in
+    # range of that vector.
     for key in bind_dict.keys():
       low = -1
       high = -1
@@ -663,8 +583,7 @@ class SapController:
       else:
         index = -1
 
-      #print "index: " + str(index)
-
+#      print "index: " + str(index)
 
       if "[" in key:
         key_index = key.partition("[")[2]
@@ -677,11 +596,11 @@ class SapController:
         else:
           key_index = int(key_index)
 
-      #either the binding has no [] (index) or it is a range
+      # Either the binding has no [] (index) or it is a range.
       if key_index == -1:
-        #if the index has no [] (no index) or it is a range
+        # If the index has no [] (no index) or it is a range.
         if index == -1:
-          #bad
+          # bad
           raise SlaveError("Conflict with the binding %s and the port %s" % (key, port_name))
 
         if index >= low and index <= high:
@@ -690,19 +609,15 @@ class SapController:
       if key_index == index:
         raise SlaveError("Conflict with the binding %s and the port %s" % (key, port_name))
 
-
 #    bind_dict = node.bindings
     self.sgm.bind_port(node_name, port_name, pin_name)
 #    bind_dict[port_name] = {}
 #    bind_dict[port_name]["port"] = pin_name
 #    bind_dict[port_name]["direction"] = direction
-    #print "setting up %s to pin %s as an %s" % (port_name, pin_name, direction)
-
+#    print "setting up %s to pin %s as an %s" % (port_name, pin_name, direction)
 
   def unbind_port(self, node_name, port_name):
-    """
-    remove a binding with the port name
-    """
+    """Remove a binding with the port name."""
 #    node = self.sgm.get_node(node_name)
 #    bind_dict = node.bindings
 #    bind_dict[port_name] = {}
@@ -711,10 +626,8 @@ class SapController:
     self.sgm.unbind_port(node_name, port_name)
 #    del bind_dict[port_name]
 
-
   def get_host_interface_name(self):
-    hi_name = get_unique_name(  "Host Interface",
-                  Node_Type.host_interface)
+    hi_name = get_unique_name("Host Interface", Node_Type.host_interface)
     hi = self.sgm.get_node(hi_name)
     return hi.parameters["module"]
 
@@ -723,23 +636,15 @@ class SapController:
     slave = self.sgm.get_node(s_name)
     return slave.name
 
-  def is_arb_master_connected(  self,
-                  slave_name,
-                  arb_host):
-
+  def is_arb_master_connected(self, slave_name, arb_host):
     slaves = self.sgm.get_connected_slaves(slave_name)
     for key in slaves.keys():
       edge_name = self.sgm.get_edge_name(slave_name, slaves[key])
       if (arb_host == edge_name):
         return True
-
     return False
 
-  def add_arbitrator_by_name(  self,
-                host_name,
-                arbitrator_name,
-                slave_name):
-
+  def add_arbitrator_by_name(self, host_name, arbitrator_name, slave_name):
     tags = self.sgm.get_parameters(host_name)
     if arbitrator_name not in tags["arbitrator_masters"]:
       return False
@@ -748,89 +653,57 @@ class SapController:
     self.sgm.set_edge_name(host_name, slave_name, arbitrator_name)
     return True
 
-
-
-  def add_arbitrator(self,   host_type,
-                host_index,
-                arbitrator_name,
-                slave_type,
-                slave_index):
-    """
-    adds an arbitrator and attaches it between the host and
-    the slave
-    """
+  def add_arbitrator(self, host_type, host_index,
+                     arbitrator_name, slave_type, slave_index):
+    """Adds an arbitrator and attaches it between the host and the slave."""
     h_name = self.sgm.get_slave_name_at(host_index, host_type)
-    #tags = self.sgm.get_parameters(h_name)
-    #print "h_name: " + h_name
-    #if arbitrator_name not in tags["arbitrator_masters"]:
-    #  return False
+#    tags = self.sgm.get_parameters(h_name)
+#    print "h_name: " + h_name
+#    if arbitrator_name not in tags["arbitrator_masters"]:
+#      return False
 
     s_name = self.sgm.get_slave_name_at(slave_index, slave_type)
-    #self.sgm.connect_nodes (h_name, s_name)
-    #self.sgm.set_edge_name(h_name, s_name, arbitrator_name)
-    #return True
+#    self.sgm.connect_nodes (h_name, s_name)
+#    self.sgm.set_edge_name(h_name, s_name, arbitrator_name)
+#    return True
     return self.add_arbitrator_by_name(h_name, arbitrator_name, s_name)
 
-  def get_connected_arbitrator_slave(self,
-                      host_name,
-                      arbitrator_name):
+  def get_connected_arbitrator_slave(self, host_name, arbitrator_name):
     tags = self.sgm.get_parameters(host_name)
     if arbitrator_name not in tags["arbitrator_masters"]:
       SlaveError("This slave has no arbitrator masters")
 
     slaves = self.sgm.get_connected_slaves(host_name)
     for arb_name in slaves.keys():
-
       slave = slaves[arb_name]
       edge_name = self.sgm.get_edge_name(host_name, slave)
       if edge_name == arbitrator_name:
         return slave
-
     return None
 
-
-  def get_connected_arbitrator_name(self,  host_type,
-                      host_index,
-                      slave_type,
-                      slave_index):
-
+  def get_connected_arbitrator_name(self, host_type, host_index,
+                                    slave_type, slave_index):
     h_name = self.sgm.get_slave_name_at(host_index, host_type)
     tags = self.sgm.get_parameters(h_name)
     if arbitrator_name not in tags["arbitrator_masters"]:
       return ""
-
     s_name = self.sgm.get_slave_name_at(slave_index, slave_type)
     return self.get_edge_name(h_name, s_name)
 
-  def remove_arbitrator_by_arb_master(  self,
-                      host_name,
-                      arb_name):
+  def remove_arbitrator_by_arb_master(self, host_name, arb_name):
     slave_name = self.get_connected_arbitrator_slave(  host_name, arb_name)
-
     self.remove_arbitrator_by_name(host_name, slave_name)
 
-
-
-  def remove_arbitrator_by_name(  self,
-                  host_name,
-                  slave_name):
-
+  def remove_arbitrator_by_name(self, host_name, slave_name):
     self.sgm.disconnect_nodes(host_name, slave_name)
 
-  def remove_arbitrator(self,  host_type,
-                host_index,
-                slave_type,
-                slave_index):
-    """
-    Finds and removes the arbitrator from the host
-    """
+  def remove_arbitrator(self, host_type, host_index, slave_type, slave_index):
+    """Finds and removes the arbitrator from the host."""
     h_name = gm.get_slave_name_at(host_index, host_type)
     s_name = gm.get_slave_name_at(slave_index, slave_type)
     remove_arbitrator_by_name(h_name, s_name)
 
-
   def is_active_arbitrator_host(self, host_type, host_index):
-
     h_name = self.sgm.get_slave_name_at(host_index, host_type)
     tags = self.sgm.get_parameters(h_name)
     h_node = self.sgm.get_node(h_name)
@@ -850,97 +723,66 @@ class SapController:
     node = self.sgm.get_node(slave_name)
     return node.name
 
-
-
   def get_arbitrator_dict(self, host_type, host_index):
     if not self.is_active_arbitrator_host(host_type, host_index):
       return {}
 
     h_name = self.sgm.get_slave_name_at(host_index, host_type)
-
     return self.sgm.get_connected_slaves(h_name)
 
   def rename_slave(self, slave_type, index, new_name):
-    """
-    finds a slave by type and index and renames it
-    """
-
-    #get the slave_node
+    """Finds a slave by type and index and renames it."""
     self.sgm.rename_slave(slave_type, index, new_name)
 
   def add_slave(self, name, filename, slave_type, slave_index=-1):
-    """
-    Adds a slave to the specified bus at the specified index
-    """
-    #check if the slave_index makes sense
-    #if slave index s -1 then add it to the next available location
+    """Adds a slave to the specified bus at the specified index."""
+    # Check if the slave_index makes sense.  If slave index s -1 then add it
+    # to the next available location
     s_count = self.sgm.get_number_of_slaves(slave_type)
-    self.sgm.add_node(  name,
-              Node_Type.slave,
-              slave_type)
+    self.sgm.add_node(name, Node_Type.slave, slave_type)
 
     slave = None
 
     if slave_index == -1:
       slave_index = s_count
-    else:
-      #add the slave wherever
-
+    else: # Add the slave wherever.
       if slave_type == Slave_Type.peripheral:
         if slave_index == 0 and name != "DRT":
           raise gm.SlaveError("Only the DRT can be at position 0")
         s_count = self.sgm.get_number_of_peripheral_slaves()
-        uname = get_unique_name(  name, \
-                      Node_Type.slave, \
-                      slave_type, \
-                      s_count - 1)
-
+        uname = get_unique_name(name, Node_Type.slave, slave_type, s_count - 1)
         slave = self.sgm.get_node(uname)
         if slave_index < s_count - 1:
-          self.sgm.move_peripheral_slave(  slave.slave_index,\
-                          slave_index)
+          self.sgm.move_peripheral_slave(  slave.slave_index, slave_index)
       elif slave_type == Slave_Type.memory:
         s_count = self.sgm.get_number_of_memory_slaves()
-        uname = get_unique_name(  name, \
-                      Node_Type.slave, \
-                      slave_type, \
-                      s_count - 1)
-
+        uname = get_unique_name(name, Node_Type.slave, slave_type, s_count - 1)
         slave = self.sgm.get_node(uname)
         if slave_index < s_count - 1:
-          self.sgm.move_slave(  slave.slave_index, \
-                      slave_index, \
-                      Slave_Type.memory)
+          self.sgm.move_slave(slave.slave_index, slave_index, Slave_Type.memory)
 
+#    print "slave index: " + str(slave_index)
 
-    #print "slave index: " + str(slave_index)
-
-    uname = get_unique_name(  name, \
-                  Node_Type.slave, \
-                  slave_type, \
-                  slave_index)
+    uname = get_unique_name(name, Node_Type.slave, slave_type, slave_index)
 
     slave = self.sgm.get_node(uname)
-    #print "slave unique name: " + uname
+#    print "slave unique name: " + uname
 
     if filename is not None:
-      #print "filename: " + filename
+#      print "filename: " + filename
       if len(filename) > 0:
         parameters = saputils.get_module_tags(filename, self.bus_type)
         self.sgm.set_parameters(uname, parameters)
 
-
-        #check if there are already some parameter declarations within the project tags
+        # Check if there are already some parameter declarations within the
+        # project tags.
         slaves = {}
-
         if slave_type == Slave_Type.peripheral:
           if "SLAVES" in self.project_tags.keys():
             slaves = self.project_tags["SLAVES"]
-
         else:
           if "MEMORY" in self.project_tags.keys():
             slaves = self.project_tags["MEMORY"]
-
 
         if name in slaves.keys():
           sd = slaves[name]
@@ -950,65 +792,51 @@ class SapController:
               if key in parameters["parameters"].keys():
                 parameters["parameters"][key] = pd[key]
 
-
-
     return uname
 
   def remove_slave(self, slave_type = Slave_Type.peripheral, slave_index=0):
-    """
-    Removes slave from specified index
-    """
+    """Removes slave from specified index."""
     self.sgm.remove_slave(slave_index, slave_type)
     return
 
-  def move_slave(self,   slave_name = None,
-              from_slave_type = Slave_Type.peripheral,
-              from_slave_index = 0,
-              to_slave_type = Slave_Type.peripheral,
-              to_slave_index = 0):
-    """
-    move slave from one place to another,
-    the slave can be moved from one bus to another
-    and the index position can be moved
-    """
+  def move_slave(self, slave_name = None,
+                from_slave_type = Slave_Type.peripheral,
+                from_slave_index = 0,
+                to_slave_type = Slave_Type.peripheral,
+                to_slave_index = 0):
+    """Move slave from one place to another, the slave can be moved from one
+    bus to another and the index position can be moved."""
     if to_slave_type == Slave_Type.peripheral and to_slave_index == 0:
       return
     if slave_name is None:
       gm.SlaveError("a slave name must be specified")
 
-
     if from_slave_type == to_slave_type:
-      #simple move call
+      # Simple move call.
       self.sgm.move_slave(from_slave_index, to_slave_index, from_slave_type)
       return
-
 
     sname = self.sgm.get_slave_name_at(from_slave_index, from_slave_type)
 
     node = self.sgm.get_node(sname)
     tags = self.sgm.get_parameters(sname)
-    #moving to the other bus, need to sever connetions
+
+    # moving to the other bus, need to sever connections.
     self.remove_slave(from_slave_type, from_slave_index)
     sf = sapfile.SapFile()
     filename = sf.find_module_filename(tags["module"])
     filename = saputils.find_rtl_file_location(filename)
     self.add_slave(slave_name, filename, to_slave_type, to_slave_index)
 
-    return
-
   def generate_project(self):
-    """
-    Generates the output project that can be used
-    to create a bit image
-    """
+    """Generates the output project that can be used to create a bit image."""
     self.save_config_file(self.filename)
     try:
       saplib.generate_project(self.filename)
     except IOError as err:
       print "File Error: " + str(err)
-    return
 
   def get_graph_manager(self):
+    '''Returns the graph manager.'''
     return self.sgm
-
 
