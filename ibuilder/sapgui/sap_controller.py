@@ -20,25 +20,26 @@ class SapController:
   def __init__(self):
     self.new_design()
     self.filename = ""
-    return
+
+    # Add some variable functions for dependency injection.
+    self.get_board_config = saputils.get_board_config
+    self.get_unique_name = get_unique_name
 
   def load_config_file(self, file_name, debug=False):
-    """Loads a sycamore configuration file into memory.  Throws an exception
-    if the file cannot be found."""
-    json_string = ""
-    # Open up the specified JSON project config file and copy it into the
-    # buffer (may throw an exception).
-    filein = open (file_name)
+    """Loads a sycamore configuration file into memory.  Raises an IOError if
+    the file cannot be found."""
+    # Open up the specified JSON project config file and copy it into the buffer
+    # (may raise an IOError).
+    filein = open(file_name)
     json_string = filein.read()
     filein.close()
 
     self.project_tags = json.loads(json_string)
     self.filename = file_name
     self.build_tool = {}
-    pt = self.project_tags
-    bn = pt["board"]
-    self.board_dict = saputils.get_board_config(bn)
-    self.get_project_constraint_files()
+    self.board_dict = self.get_board_config(self.project_tags["board"])
+    # XXX Doing anything?
+#    self.get_project_constraint_files()
     return True
 
   def set_config_file_location(self, file_name):
@@ -64,14 +65,14 @@ class SapController:
     self.add_slave("DRT", None, SlaveType.PERIPHERAL, slave_index = 0)
 
     # Get all the unique names for accessing nodes.
-    hi_name = get_unique_name("Host Interface", NodeType.HOST_INTERFACE)
-    m_name = get_unique_name("Master", NodeType.MASTER)
-    mi_name = get_unique_name("Memory", NodeType.MEMORY_INTERCONNECT)
-    pi_name = get_unique_name("Peripherals", NodeType.PERIPHERAL_INTERCONNECT)
-    drt_name = get_unique_name("DRT",
-                               NodeType.SLAVE,
-                               SlaveType.PERIPHERAL,
-                               slave_index = 0)
+    hi_name = self.get_unique_name("Host Interface", NodeType.HOST_INTERFACE)
+    m_name = self.get_unique_name("Master", NodeType.MASTER)
+    mi_name = self.get_unique_name("Memory", NodeType.MEMORY_INTERCONNECT)
+    pi_name = self.get_unique_name("Peripherals", NodeType.PERIPHERAL_INTERCONNECT)
+    drt_name = self.get_unique_name("DRT",
+                                    NodeType.SLAVE,
+                                    SlaveType.PERIPHERAL,
+                                    slave_index = 0)
 
     # Attach all the appropriate nodes.
     self.sgm.connect_nodes(hi_name, m_name)
@@ -388,7 +389,7 @@ class SapController:
 
   def get_board_name(self):
     if "board" in self.project_tags.keys():
-        return self.project_tags["board"]
+      return self.project_tags["board"]
     return "undefined"
 
   def get_constraint_file_names(self):
@@ -464,7 +465,7 @@ class SapController:
     """Sets the host interface type.  If host_interface_name is not a valid
     module name (or cannot be found for whatever reason), throws a
     ModuleNotFound exception."""
-    hi_name = get_unique_name("Host Interface", NodeType.HOST_INTERFACE)
+    hi_name = self.get_unique_name("Host Interface", NodeType.HOST_INTERFACE)
 
     node_names = self.sgm.get_node_names()
     if hi_name not in node_names:
@@ -488,52 +489,36 @@ class SapController:
       - host interface
       - peripheral slaves
       - memory slaves"""
-#    print "get_master_bind_dict"
+
+    # The dictionary to put the entries in and return.
     bind_dict = {}
 
     # Get project bindings.
-    pb = self.project_tags["bind"]
-    for key in pb.keys():
-      bind_dict[key] = pb[key]
+    bind = self.project_tags["bind"]
+    for k,v in bind:
+      bind_dict[k] = v
 
     # Get host interface bindings.
-    hi_name = get_unique_name("Host Interface", NodeType.HOST_INTERFACE)
-
+    hi_name = self.get_unique_name("Host Interface", NodeType.HOST_INTERFACE)
     hib = self.sgm.get_node_bindings(hi_name)
-
-#    print "hib id: " + str(id(hib))
-#    hib = self.sgm.get_host_interface_node().bindings
-#    hib = self.project_tags["INTERFACE"]
-    for key in hib.keys():
-      bind_dict[key] = hib[key]
-#    for key in hib["bind"].keys():
-#      bind_dict[key] = hib["bind"][key]
+    for k,v in hib.iteritems():
+      bind_dict[k] = v
 
     # Get all the peripheral slave bindings.
     p_count = self.get_number_of_slaves(SlaveType.PERIPHERAL)
-    m_count = self.get_number_of_slaves(SlaveType.MEMORY)
-
     for i in xrange(p_count):
       slave = self.sgm.get_slave_at(i, SlaveType.PERIPHERAL)
       pb = self.sgm.get_node_bindings(slave.unique_name)
       for key in pb.keys():
         bind_dict[key] = pb[key]
 
-#      slave = self.project_tags["SLAVES"][slave_name]
-#      for key in slave["bind"].keys():
-#        bind_dict[key] = slave["bind"][key]
-
     # Get all the memory slave bindings.
+    m_count = self.get_number_of_slaves(SlaveType.MEMORY)
     for i in xrange(m_count):
       slave = self.sgm.get_slave_at(i, SlaveType.MEMORY)
       mb = self.sgm.get_node_bindings(slave.unique_name)
       for key in mb.keys():
         bind_dict[key] = mb[key]
-
-#    for memory_name in self.project_tags["SLAVES"].keys():
-#      slave = self.project_tags["SLAVES"][memory_name]
-#      for key in slave["bind"].keys():
-#        bind_dict[key] = slave["bind"][key]
 
     return bind_dict
 
@@ -627,7 +612,7 @@ class SapController:
 #    del bind_dict[port_name]
 
   def get_host_interface_name(self):
-    hi_name = get_unique_name("Host Interface", NodeType.HOST_INTERFACE)
+    hi_name = self.get_unique_name("Host Interface", NodeType.HOST_INTERFACE)
     hi = self.sgm.get_node(hi_name)
     return hi.parameters["module"]
 
@@ -750,20 +735,20 @@ class SapController:
         if slave_index == 0 and name != "DRT":
           raise gm.SlaveError("Only the DRT can be at position 0")
         s_count = self.sgm.get_number_of_peripheral_slaves()
-        uname = get_unique_name(name, NodeType.SLAVE, slave_type, s_count - 1)
+        uname = self.get_unique_name(name, NodeType.SLAVE, slave_type, s_count - 1)
         slave = self.sgm.get_node(uname)
         if slave_index < s_count - 1:
           self.sgm.move_peripheral_slave(  slave.slave_index, slave_index)
       elif slave_type == SlaveType.MEMORY:
         s_count = self.sgm.get_number_of_memory_slaves()
-        uname = get_unique_name(name, NodeType.SLAVE, slave_type, s_count - 1)
+        uname = self.get_unique_name(name, NodeType.SLAVE, slave_type, s_count - 1)
         slave = self.sgm.get_node(uname)
         if slave_index < s_count - 1:
           self.sgm.move_slave(slave.slave_index, slave_index, SlaveType.MEMORY)
 
 #    print "slave index: " + str(slave_index)
 
-    uname = get_unique_name(name, NodeType.SLAVE, slave_type, slave_index)
+    uname = self.get_unique_name(name, NodeType.SLAVE, slave_type, slave_index)
 
     slave = self.sgm.get_node(uname)
 #    print "slave unique name: " + uname
