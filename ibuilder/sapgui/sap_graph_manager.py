@@ -22,7 +22,8 @@ NodeType = enum('HOST_INTERFACE',
 SlaveType = enum('MEMORY', 'PERIPHERAL')
 
 
-def get_unique_name(name, node_type, slave_type = SlaveType.PERIPHERAL, slave_index = 0):
+def get_unique_name(name, node_type,
+    slave_type = SlaveType.PERIPHERAL, slave_index = 0):
   if node_type == NodeType.SLAVE:
     unique_name = name + "_" + str(slave_type) + "_" + str(slave_index)
   else:
@@ -408,12 +409,10 @@ class SapGraphManager:
     return self.graph.nodes(False)
 
   def get_nodes_dict(self):
-    graph_list = []
     graph_dict = {}
     graph_list = self.graph.nodes(True)
     for name, item in graph_list:
       graph_dict[name] = item
-
     return graph_dict
 
   def get_node(self, name):
