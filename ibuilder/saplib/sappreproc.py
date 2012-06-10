@@ -41,10 +41,9 @@ import saperror
 def generate_define_table(filestring="", debug = False):
   """Reads in a module as a buffer and returns a dictionary of defines
 
-  Main work horse of the preprocessor this will find all the defines in a 
-  given module. If all the defines cannot be evaluated directly by the
-  current module then this will search all the included modules to determine
-  evaluate 
+  Generates a table of defines that can be used to resolve values.
+  If all the defines cannot be evaluated directly by the
+  current module then this will search all the included modules 
 
   Args:
     filestring: A buffer from the module's file
@@ -137,9 +136,24 @@ def generate_define_table(filestring="", debug = False):
 
 
 def resolve_defines(work_string="", define_dict={}, debug = False):
-  """given a string with a define change it into what it is supposed to be defining"""
+  """Evauate define
+
+  Reads a string expression and returns a string with all expressions evaluated
+
+  Args:
+    work_string: string to be evaluated
+    define_dict: the dictionary of defines used for evaluation
+
+  Returns:
+    A string with no define references only complete values
+
+  Raises:
+    PreProcessorError
+
+  """
   #loop through the string until all the defines are resolved
   #there could be nested defines so the string might go through the same loop
+  
   #a few times
   if debug:
     print "starting string: " + work_string
@@ -167,7 +181,7 @@ def resolve_defines(work_string="", define_dict={}, debug = False):
       #didn't find the string yet
       def_len = def_len - 1
     #check to see if the item found is unique
-    #actually the solution must be unique because dictionaries cannot multiple keys with the same name
+    #actually the solution must be unique because dictionaries cannot contain multiple keys with the same name
     if (def_len > 0):
       key = def_string[0:def_len]
       value = str(define_dict[key])
@@ -181,6 +195,7 @@ def resolve_defines(work_string="", define_dict={}, debug = False):
     else:
       if debug:
         print "Error in resolve_define(): didn't find define status in " + work_string
+      raise PreProcessorError("Unable to resolve the defines for %s, are all the defined variables declared?" % work_string)
       return ""
 
 
@@ -188,7 +203,32 @@ def resolve_defines(work_string="", define_dict={}, debug = False):
 
 
 def evaluate_range(in_string = "", define_dict = {}, debug = False):
-  """resolve an entire string, use this for the first item in the pre-processor, and for paranthesis"""
+  """Resolve the range of a statement
+
+  There are times when registers, wires and ports do not have the true value
+  of a range. The ibuilder needs to evaluate the defines. this function will
+  evaluate all the non-numeric characters to their numeric values
+
+  Args:
+    in_string: The string to be evaluated
+    define_dict: dictionary that has all the define values
+
+  Returns:
+    an output string with all the define's evaluated
+
+  Raises:
+    PreProcessorError
+
+  Example:
+    `define SIZE 32
+    `define MIN 0
+
+    reg bus[(`SIZE - 1):`MIN]
+
+    output  = evaluate_range(\"reg bus[(`SIZE - 1): `MIN]\", {SIZE:32, MIN:0})
+    
+    outputs: bus[31:0]
+  """
 
   #resolve all the defines
   #work_string = resolve_defines(in_string, define_dict)
@@ -204,81 +244,4 @@ def evaluate_range(in_string = "", define_dict = {}, debug = False):
   if debug:
     print in_string
   return in_string
-
-#  work_string = eval(in_string)
-#  print work_string
-#  return str(work_string)
-
-
-#  #get rid of all paranthsis
-#  while ("(" in work_string):
-#    #recursively call this function to get rid of all paranthesis
-#    start = work_string.index("(")
-#    end = work_string.index(")")
-#    if debug:
-#      print "first parenthesis: " + work_string[start + 1: end]
-#    np_string = resolve_string(work_string[start + 1:end], define_dict)
-#    if debug:
-#      print "np string: " + np_string
-#    work_string = work_string[0:start] + " " + np_string + " " + work_string[end + 1:-1]
-#    if debug:
-#      print "final string: " + work_string
-#
-#  #get rid of any white spaces
-#  work_string = work_string.strip()
-#  #look for * and \
-#  while ("*" in work_string):
-#    if debug:
-#      print "found *"
-#    op_index = work_string.index("*")
-#    if debug:
-#      print "index of *: " + str(op_index)
-#    #there is a multiplication
-#    pre = work_string.partition("*")[0]
-#    post = work_string.partition("*")[2]
-#    if debug:
-#      print "pre: " + pre
-#      print "post: " + post
-#
-#    pre = pre.strip()
-#    pre_index = len(pre) - 1
-#    post = post.strip()
-#    post_index = 0
-#    #find the beginning of the the operand
-#    while (pre_index > 0):
-#      #find the non point where there is no more number
-#      if (not pre[pre_index].isnumber()):
-#        break
-#      pre_index = pre_index - 1
-#      pre = pre[pre_index:].strip()
-#
-#
-#    while (post_index < len(post) - 1):
-#      #find the point where the post is not a number
-#      if (not post[post_index].isnumber()):
-#        break
-#      post_index = post_index + 1
-#      post = post[:post_index].strip()
-#
-#    if debug:
-#      print "pre operand: (" + pre + ")"
-#      print "post operand: (" + post + ")"
-#
-#    pre_val = string.atoi(pre)
-#    post_val = string.atoi(post)
-#
-#    val = pre_val * post_val
-#
-#
-#  #look for + and -
-#
-#  return work_string
-
-
-def calulate_operator(pre, operator, post):
-
-  work_string = ""
-
-
-  return work_string
 
