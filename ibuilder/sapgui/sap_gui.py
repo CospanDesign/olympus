@@ -364,15 +364,13 @@ class SapGuiController:
     """
 
     from saplib import saputils
-    from saplib import sapfile
-    sf = sapfile.SapFile()
 
     #add the slave into the slave graph
     bus_type = self.sc.get_bus_type()
 
     tags = saputils.get_module_tags(filename, bus_type)
     module_name = tags["module"]
-    filename = sf.find_module_filename(module_name)
+    filename = saputils.find_module_filename(module_name)
     self.property_view.set_node(module_name, filename,  tags)
 
   def on_arbitrator_connected(  self,
@@ -443,13 +441,11 @@ class SapGuiController:
       return
 
     from saplib import saputils
-    from saplib import sapfile
-    sf = sapfile.SapFile()
 
     filename = None
     if "module" in tags.keys():
       module_name = tags["module"]
-      filename = sf.find_module_filename(module_name)
+      filename = saputils.find_module_filename(module_name)
       bus_type = self.sc.get_bus_type()
 
     self.property_view.set_node(name, filename, tags)

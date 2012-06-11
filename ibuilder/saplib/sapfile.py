@@ -1,12 +1,48 @@
+#Distributed under the MIT licesnse.
+#Copyright (c) 2011 Dave McCoy (dave.mccoy@cospandesign.com)
+
+#Permission is hereby granted, free of charge, to any person obtaining a copy of
+#this software and associated documentation files (the "Software"), to deal in 
+#the Software without restriction, including without limitation the rights to 
+#use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies 
+#of the Software, and to permit persons to whom the Software is furnished to do 
+#so, subject to the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all 
+#copies or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+#AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
+#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE 
+#SOFTWARE.
+
+"""File handling functions
+
+"""
+
+__author__ = 'dave.mccoy@cospandesign.com (Dave McCoy)'
+
+"""Changes:
+  06/11/2012
+    -Added Documentation and licsense
+    -Moved two functions from sapfile to saputils
+      is_module_in_file
+      find_module_filename
+"""
+
+
 import os
-#from gen_scripts.gen import Gen
-import saputils
 import glob
 import sys
 from inspect import isclass
 from saperror import ModuleNotFound
+import saputils
 
 
+#XXX: This should probably be moved away from a class and more of a function
 class SapFile:
   """Base SapGen Class must be overriden: Used to modify or generate files"""
 
@@ -178,11 +214,11 @@ class SapFile:
     if (self.has_dependencies(filename)):
       deps = self.get_list_of_dependencies(filename)
       for d in deps:
-        result = self.find_module_filename(d)
+        result = saputils.find_module_filename(d)
         if (len(result) == 0):
           print "Error: couldn't find dependency filename"
           continue
-        f = self.find_module_filename(d)
+        f = saputils.find_module_filename(d)
         if (f not in self.verilog_dependency_list and
           f not in self.verilog_file_list):
           if debug:
@@ -210,7 +246,7 @@ class SapFile:
       deps = self.get_list_of_dependencies(filename, debug = ldebug)
       for d in deps:
         try:
-          dep_filename = self.find_module_filename(d, debug = ldebug)
+          dep_filename = saputils.find_module_filename(d, debug = ldebug)
         except ModuleNotFound as ex:
           print "Dependency Warning: %s" % (str(ex))
           print "Module Name: %s" % (d)
@@ -420,100 +456,5 @@ class SapFile:
 
 
     return deps
-
-
-  def find_module_filename (self, module_name, debug = False):
-    filename = ""
-    """Returns the filename that contains the module"""
-    base = os.getenv("SAPLIB_BASE") + "/hdl/rtl"
-    cwd = os.getcwd()
-
-    os.chdir(base)
-    #if (debug):
-    #  print "changed dir to " + base
-
-    verilog_files = []
-    for root, dir, files in os.walk(base):
-      filelist = [os.path.join(root, fi) for fi in files if fi.endswith(".v")]
-
-      for f in filelist:
-        verilog_files.append(f)
-
-    for f in verilog_files:
-      #if debug:
-        #print "checking: " + f
-      if (self.is_module_in_file(f, module_name)):
-        while (len(f.partition("/")[2])):
-          f = f.partition("/")[2]
-        if debug:
-          print "Found a file with the name: " + f
-        os.chdir(cwd)
-        return f
-
-    #put everything back to where its supposed to be
-    os.chdir(cwd)
-    #if debug:
-    #  print "didn't find module name"
-
-#sometimes modules cannot be found, but this is okay
-#    raise ModuleNotFound("Module %s was not found" % module_name)
-    return ""
-
-  def is_module_in_file(self, filename, module_name, debug = False):
-    """check the file for the module"""
-
-    fbuf = ""
-    #the name is a verilog file, try and open is
-    try:
-      filein = open(filename)
-      fbuf = filein.read()
-      filein.close()
-    except IOError as err:
-      if debug:
-        print "the file is not a full path... searching RTL"
-      #didn't find with full path, search for it
-      try:
-        filepath = saputils.find_rtl_file_location(filename)
-        filein = open(filepath)
-        fbuf = filein.read()
-        filein.close()
-      except IOError as err_int:
-        if debug:
-          print "couldn't find file in the RTL directory"
-        return False
-    if debug:
-      print "opened file: " + filename
-    fbuf = saputils.remove_comments(fbuf)
-    done = False
-    module_string = fbuf.partition("module")[2]
-    while (not done):
-#      if debug:
-      module_string = module_string.partition("(")[0]
-      module_string = module_string.strip("#")
-      module_string = module_string.strip()
-      if debug:
-        print "searching through: " + module_string
-#      module_string = module_string.strip()
-#      module_string = module_string.partition(" ")[0]
-      if (len(module_string) == 0):
-        done = True
-      if (module_string.endswith("(")):
-        module_string = module_string.strip("(")
-      if debug:
-        print "looking at: " + module_string
-
-      if (module_string == module_name):
-        if debug:
-          print "found " + module_string + " in " + filename
-        return True
-
-      elif(len(module_string.partition("module")[2]) > 0):
-        if debug:
-          print "found another module in the file"
-        module_string = module_string.partition("module")[2]
-      else:
-        done = True
-
-    return False
 
 

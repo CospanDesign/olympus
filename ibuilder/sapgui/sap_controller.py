@@ -3,7 +3,6 @@ import os
 import sys
 import json
 from saplib import saplib
-import sapfile
 import saputils
 import sap_graph_manager as gm
 from sap_graph_manager import Slave_Type
@@ -345,8 +344,7 @@ class SapController:
 
       #add filenames
       module = sc_slave.parameters["module"]
-      sf = sapfile.SapFile()
-      filename = sf.find_module_filename(module)
+      filename = saputils.find_module_filename(module)
       pt_slave["filename"] = filename
 
 
@@ -535,8 +533,7 @@ class SapController:
     #check if the host interface is valid
     file_name = ""
     try:
-      sf = sapfile.SapFile()
-      file_name = sf.find_module_filename(host_interface_name)
+      file_name = saputils.find_module_filename(host_interface_name)
     except ModuleNotFound as ex:
       if debug:
         print "Invalid Module Name: %s" % (host_interface_name)
@@ -989,8 +986,7 @@ class SapController:
     tags = self.sgm.get_parameters(sname)
     #moving to the other bus, need to sever connetions
     self.remove_slave(from_slave_type, from_slave_index)
-    sf = sapfile.SapFile()
-    filename = sf.find_module_filename(tags["module"])
+    filename = saputils.find_module_filename(tags["module"])
     filename = saputils.find_rtl_file_location(filename)
     self.add_slave(slave_name, filename, to_slave_type, to_slave_index)
 

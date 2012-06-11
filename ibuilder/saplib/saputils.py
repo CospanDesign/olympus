@@ -37,6 +37,10 @@ Changes:
   -Added get_board_names to get all the board names
 06/07/2012
   -Added documentation and licsense
+06/11/2012
+  -Moved two functions from sapfile to saputils
+    is_module_in_file
+    find_module_filename_
 """
 
 __author__ = 'dave.mccoy@cospandesign.com (Dave McCoy)'
@@ -48,6 +52,7 @@ import glob
 import json
 import sappreproc
 import saparbitrator
+from saperror import ModuleNotFound
 
 
 def create_dir(dirname, debug=False):
@@ -777,6 +782,109 @@ def get_slave_list(bus = "wishbone", debug = False):
 
   return slave_list
 
+
+def is_module_in_file(filename, module_name, debug = False):
+  fbuf = ""
+
+  try:
+    filein = open(filename)
+    fbuf = filein.read()
+    filein.close()
+  except IOError as err:
+    if debug:
+      print "the file is not a full path, searching RTL"
+
+    try:
+      filepath = find_rtl_file_location(filename)
+      filein = open(filepath)
+      fbuf = filein.read()
+      filein.close()
+    except IOError as err_int:
+      if debug:
+        print "%s is not in %s" % (module_name, filename)
+      return False
+
+  if debug:
+    print "Openning file: %s" % filename
+
+  fbuf = remove_comments(fbuf)
+  done = False
+  module_string = fbuf.partition("module")[2]
+
+  while (not done):
+    #remove the parameter and ports list from this possible module
+    module_string = module_string.partition("(")[0]
+    module_string = module_string.strip("#")
+    module_string = module_string.strip()
+
+    if debug:
+      print "Searching through: %s" % module_string
+
+    if len(module_string) == 0:
+      if debug:
+        print "length of module string == 0"
+      done = True
+
+    if module_string.endswith("("):
+      if debug:
+        print "module_string endswith \"(\""
+      module_string = module_string.strip("(")
+
+    if debug:
+      print "Looking at: %s" % module_string
+
+    if module_string == module_name:
+      #Success!
+      if debug:
+        print "Found %s in %s" % (module_string, filename)
+      return True
+
+    elif len(module_string.partition("module")[2]) > 0:
+      if debug:
+        print "Found another module in the file"
+      module_string = module_string.partition("module")[2]
+
+    else:
+      done = True
+
+  return False
+
+def find_module_filename (module_name, debug = False):
+  filename = ""
+  base = os.getenv("SAPLIB_BASE") + "/hdl/rtl"
+  cwd = os.getcwd()
+
+  os.chdir(base)
+
+  verilog_files = []
+  #get all the verilog files
+  for root, dirs, files in os.walk(base):
+    filelist = [os.path.join(root, fi) for fi in files if fi.endswith(".v")]
+
+    for  f in filelist:
+   
+      verilog_files.append(f)
+
+  for f in verilog_files:
+
+    if debug:
+      print "serching through %s" % f
+        
+    if is_module_in_file(f, module_name):
+      while len(f.partition("/")[2]):
+        f = f.partition("/")[2]
+
+      if debug:
+        print "Found a file with the name: " + f
+      filename = f
+
+  os.chdir (cwd)
+  if len(filename) == 0:
+    raise ModuleNotFound("Searched in standard hdl/rtl location for file containing the module %s" % module_name)
+
+  return filename
+     
+
 def _get_file_recursively(directory):
   file_dir_list = glob.glob(directory + "/*")
   file_list = []
@@ -789,4 +897,6 @@ def _get_file_recursively(directory):
         file_list.append(f)
 
   return file_list
+
+
 

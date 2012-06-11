@@ -147,21 +147,6 @@ class Test (unittest.TestCase):
 		self.assertEqual(len(deps) > 0, True)
 
 
-
-	def test_is_module_in_file(self):
-		module_name = "uart"
-		filename = "wb_gpio.v"
-		result = self.sapfile.is_module_in_file(filename, module_name, debug=self.dbg)
-		self.assertEqual(result, False)
-		filename = "uart.v"
-		result = self.sapfile.is_module_in_file(filename, module_name, debug=self.dbg) 
-		self.assertEqual(result, True)
-
-	def test_find_module_filename(self):
-		module_name = "uart"
-		result = self.sapfile.find_module_filename(module_name, debug = self.dbg)
-		self.assertEqual(len(result) > 0, True)
-	
 	def test_resolve_dependencies(self):
 		#filename = "sdram.v"
 		#result = self.sapfile.resolve_dependencies(filename, debug = True)

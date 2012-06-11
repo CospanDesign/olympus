@@ -2,7 +2,6 @@ import unittest
 import os
 import sys
 import json
-import sapfile
 import saputils
 import sap_graph_manager as gm
 from sap_graph_manager import SlaveError

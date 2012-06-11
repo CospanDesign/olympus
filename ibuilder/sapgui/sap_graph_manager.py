@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import networkx as nx
-import sapfile
 from saperror import SlaveError
 
 class NodeError(Exception):
