@@ -117,10 +117,12 @@ class UTest(unittest.TestCase):
     slave1 = mock.Mock()
     slave3 = mock.Mock()
     slave2 = mock.Mock()
+
     slave0.unique_name = 'slavename0'
     slave1.unique_name = 'slavename1'
     slave2.unique_name = 'slavename2'
     slave3.unique_name = 'slavename3'
+
     slave0.binding = {'s2': 'even', 's3': 'odd'}
     slave1.binding = {'s4': 'even', 's5': 'odd'}
     slave2.binding = {'s6': 'even', 's7': 'odd'}

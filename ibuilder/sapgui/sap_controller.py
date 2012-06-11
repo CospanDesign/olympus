@@ -2,6 +2,10 @@
 import os
 import sys
 import json
+
+sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir))
+sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir, 'saplib'))
+
 from saplib import saplib
 import sapfile
 import saputils
@@ -616,7 +620,7 @@ class SapController:
     hi = self.sgm.get_node(hi_name)
     return hi.parameters["module"]
 
-  def get_slave_name(self,  slave_type, slave_index):
+  def get_slave_name(self, slave_type, slave_index):
     s_name = self.sgm.get_slave_name_at(slave_index, slave_type)
     slave = self.sgm.get_node(s_name)
     return slave.name
@@ -785,10 +789,10 @@ class SapController:
     return
 
   def move_slave(self, slave_name = None,
-                from_slave_type = SlaveType.PERIPHERAL,
-                from_slave_index = 0,
-                to_slave_type = SlaveType.PERIPHERAL,
-                to_slave_index = 0):
+                 from_slave_type = SlaveType.PERIPHERAL,
+                 from_slave_index = 0,
+                 to_slave_type = SlaveType.PERIPHERAL,
+                 to_slave_index = 0):
     """Move slave from one place to another, the slave can be moved from one
     bus to another and the index position can be moved."""
     if to_slave_type == SlaveType.PERIPHERAL and to_slave_index == 0:
