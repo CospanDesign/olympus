@@ -39,9 +39,9 @@ def usage():
 	print "\t--size\t\t\t: Size of the slave in memory (Hexidecimal number)"
 	print ""
 	print "Setting the DRT meta data manually"
-	print "in the generated file set the 3 variables requred by sycamore"
+	print "in the generated file set the 3 variables requred by olympus"
 	print "DRT_ID: the identification number of the slave device see"
-	print "\t<sycamore base>/miracle_grow/rtl/wishbone/slave/device_rom_table/drt.txt"
+	print "\t<olympus base>/cbuilder/rtl/wishbone/slave/device_rom_table/drt.txt"
 	print "\tfor ID numbers, and their meaning"
 	print "DRT_FLAGS: the flags that help identify how the slave should be used"
 	print "\tsee drt.txt for more info"
@@ -52,8 +52,8 @@ def usage():
 	print "generate_slave.py --id=1 --flags=1 --size=3 gpio"
 	print ""
 	print "\tgenerate two folders:"
-	print "\tthe actual slave folder: <sycamore>/miracle_grow/rtl/wishbone/slave/gpio"
-	print "\tsimulation/test folder: <sycamore>/miralce_grow/sim/wishbone/slave/gpio"
+	print "\tthe actual slave folder: <olympus>/cbuilder/rtl/wishbone/slave/gpio"
+	print "\tsimulation/test folder: <olympus>/cbuilder/sim/wishbone/slave/gpio"
 	print "\tslave name: gpio"
 	print "\tDRT_ID: 1"
 	print "\tDRT_FLAGS: 1"
@@ -92,7 +92,7 @@ def remove_slave_dir(mg_path = "", slavename = ""):
 	
 
 if __name__=="__main__":
-	#assume we are in <sycamore>/miracle_grow/scripts
+	#assume we are in <olympus>/cbuilder/scripts
 	global _verbose 
 	global _debug
 	global _kill
