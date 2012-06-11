@@ -18,8 +18,8 @@ from sap_graph_manager import NodeType
 class UTest(unittest.TestCase):
   '''Unit tests for sap_controller.py'''
 
-  # Copied from saplib/example_project/gpio_example.json
-  DUMMY_CONFIG = {
+  # Data found in saplib/example_project/gpio_example.json
+  EXAMPLE_CONFIG = {
     "BASE_DIR": "~/projects/sycamore_projects",
     "board": "xilinx-s3esk",
     "PROJECT_NAME": "example_project",
@@ -56,7 +56,7 @@ class UTest(unittest.TestCase):
     "constraint_files": []
   }
 
-  # Copied from saplib/hdl/boards/xilinx-s3esk/config.json
+  # Data found in saplib/hdl/boards/xilinx-s3esk/config.json
   BOARD_CONFIG = {
     "board_name": "Spartan 3 Starter Board",
     "vendor": "Digilent",
@@ -69,9 +69,11 @@ class UTest(unittest.TestCase):
   }
 
   def setUp(self):
+    '''Creates a new SapController for each test.'''
     self.sc = sc.SapController()
 
   def test_load_config_file(self):
+    '''Loads the config file and compares it to EXAMPLE_CONFIG.'''
     # Set up the object so that we test only this function.
     self.sc.get_board_config = (lambda x: self.BOARD_CONFIG)
     self.sc.get_project_constraint_files = (
@@ -85,18 +87,26 @@ class UTest(unittest.TestCase):
         '(re-checkout from the git repos if necessary)')
 
     # Check that the state of the controller is as it should be.
-    self.assertEqual(self.sc.project_tags, self.DUMMY_CONFIG)
+    self.assertEqual(self.sc.project_tags, self.EXAMPLE_CONFIG)
     self.assertEqual(self.sc.filename, fname)
     self.assertEqual(self.sc.build_tool, {})
     self.assertEqual(self.sc.board_dict, self.BOARD_CONFIG)
 
-  def test_load_config_file_raises_ioerror(self):
+  def test_load_config_file_raises_typeerror_on_none(self):
+    '''Tests that load_config_file raises an TypeError when passed None.'''
+    self.assertRaises(TypeError, self.sc.load_config_file, None)
+
+  def test_load_config_file_raises_ioerror_on_dne(self):
+    '''Tests that load_config_file raises an IOError when the file does not
+    exist.'''
     self.assertRaises(IOError, self.sc.load_config_file,
         os.path.join('foo', 'bar', 'baz'))
 
   def test_get_master_bind_dict(self):
+    '''Tests get_master_bind_dict against a bunch of fake data.'''
+
     # Fake loading the config file.
-    self.sc.project_tags = self.DUMMY_CONFIG
+    self.sc.project_tags = self.EXAMPLE_CONFIG
 
     # Some mock objects to create mock methods with.
     hi = mock.Mock()
@@ -157,6 +167,7 @@ class UTest(unittest.TestCase):
       self.assertEqual(v, bind_dict[k])
     for k,v in slave3.binding.iteritems():
       self.assertEqual(v, bind_dict[k])
+
 
 
 class IntTest(unittest.TestCase):
@@ -283,10 +294,10 @@ class IntTest(unittest.TestCase):
     self.sc.load_config_file(file_name)
     self.sc.initialize_graph()
 
-    self.sc.add_slave("mem1", file_name, sc.Slave_Type.memory)
+    self.sc.add_slave("mem1", file_name, SlaveType.MEMORY)
 
-    p_count = self.sc.get_number_of_slaves(sc.Slave_Type.peripheral)
-    m_count = self.sc.get_number_of_slaves(sc.Slave_Type.memory)
+    p_count = self.sc.get_number_of_slaves(SlaveType.PERIPHERAL)
+    m_count = self.sc.get_number_of_slaves(SlaveType.MEMORY)
     self.assertEqual(p_count, 2)
     self.assertEqual(m_count, 1)
 
@@ -298,9 +309,9 @@ class IntTest(unittest.TestCase):
 
     # Attach the second arbitrator.
     filename = saputils.find_rtl_file_location("tft.v")
-    slave_name = self.sc.add_slave("tft1", filename, sc.Slave_Type.peripheral)
+    slave_name = self.sc.add_slave("tft1", filename, SlaveType.PERIPHERAL)
 
-    host_name = self.sc.sgm.get_slave_name_at(sc.Slave_Type.peripheral, 1)
+    host_name = self.sc.sgm.get_slave_name_at(SlaveType.PERIPHERAL, 1)
     arb_master = "lcd"
 
     self.sc.add_arbitrator_by_name(host_name, arb_master, slave_name)
@@ -354,9 +365,9 @@ class IntTest(unittest.TestCase):
 
     filename = saputils.find_rtl_file_location("wb_console.v")
 
-    self.sc.rename_slave(sc.Slave_Type.peripheral, 1, "name1")
+    self.sc.rename_slave(SlaveType.PERIPHERAL, 1, "name1")
 
-    name = self.sc.get_slave_name(sc.Slave_Type.peripheral, 1)
+    name = self.sc.get_slave_name(SlaveType.PERIPHERAL, 1)
 
     self.assertEqual(name, "name1")
 
@@ -365,10 +376,10 @@ class IntTest(unittest.TestCase):
     self.sc.load_config_file(file_name)
     self.sc.initialize_graph()
 
-    self.sc.add_slave("mem1", None, sc.Slave_Type.memory)
+    self.sc.add_slave("mem1", None, SlaveType.MEMORY)
 
-    p_count = self.sc.get_number_of_slaves(sc.Slave_Type.peripheral)
-    m_count = self.sc.get_number_of_slaves(sc.Slave_Type.memory)
+    p_count = self.sc.get_number_of_slaves(SlaveType.PERIPHERAL)
+    m_count = self.sc.get_number_of_slaves(SlaveType.MEMORY)
     self.assertEqual(p_count, 2)
     self.assertEqual(m_count, 1)
 
@@ -377,8 +388,8 @@ class IntTest(unittest.TestCase):
     self.sc.load_config_file(file_name)
     self.sc.initialize_graph()
 
-    self.sc.remove_slave(sc.Slave_Type.peripheral, 1)
-    p_count = self.sc.get_number_of_slaves(sc.Slave_Type.peripheral)
+    self.sc.remove_slave(SlaveType.PERIPHERAL, 1)
+    p_count = self.sc.get_number_of_slaves(SlaveType.PERIPHERAL)
     self.assertEqual(p_count, 1)
 
   def test_move_slave_in_peripheral_bus(self):
@@ -387,14 +398,14 @@ class IntTest(unittest.TestCase):
     self.sc.initialize_graph()
     filename = saputils.find_rtl_file_location("wb_console.v")
 
-    self.sc.add_slave("test", filename, sc.Slave_Type.peripheral)
+    self.sc.add_slave("test", filename, SlaveType.PERIPHERAL)
 
-    name1 = self.sc.get_slave_name(sc.Slave_Type.peripheral, 2)
+    name1 = self.sc.get_slave_name(SlaveType.PERIPHERAL, 2)
     self.sc.move_slave("test",
-                       sc.Slave_Type.peripheral, 2,
-                       sc.Slave_Type.peripheral, 1)
+                       SlaveType.PERIPHERAL, 2,
+                       SlaveType.PERIPHERAL, 1)
 
-    name2 = self.sc.get_slave_name(sc.Slave_Type.peripheral, 1)
+    name2 = self.sc.get_slave_name(SlaveType.PERIPHERAL, 1)
     self.assertEqual(name1, name2)
 
   def test_move_slave_in_memory_bus(self):
@@ -403,17 +414,17 @@ class IntTest(unittest.TestCase):
     self.sc.initialize_graph()
 
     filename = saputils.find_rtl_file_location("wb_console.v")
-    self.sc.add_slave("test1", filename, sc.Slave_Type.memory)
-    self.sc.add_slave("test2", filename, sc.Slave_Type.memory)
+    self.sc.add_slave("test1", filename, SlaveType.MEMORY)
+    self.sc.add_slave("test2", filename, SlaveType.MEMORY)
 
-    m_count = self.sc.get_number_of_slaves(sc.Slave_Type.memory)
+    m_count = self.sc.get_number_of_slaves(SlaveType.MEMORY)
 
-    name1 = self.sc.get_slave_name(sc.Slave_Type.memory, 0)
+    name1 = self.sc.get_slave_name(SlaveType.MEMORY, 0)
     self.sc.move_slave("test1",
-                       sc.Slave_Type.memory, 0,
-                       sc.Slave_Type.memory, 1)
+                       SlaveType.MEMORY, 0,
+                       SlaveType.MEMORY, 1)
 
-    name2 = self.sc.get_slave_name(sc.Slave_Type.memory, 1)
+    name2 = self.sc.get_slave_name(SlaveType.MEMORY, 1)
     self.assertEqual(name1, name2)
 
   def test_move_slave_between_bus(self):
@@ -422,14 +433,14 @@ class IntTest(unittest.TestCase):
     self.sc.initialize_graph()
     filename = saputils.find_rtl_file_location("wb_console.v")
 
-    self.sc.add_slave("test", filename, sc.Slave_Type.peripheral)
+    self.sc.add_slave("test", filename, SlaveType.PERIPHERAL)
 
-    name1 = self.sc.get_slave_name(sc.Slave_Type.peripheral, 2)
+    name1 = self.sc.get_slave_name(SlaveType.PERIPHERAL, 2)
     self.sc.move_slave("test",
-                       sc.Slave_Type.peripheral, 2,
-                       sc.Slave_Type.memory, 0)
+                       SlaveType.PERIPHERAL, 2,
+                       SlaveType.MEMORY, 0)
 
-    name2 = self.sc.get_slave_name(sc.Slave_Type.memory, 0)
+    name2 = self.sc.get_slave_name(SlaveType.MEMORY, 0)
     self.assertEqual(name1, name2)
 
   def test_arbitration(self):
@@ -438,8 +449,8 @@ class IntTest(unittest.TestCase):
     self.sc.initialize_graph()
 
     # TODO Test if the arbitrator can be removed
-    p_count = self.sc.get_number_of_slaves(sc.Slave_Type.peripheral)
-    m_count = self.sc.get_number_of_slaves(sc.Slave_Type.memory)
+    p_count = self.sc.get_number_of_slaves(SlaveType.PERIPHERAL)
+    m_count = self.sc.get_number_of_slaves(SlaveType.MEMORY)
 
     arb_host = ""
     arb_slave = ""
@@ -449,21 +460,21 @@ class IntTest(unittest.TestCase):
 #    self.dbg = True
 
     for i in xrange(p_count):
-      name1 = self.sc.get_slave_name(sc.Slave_Type.peripheral, i)
+      name1 = self.sc.get_slave_name(SlaveType.PERIPHERAL, i)
       if self.dbg:
         print "testing %s for arbitration..." % (name1)
-      if self.sc.is_active_arbitrator_host(sc.Slave_Type.peripheral, i):
+      if self.sc.is_active_arbitrator_host(SlaveType.PERIPHERAL, i):
         arb_host = name1
-        a_dict = self.sc.get_arbitrator_dict(sc.Slave_Type.peripheral, i)
+        a_dict = self.sc.get_arbitrator_dict(SlaveType.PERIPHERAL, i)
         for key in a_dict.keys():
           bus_name = key
           arb_slave = a_dict[key]
 
     for i in xrange(m_count):
-      name1 = self.sc.get_slave_name(sc.Slave_Type.memory, i)
-      if self.sc.is_active_arbitrator_host(sc.Slave_Type.memory, i):
+      name1 = self.sc.get_slave_name(SlaveType.MEMORY, i)
+      if self.sc.is_active_arbitrator_host(SlaveType.MEMORY, i):
         arb_host = name1
-        a_dict = self.sc.get_arbitrator_dict(sc.Slave_Type.memory, i)
+        a_dict = self.sc.get_arbitrator_dict(SlaveType.MEMORY, i)
         for key in a_dict.keys():
           bus_name = key
           arb_slave = a_dict[key]
@@ -483,8 +494,8 @@ class IntTest(unittest.TestCase):
     self.sc.initialize_graph()
 
     # TODO Test if the arbitrator can be removed
-    p_count = self.sc.get_number_of_slaves(sc.Slave_Type.peripheral)
-    m_count = self.sc.get_number_of_slaves(sc.Slave_Type.memory)
+    p_count = self.sc.get_number_of_slaves(SlaveType.PERIPHERAL)
+    m_count = self.sc.get_number_of_slaves(SlaveType.MEMORY)
 
     arb_host = ""
     arb_slave = ""
@@ -495,23 +506,23 @@ class IntTest(unittest.TestCase):
 #    self.dbg = True
 
     for i in xrange(p_count):
-      name1 = self.sc.get_slave_name(sc.Slave_Type.peripheral, i)
+      name1 = self.sc.get_slave_name(SlaveType.PERIPHERAL, i)
       if self.dbg:
         print "testing %s for arbitration..." % (name1)
-      if self.sc.is_active_arbitrator_host(sc.Slave_Type.peripheral, i):
+      if self.sc.is_active_arbitrator_host(SlaveType.PERIPHERAL, i):
         arb_host = name1
-        host_name = self.sc.sgm.get_slave_at(sc.Slave_Type.peripheral, i).unique_name
-        a_dict = self.sc.get_arbitrator_dict(sc.Slave_Type.peripheral, i)
+        host_name = self.sc.sgm.get_slave_at(SlaveType.PERIPHERAL, i).unique_name
+        a_dict = self.sc.get_arbitrator_dict(SlaveType.PERIPHERAL, i)
         for key in a_dict.keys():
           bus_name = key
           arb_slave = a_dict[key]
 
     for i in xrange(m_count):
-      name1 = self.sc.get_slave_name(sc.Slave_Type.memory, i)
-      if self.sc.is_active_arbitrator_host(sc.Slave_Type.memory, i):
-        host_name = self.sc.sgm.get_slave_at(sc.Slave_Type.peripheral, i).unique_name
+      name1 = self.sc.get_slave_name(SlaveType.MEMORY, i)
+      if self.sc.is_active_arbitrator_host(SlaveType.MEMORY, i):
+        host_name = self.sc.sgm.get_slave_at(SlaveType.PERIPHERAL, i).unique_name
         arb_host = name1
-        a_dict = self.sc.get_arbitrator_dict(sc.Slave_Type.memory, i)
+        a_dict = self.sc.get_arbitrator_dict(SlaveType.MEMORY, i)
         for key in a_dict.keys():
           bus_name = key
           arb_slave = a_dict[key]
@@ -531,8 +542,8 @@ class IntTest(unittest.TestCase):
     self.sc.initialize_graph()
 
     # TODO Test if the arbitrator can be removed
-    p_count = self.sc.get_number_of_slaves(sc.Slave_Type.peripheral)
-    m_count = self.sc.get_number_of_slaves(sc.Slave_Type.memory)
+    p_count = self.sc.get_number_of_slaves(SlaveType.PERIPHERAL)
+    m_count = self.sc.get_number_of_slaves(SlaveType.MEMORY)
 
     arb_host = ""
     arb_slave = ""
@@ -543,23 +554,23 @@ class IntTest(unittest.TestCase):
 #    self.dbg = True
 
     for i in xrange(p_count):
-      name1 = self.sc.get_slave_name(sc.Slave_Type.peripheral, i)
+      name1 = self.sc.get_slave_name(SlaveType.PERIPHERAL, i)
       if self.dbg:
         print "testing %s for arbitration..." % (name1)
-      if self.sc.is_active_arbitrator_host(sc.Slave_Type.peripheral, i):
+      if self.sc.is_active_arbitrator_host(SlaveType.PERIPHERAL, i):
         arb_host = name1
-        host_name = self.sc.sgm.get_slave_at(sc.Slave_Type.peripheral, i).unique_name
-        a_dict = self.sc.get_arbitrator_dict(sc.Slave_Type.peripheral, i)
+        host_name = self.sc.sgm.get_slave_at(SlaveType.PERIPHERAL, i).unique_name
+        a_dict = self.sc.get_arbitrator_dict(SlaveType.PERIPHERAL, i)
         for key in a_dict.keys():
           bus_name = key
           arb_slave = a_dict[key]
 
     for i in xrange(m_count):
-      name1 = self.sc.get_slave_name(sc.Slave_Type.memory, i)
-      if self.sc.is_active_arbitrator_host(sc.Slave_Type.memory, i):
-        host_name = self.sc.sgm.get_slave_at(sc.Slave_Type.peripheral, i).unique_name
+      name1 = self.sc.get_slave_name(SlaveType.MEMORY, i)
+      if self.sc.is_active_arbitrator_host(SlaveType.MEMORY, i):
+        host_name = self.sc.sgm.get_slave_at(SlaveType.PERIPHERAL, i).unique_name
         arb_host = name1
-        a_dict = self.sc.get_arbitrator_dict(sc.Slave_Type.memory, i)
+        a_dict = self.sc.get_arbitrator_dict(SlaveType.MEMORY, i)
         for key in a_dict.keys():
           bus_name = key
           arb_slave = a_dict[key]
