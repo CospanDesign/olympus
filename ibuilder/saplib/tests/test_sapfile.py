@@ -156,14 +156,14 @@ class Test (unittest.TestCase):
     #self.assertEqual(result, True)
     #harder dependency
     filename = "wb_sdram.v"
-    result = self.sapfile.resolve_dependencies(filename, debug = self.dbg)
+    self.sapfile.resolve_dependencies(filename, debug = self.dbg)
     #print "\n\n\n\n"
     #print "dependency for " + filename
-    for d in self.sapfile.verilog_dependency_list:
-      print d
+#    for d in self.sapfile.verilog_dependency_list:
+#      print d
     #print "\n\n\n\n"
+    self.assertNotEqual(len (self.sapfile.verilog_dependency_list), 0)
 
-    self.assertEqual(result, True)
 
 
 if __name__ == "__main__":

@@ -283,11 +283,22 @@ class SapFile:
           self.verilog_dependency_list.append(f)
 
   def resolve_dependencies(self, filename, debug = True):
-    """
+    """resolve_dependencies
+
     given a filename determine if there are any modules it depends on,
     recursively search for any files found in order to extrapolate all
     dependencies
+
+    Args:
+      filename: The filename to resolve dependencies for
+
+    Return:
+      Nothing
+
+    Raises:
+      ModuleFactoryError
     """
+
     result = True
     ldebug = debug
     if debug:
@@ -311,19 +322,12 @@ class SapFile:
           print "\tA module that was not found"
           continue
 
-#        if (len(dep_filename) == 0):
-#          if debug:
-#            print "Couldn't find dependency filename for module " + d
-#          continue
-#        else :
         if debug:
           print "found the filename: " + dep_filename
         #check this file out for dependecies, then append that on to the local list
-        result = self.resolve_dependencies(dep_filename, debug = ldebug)
+        self.resolve_dependencies(dep_filename, debug = ldebug)
         if debug:
-          if result == True:
-            if debug:
-              print "found all sub dependencies for: " + dep_filename
+          print "found all sub dependencies for: " + dep_filename
         local_file_list.append(dep_filename)
 
     #go through the local file list and add anything found to the list of dependencies or verilog files
@@ -335,10 +339,23 @@ class SapFile:
           print "found dependency: " + f
         self.verilog_dependency_list.append(f)
 
-    return result
+    return
 
   def has_dependencies(self, filename, debug = False):
-    """look in a verilog module, and search for anything that requires a depency, return true if found"""
+    """has_dependencies
+
+    returns true if the file specified has dependencies
+
+    Args:
+      filename: search for dependencies with this filename
+
+    Return:
+      True: The file has dependencies.
+      False: The file doesn't have dependencies
+
+    Raises:
+      IOError
+    """
 
     if debug:
       print "input file: " + filename
@@ -388,6 +405,19 @@ class SapFile:
     return False
 
   def get_list_of_dependencies(self, filename, debug=False):
+    """get_list_of_dependencies
+
+    return a list of the files that this file depends on
+
+    Args:
+      filename: the name of the file to analyze
+
+    Return:
+      A list of files that specify the dependenies
+
+    Raises:
+      IOError
+    """
     deps = []
     if debug:
       print "input file: " + filename
@@ -413,9 +443,7 @@ class SapFile:
         fbuf = filein.read()
         filein.close()
       except IOError as err_int:
-        #if debug:
-        #  print "couldn't find file in the RTL directory"
-        return False
+        ModuleFactoryError("Couldn't find file %s in the RTL directory" % filename)
 
 
     #we have an open file!
