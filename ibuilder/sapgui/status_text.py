@@ -6,7 +6,7 @@ _buffer = None
 
 class StatusText:
   def __init__(self, status_view = None):
-    print "entered status text init"
+#    print "entered status text init"
 #    if _sv is not None:
 #      return
     if status_view is None:

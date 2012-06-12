@@ -258,7 +258,7 @@ class IntTest(unittest.TestCase):
 #    self.sc.set_constraint_file_name("bored of writing unit tests")
     result = self.sc.get_constraint_file_names()
 
-    self.assertEqual(result[0], "s3esk_sycamore.ucf")
+    self.assertIn("s3esk_sycamore.ucf", result)
 
   def test_add_remove_constraint(self):
     file_name = os.getenv("SAPLIB_BASE") + "/example_project/gpio_example.json"
