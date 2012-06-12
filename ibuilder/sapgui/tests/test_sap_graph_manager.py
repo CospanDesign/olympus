@@ -166,7 +166,7 @@ class Test (unittest.TestCase):
     if self.dbg:
       print "generating host interface node"
 
-    self.sgm.add_node("uart", gm.NodeType.HOST_INTERFACE)
+    self.sgm.add_node("uart", gm.NodeType.host_interface)
     # Get the size of the graph.
     size = self.sgm.get_size()
     if self.dbg:
@@ -204,8 +204,8 @@ class Test (unittest.TestCase):
   def test_graph_remove_node(self):
     if self.dbg:
       print "adding two nodes"
-    self.sgm.add_node("uart", gm.NodeType.HOST_INTERFACE)
-    self.sgm.add_node("master", gm.NodeType.MASTER)
+    self.sgm.add_node("uart", gm.NodeType.host_interface)
+    self.sgm.add_node("master", gm.NodeType.master)
 
     size = self.sgm.get_size()
     if self.dbg:
@@ -214,7 +214,7 @@ class Test (unittest.TestCase):
     self.assertEqual(size, 2)
 
     # Remove the uart node.
-    unique_name = gm.get_unique_name("uart", gm.NodeType.HOST_INTERFACE)
+    unique_name = gm.get_unique_name("uart", gm.NodeType.host_interface)
 
     self.sgm.remove_node(unique_name)
 
@@ -384,8 +384,8 @@ class Test (unittest.TestCase):
     self.assertEqual(parameters["module"], "uart_io_handler")
 
 #  def test_bind_pin_to_port(self):
-#    self.sgm.add_node("uart", gm.NodeType.HOST_INTERFACE)
-#    uart_name = gm.get_unique_name("uart", gm.NodeType.HOST_INTERFACE)
+#    self.sgm.add_node("uart", gm.NodeType.host_interface)
+#    uart_name = gm.get_unique_name("uart", gm.NodeType.host_interface)
 #
 #    file_name = os.getenv("SAPLIB_BASE") +
 #                "/hdl/rtl/wishbone/host_interface/uart/uart_io_handler.v"
@@ -403,15 +403,15 @@ class Test (unittest.TestCase):
 
   def test_move_peripheral_slave(self):
     self.sgm.add_node("slave_1",
-                      gm.NodeType.SLAVE,
+                      gm.NodeType.slave,
                       gm.SlaveType.PERIPHERAL,
                       debug = self.dbg)
     self.sgm.add_node("slave_2",
-                      gm.NodeType.SLAVE,
+                      gm.NodeType.slave,
                       gm.SlaveType.PERIPHERAL,
                       debug = self.dbg)
     self.sgm.add_node("slave_3",
-                      gm.NodeType.SLAVE,
+                      gm.NodeType.slave,
                       gm.SlaveType.PERIPHERAL,
                       debug = self.dbg)
 
@@ -421,7 +421,7 @@ class Test (unittest.TestCase):
     self.sgm.move_slave(2, 1, gm.SlaveType.PERIPHERAL)
 
     s3_name = gm.get_unique_name("slave_3",
-                                 gm.NodeType.SLAVE,
+                                 gm.NodeType.slave,
                                  gm.SlaveType.PERIPHERAL,
                                  slave_index = 1)
 
@@ -436,47 +436,47 @@ class Test (unittest.TestCase):
 
   def test_move_memory_slave(self):
     self.sgm.add_node("slave_1",
-                      gm.NodeType.SLAVE,
-                      gm.SlaveType.MEMORY,
+                      gm.NodeType.slave,
+                      gm.SlaveType.memory,
                       debug = self.dbg)
     self.sgm.add_node("slave_2",
-                      gm.NodeType.SLAVE,
-                      gm.SlaveType.MEMORY,
+                      gm.NodeType.slave,
+                      gm.SlaveType.memory,
                       debug = self.dbg)
     self.sgm.add_node("slave_3",
-                      gm.NodeType.SLAVE,
-                      gm.SlaveType.MEMORY,
+                      gm.NodeType.slave,
+                      gm.SlaveType.memory,
                       debug = self.dbg)
 
     if self.dbg:
       count = self.sgm.get_number_of_memory_slaves()
       print "Number of slaves: %d" % (count)
 
-    result = self.sgm.move_slave(2, 1, gm.SlaveType.MEMORY)
+    result = self.sgm.move_slave(2, 1, gm.SlaveType.memory)
 
     s3_name = gm.get_unique_name("slave_3",
-                                 gm.NodeType.SLAVE,
-                                 gm.SlaveType.MEMORY,
+                                 gm.NodeType.slave,
+                                 gm.SlaveType.memory,
                                  slave_index = 1)
 
     node = self.sgm.get_node(s3_name)
 
   def test_get_slave_at(self):
     self.sgm.add_node("slave_1",
-                      gm.NodeType.SLAVE,
+                      gm.NodeType.slave,
                       gm.SlaveType.PERIPHERAL,
                       debug = self.dbg)
     self.sgm.add_node("slave_2",
-                      gm.NodeType.SLAVE,
+                      gm.NodeType.slave,
                       gm.SlaveType.PERIPHERAL,
                       debug = self.dbg)
     self.sgm.add_node("slave_3",
-                      gm.NodeType.SLAVE,
+                      gm.NodeType.slave,
                       gm.SlaveType.PERIPHERAL,
                       debug = self.dbg)
 
     test_name = gm.get_unique_name("slave_2",
-                                   gm.NodeType.SLAVE,
+                                   gm.NodeType.slave,
                                    gm.SlaveType.PERIPHERAL,
                                    slave_index = 1)
     found_name = self.sgm.get_slave_name_at(1, gm.SlaveType.PERIPHERAL)
@@ -486,20 +486,20 @@ class Test (unittest.TestCase):
 
   def test_get_slave_name_at(self):
     self.sgm.add_node("slave_1",
-                      gm.NodeType.SLAVE,
+                      gm.NodeType.slave,
                       gm.SlaveType.PERIPHERAL,
                       debug = self.dbg)
     self.sgm.add_node("slave_2",
-                      gm.NodeType.SLAVE,
+                      gm.NodeType.slave,
                       gm.SlaveType.PERIPHERAL,
                       debug = self.dbg)
     self.sgm.add_node("slave_3",
-                      gm.NodeType.SLAVE,
+                      gm.NodeType.slave,
                       gm.SlaveType.PERIPHERAL,
                       debug = self.dbg)
 
     test_name = gm.get_unique_name("slave_2",
-                                   gm.NodeType.SLAVE,
+                                   gm.NodeType.slave,
                                    gm.SlaveType.PERIPHERAL,
                                    slave_index = 1)
     found_name = self.sgm.get_slave_name_at(1, gm.SlaveType.PERIPHERAL)
@@ -509,15 +509,15 @@ class Test (unittest.TestCase):
 
   def test_remove_slave(self):
     self.sgm.add_node("slave_1",
-                      gm.NodeType.SLAVE,
+                      gm.NodeType.slave,
                       gm.SlaveType.PERIPHERAL,
                       debug = self.dbg)
     self.sgm.add_node("slave_2",
-                      gm.NodeType.SLAVE,
+                      gm.NodeType.slave,
                       gm.SlaveType.PERIPHERAL,
                       debug = self.dbg)
     self.sgm.add_node("slave_3",
-                      gm.NodeType.SLAVE,
+                      gm.NodeType.slave,
                       gm.SlaveType.PERIPHERAL,
                       debug = self.dbg)
 

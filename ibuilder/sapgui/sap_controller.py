@@ -473,10 +473,9 @@ class SapController:
     if hi_name not in node_names:
       self.sgm.add_node("Host Interface", NodeType.HOST_INTERFACE)
 
-    #check if the host interface is valid
-    file_name = ""
-#XXX: This will throw an error if the module is not found
+    # Check if the host interface is valid.
     file_name = saputils.find_module_filename(host_interface_name)
+    file_name = saputils.find_rtl_file_location(file_name)
 
     # If the host interface is valid then get all the tags ...
     parameters = saputils.get_module_tags(filename = file_name,
