@@ -6,7 +6,7 @@
 import unittest
 import os
 import sys
-from pyftdi.misc import hexdump
+from pyftdi.pyftdi.misc import hexdump
 from array import array as Array
 from bitbang.bitbang import BitBangController
 import time

@@ -3,7 +3,7 @@ import os
 import sys
 from inspect import isclass
 import numonyx_flash
-from pyftdi.misc import hexdump
+from pyftdi.pyftdi.misc import hexdump
 from serialflash import SerialFlashManager
 from array import array as Array
 import time
