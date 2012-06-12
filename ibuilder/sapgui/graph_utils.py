@@ -12,7 +12,7 @@ class Icon:
     self.connected = False
     self.slave_name = ""
 
-class box:
+class Box:
   def __init__(self):
     self.x = 0.0
     self.y = 0.0
@@ -35,32 +35,30 @@ class box:
     self.y = y
     self.width = width
     self.height = height
-    #check if there is any arbitrators to modify
+    # Check if there is any arbitrators to modify
 
     self.generate_icons()
 
-
-
   def generate_icons(self, debug = False):
-    #calculate the size of the slave portion
+    # Calculate the size of the slave portion.
     self.arb_slave_width = self.width * self.arb_slave_ratio
 
-    #get the total number of arbitrators
+    # Get the total number of arbitrators.
     arb_total = len(self.arb_master.keys())
 
-    #modify any arbitrators
+    # Modify any arbitrators.
     for key in self.arb_master.keys():
       if debug:
         print "setting arbitrator size/location"
       arb = self.arb_master[key]
-      #get the position of this arbitrator in the list
+      # Get the position of this arbitrator in the list.
       arb_pos = self.arb_master.keys().index(key)
-      #calculate the width
+      # Calculate the width.
       arb.width = self.width * self.arb_master_ratio
-      #calculate the height
+      # Calculate the height.
       arb.height = self.height / arb_total
 
-      #calculate the position
+      # Calculate the position
       arb.x = self.x + self.width - arb.width
       arb.y = self.y + (arb_pos * arb.height)
 
@@ -68,8 +66,6 @@ class box:
       print "arb master: " + str(self.arb_master[name])
       print "\tConnected: " + str(self.arb_master[name].connected)
       print "\tSlave: " + str(self.arb_master[name].slave)
-
-
 
   def connect_arbitrator_master(self, name, slave_name):
     if name not in self.arb_master.keys():
@@ -81,8 +77,7 @@ class box:
 
   def get_connected_slave(self, name):
     if name not in self.arb_master.keys():
-      raise GUI_Erro("arbitrator is not in box")
-
+      raise GUI_Error("arbitrator is not in box")
     return self.arb_master[name].slave
 
   def disconnect_arbitrator_master(self, name):
@@ -100,54 +95,43 @@ class box:
     self.generate_icons()
 
   def in_bounding_box(self, x, y):
-    if   self.x <= x and x <= self.x + self.width and \
-      self.y <= y and y <= self.y + self.height:
-      return True
-
-    return False
+    return self.x <= x and x <= self.x + self.width and \
+           self.y <= y and y <= self.y + self.height
 
   def in_arb_master_icon(self, x, y):
-    """
-    check if the user selected the arbitrator master or one of the
-    arbitrator masters
-    """
+    """Check if the user selected the arbitrator master or one of the
+    arbitrator masters."""
     for key in self.arb_master.keys():
       arb = self.arb_master[key]
 #      print "working on : " + key
-      if   arb.x <= x and x <= (arb.x + arb.width) and \
-        arb.y <= y and y <= (arb.y + arb.height):
+      if arb.x <= x and x <= (arb.x + arb.width) and \
+         arb.y <= y and y <= (arb.y + arb.height):
 #        print "X: %f <= %f <= %f" % (arb.x, x, (arb.x + arb.width))
 #        print "Y: %f <= %f <= %f" % (arb.y, y, (arb.y + arb.height))
         return True
-
     return False
 
   def get_arb_master_names(self):
     return self.arb_master.keys()
 
   def get_arb_master_name(self, x, y):
-    """
-    user selected one of the arbitrator master, return the name
-    associated with the location
-    """
+    """User selected one of the arbitrator master, return the name associated
+    with the location."""
     for key in self.arb_master.keys():
       arb = self.arb_master[key]
-      if   arb.x <= x and x <= (arb.x + arb.width) and \
-        arb.y <= y and y <= (arb.y + arb.height):
+      if arb.x <= x and x <= (arb.x + arb.width) and \
+         arb.y <= y and y <= (arb.y + arb.height):
         return key
-
     return None
 
   def is_arb_master_connected(self, name):
     if name not in self.arb_master.keys():
       return None
-
     return self.arb_master[name].connected
 
   def get_name_of_connected_slave(self, name):
     if name not in self.arb_master.keys():
       return None
-
     return self.arb_master[name].slave
 
   def set_arb_slave_connected(self, connected):

@@ -1,7 +1,7 @@
 #status text box singleton
 import gtk
 
-#status view item always the same
+# Status view item always the same.
 _buffer = None
 
 class StatusText:

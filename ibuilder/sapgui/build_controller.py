@@ -7,13 +7,13 @@ import fcntl
 
 
 class BuildController(object):
+  '''Meant to manage building a project in a sub-process.'''
   def __init__(self):
+    '''Inits the build controller.'''
     self.sub = None
 
-  def run (self, command):
-    """
-    Creates a spawned process
-    """
+  def run(self, command):
+    """Generates the project in a separate process."""
 #    self.sub = subprocess.Popen(["bash", "/home/cospan/Projects/python/subprocess/demo.sh"],
 #    self.sub = subprocess.Popen(["ls", "-l"],
     args = ["bash", command]
@@ -29,18 +29,19 @@ class BuildController(object):
       print data
 
   def read(self):
-    data = None
+    '''Reads the data from the completed subprocess.'''
     try:
-      data = self.sub.stdout.readline()
+      return self.sub.stdout.readline()
     except:
       return None
-    return data
 
   def kill_child(self):
+    '''Kills project generation.'''
     print "kill child"
     self.sub.kill()
 
   def is_running(self):
+    '''Determine whether this is currently generating the project files.'''
     if self.sub is None:
       print "sub == None"
       return False
@@ -49,20 +50,21 @@ class BuildController(object):
       status = procfile.readline().split(' ')[2]
       procfile.close()
       if status == 'Z':
-        print "Zombie!"
+        print "Zombie!"  # Kill it with FIRE!
         return False
       return True
 
-    print "process file isn't found"
+    print "process file not found"
     return False
 
 if __name__ == "__main__":
+  '''Tests this class.'''
   print "starting"
   p = BuildController()
   p.run("tests/demo.sh")
   print "child process created"
   while p.is_running():
-    #data = p.sub.stdout.readlines()
+#    data = p.sub.stdout.readlines()
     data = p.read()
     if data is None:
       continue

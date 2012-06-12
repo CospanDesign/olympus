@@ -4,6 +4,7 @@ import status_text
 
 class SaveDialog:
   def __init__(self):
+    '''Inits---but does not show---a save dialog.'''
     builderfile = "save_dialog.glade"
     builder = gtk.Builder()
     builder.add_from_file(builderfile)
@@ -19,13 +20,17 @@ class SaveDialog:
     self.save_cb = None
     self.filename = ""
 
-  def set_slave_callback(self, save_cb):
+  def set_save_callback(self, save_cb):
+    '''Sets the save callback, called when the "Save" button is pressed.'''
     self.save_cb = save_cb
 
   def show(self):
+    '''Shows the save dialog.'''
     self.save_dialog.show()
 
   def on_save_clicked(self, widget):
+    '''Callback for the "Save" button being clicked; saves the configuration to
+    the file specified in by the save dialog.'''
     f = self.save_dialog.get_filenames()
     if len(f) == 0:
       self.status.print_warning(__file__, "No file selected")
@@ -38,4 +43,5 @@ class SaveDialog:
       self.save_cb(self.filename)
 
   def on_cancel_clicked(self, widget):
+    '''Callback for cancel button being clicked.  Hides the save dialog.'''
     self.save_dialog.hide()
