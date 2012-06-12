@@ -6,9 +6,9 @@
 import unittest
 import os
 import sys
-from pyftdi.misc import hexdump
+from pyftdi.pyftdi.misc import hexdump
 from array import array as Array
-from fifo import FifoController
+from fifo.fifo import FifoController
 import time
 
 

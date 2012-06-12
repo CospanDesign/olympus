@@ -2,7 +2,7 @@
 	sycamore1 FIFO controller
 """
 
-from pyftdi.ftdi import Ftdi
+from pyftdi.pyftdi.ftdi import Ftdi
 from array import array as Array
 
 

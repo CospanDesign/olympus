@@ -1,4 +1,4 @@
-import pyftdi.spi
+import pyftdi.pyftdi.spi
 from array import array as Array
 import serialflash
 import time

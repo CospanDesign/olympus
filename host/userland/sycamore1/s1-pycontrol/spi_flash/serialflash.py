@@ -28,9 +28,9 @@ import sys
 import time
 from inspect import isclass
 import inspect
-from pyftdi.ftdi import Ftdi
-from pyftdi.spi import SpiController
-from pyftdi.misc import hexdump
+from pyftdi.pyftdi.ftdi import Ftdi
+from pyftdi.pyftdi.spi import SpiController
+from pyftdi.pyftdi.misc import hexdump
 from array import array as Array
 
 

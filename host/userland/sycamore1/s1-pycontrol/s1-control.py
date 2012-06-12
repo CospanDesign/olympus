@@ -189,7 +189,7 @@ def main(argv):
 		sys.exit(1)
 
 	
-	s1 = Sycamore1(idVendor = 0x0403, idProduct = 0x6010)
+	s1 = Sycamore1(idVendor = 0x0403, idProduct = 0x8530)
 
 	opts = None
 	args = None

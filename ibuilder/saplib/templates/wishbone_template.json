@@ -3,15 +3,14 @@
 	"PROJECT_TEMPLATE":{
 		"dir":true,
 		"files": {
-			"Makefile":{},
+			"Makefile":{"location":"tool_scripts"},
 			"README":{"location":"bus", "tags":true},
 			"mg_defines.v":{"location":"hdl/rtl"},
 			"project_gen.tcl":{"location":"tool_scripts/xilinx", "gen_script":"gen_xilinx"},
 			"project_defines.v":{"location":"bus", "gen_script":"gen_project_defines"},
 			"build_scripts":{"dir":true,
 				"files":{
-					"xilinxutils.py":{"location":"."},
-					"generate_synth_drt.py":{}
+					"xilinxutils.py":{"location":"."}
 				}
 			},
 			"sim_scripts":{"dir":true,
@@ -53,7 +52,6 @@
 			},
 			"sim":{"dir":true,
 				"files":{
-					"sim_top":{},
 					"interface":{"dir":true}
 				}
 			},

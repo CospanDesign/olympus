@@ -39,6 +39,7 @@ import json
 import sapfile
 import saputils
 import saparbitrator
+from saperror import ModuleFactoryError
 
 class SapProject:
   """Generates SAP Projects"""
@@ -64,32 +65,31 @@ class SapProject:
     #this will throw a type error if there is a mistake in the JSON
     self.project_tags = json.loads(json_string)
 
-  def read_config_file(self, file_name="", debug=False):
+  def read_config_file(self, filename="", debug=False):
     """Read in a configuration file name and create a class dictionary
 
     Args:
-      file_name: the filename of the configuration file to read in
+      filename: the filename of the configuration file to read in
 
-    Returns:
+    Return:
       Nothing
 
     Raises:
       TypeError
     """
     if (debug):
-      print "File to read: " + file_name
+      print "File to read: " + filename
     json_string = ""
 #XXX: Should I allow file errors to propaget up to the user?
     try:
       #open up the specified JSON project config file
-      filein = open (file_name)
+      filein = open (filename)
       #copy it into a buffer
       json_string = filein.read()
       filein.close()
 
     except IOError as err:
-      print("File Error: " + str(err))
-      return False
+      raise IOError("Configuration file %s not found" % filename)
 
     #now we have a buffer call the read config string
     self.read_config_string(json_string)
@@ -106,16 +106,19 @@ class SapProject:
       template_file_name: the name of the template file for the
         associated bus
 
-    Returns:
+    Return:
       Nothing
 
     Raises:
       TypeError
       IOError
     """
+
+    self.template_tags = None
+
     if (debug):
       print "Debug enabled"
-#XXX:This should probably be passed to the user
+
     try:
       if (debug):
         print "attempting local"
@@ -123,15 +126,13 @@ class SapProject:
       json_string = filein.read()
       self.template_tags = json.loads(json_string)
       filein.close()
-      return True
+      return
     except IOError as err:
-      filein = None
+      pass
 
     #if the project doesn't have a .json file association
-    if (not template_file_name.endswith(".json")):
+    if (self.template_tags is None and not template_file_name.endswith(".json")):
       template_file_name = template_file_name + ".json"
-
-#XXX:This should probably be passed to the user
       try:
         if (debug):
           print "attempting local + .json"
@@ -139,30 +140,27 @@ class SapProject:
         json_string = filein.read()
         self.template_tags = json.loads(json_string)
         filein.close()
-        return True
+        return
       except IOError as err:
-        filein = None
+        pass
 
     #see if there is a environmental setting for SAPLIB_BASE
-    if (len(os.getenv("SAPLIB_BASE")) > 0):
+    if (self.template_tags is None and len(os.getenv("SAPLIB_BASE")) > 0):
       file_name = os.getenv("SAPLIB_BASE") + "/templates/" + template_file_name
-#XXX:This should probably be passed to the user
       try:
         if (debug):
           print "attempting environmental variable SAPLIB_BASE"
-          print file_name
         filein = open(file_name, "r")
         json_string = filein.read()
         self.template_tags = json.loads(json_string)
         filein.close()
-        return True
+        return
       except IOError as err:
-        filein = None
+        pass
 
     #see if the sap_location was specified
-    if (self.project_tags.has_key("sap_location")):
+    if (self.template_tags is None and self.project_tags.has_key("sap_location")):
       file_name = self.project_tags["sap_location"] + "/templates/" + template_file_name
-#XXX:This should probably be passed to the user
       try:
         if (debug):
           print "attempting to read from project tags"
@@ -170,13 +168,12 @@ class SapProject:
         json_string = filein.read()
         self.template_tags = json.loads(json_string)
         filein.close()
-        return True
+        return
       except IOError as err:
-        filein = None
+        pass
 
     #try the default location
     file_name = "../templates/" + template_file_name
-#XXX:This should probably be passed to the user
     try:
       if (debug):
         print "attemping to read from hard string"
@@ -184,11 +181,11 @@ class SapProject:
       json_string = filein.read()
       self.template_tags = json.loads(json_string)
       filein.close()
-      return True
+      return
     except IOError as err:
-      filein = None
+      pass
 
-    return False
+    raise IOError("Template file %s not found" % template_file_name)
 
   def generate_project(self, config_file_name, debug=False):
     """Generate the folders and files for the project
@@ -202,7 +199,7 @@ class SapProject:
     Args:
       config_file_name: name of the JSON configuration file
 
-    Returns:
+    Return:
       True: Success
       False: Failure
 
@@ -229,11 +226,8 @@ class SapProject:
     #extrapolate the bus template
 #XXX: Need to check all the constraint files
     self.project_tags["CLOCK_RATE"] = saputils.read_clock_rate(cfiles[0])
-    result = self.read_template(self.project_tags["TEMPLATE"])
-    if (not result):
-      if (debug):
-        print "failed to read in template file"
-      return False
+
+    self.read_template(self.project_tags["TEMPLATE"])
 
     #set all the tags within the filegen structure
     if debug:
@@ -271,9 +265,11 @@ class SapProject:
       fdict = {"location":""}
       file_dest = self.project_tags["BASE_DIR"] + "/rtl/bus/slave"
       fn = self.project_tags["SLAVES"][slave]["filename"]
-      result = self.filegen.process_file(filename = fn, file_dict = fdict, directory=file_dest)
-      if (not result):
-        print "Error: Failed to process the slave file: " + fn
+      try:
+        self.filegen.process_file(filename = fn, file_dict = fdict, directory=file_dest)
+      except ModuleFactoryError as err:
+        print "ModuleFactoryError while generating a slave: %s" % str(err) 
+
       #each slave
 
     if ("MEMORY" in self.project_tags):
@@ -281,9 +277,10 @@ class SapProject:
         fdict = {"location":""}
         file_dest = self.project_tags["BASE_DIR"] + "/rtl/bus/slave"
         fn = self.project_tags["MEMORY"][mem]["filename"]
-        result = self.filegen.process_file(filename = fn, file_dict = fdict, directory = file_dest)
-        if (not result):
-          print "Error: Failed to proecess memory file!: " + mem
+        try:
+          self.filegen.process_file(filename = fn, file_dict = fdict, directory = file_dest)
+        except ModuleFactoryError as err:
+          print "ModuleFactoryError while generating a memory slave: %s" % str(err)
 
     #Copy the user specified constraint files to the constraints directory
     for constraint_fname in cfiles:
@@ -316,17 +313,30 @@ class SapProject:
     return True
 
   def get_constraint_path (self, constraint_fname):
-    """Gets the path of the given constraint filename"""
+    """get_constraint_path
+
+    given a constraint file name determine where that constraint it
+
+    Args:
+      constraint_fname: the name of the constraint file to search for
+
+    Return:
+      path of the constraint
+
+    Raises:
+      IOError
+    """
     sap_abs_base = os.getenv("SAPLIB_BASE")
     board_name  = self.project_tags["board"]
     sap_abs_base = saputils.resolve_linux_path(sap_abs_base)
     if (exists(os.getcwd() + "/" + constraint_fname)):
       return os.getcwd() + "/" + constraint_fname
+
     #search through the board directory
     if (exists(sap_abs_base + "/hdl/boards/" + board_name + "/" + constraint_fname)):
       return sap_abs_base + "/hdl/boards/" + board_name + "/" + constraint_fname
-#XXX: This should throw an Error
-    return ""
+
+    raise IOError ("Path for the constraint file %s not found" % constraint_fname)
 
   def recursive_structure_generator(self,
                 parent_dict = {},
@@ -362,7 +372,10 @@ class SapProject:
               parent_dir = parent_dir + "/" + key)
     else:
       #print "generate the file: " + key + " at: " + parent_dir
-      self.filegen.process_file(key, parent_dict[key], parent_dir)
+      try:
+        self.filegen.process_file(key, parent_dict[key], parent_dir)
+      except ModuleFactoryError as err:
+        print "ModuleFactoryError: %s" % str(err) 
 
   def generate_arbitrators(self, debug=False):
     """Generates all the arbitrators modules from the configuration file
@@ -370,7 +383,7 @@ class SapProject:
     Searches for any required arbitrators in the configuration file.
     Then generates the required arbitrators (2 to 1, 3 to 1, etc...)
 
-    Arg:
+    Args:
       Nothing
     
     Return:

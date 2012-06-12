@@ -38,8 +38,9 @@ class Test (unittest.TestCase):
   def test_read_template(self):
     """confirm that a template file can be loaded"""
     filename = "wishbone_template"
-    result = self.project.read_template(filename, debug=self.dbg)
-    self.assertEqual(result, True)
+
+    #if there is an error while processing an error will be raised
+    self.project.read_template(filename, debug=self.dbg)
 
 #	def test_generate_project(self):
 #		"""test if a project can be generated"""
@@ -84,8 +85,9 @@ class Test (unittest.TestCase):
       self.assertEqual(True, False)
 
     #read in the template
-    result = self.project.read_template(self.project.project_tags["TEMPLATE"])
-    self.assertEqual(result, True)
+    #if there is an error an assertion will be raised
+    self.project.read_template(self.project.project_tags["TEMPLATE"])
+
     self.project.filegen.set_tags(self.project.project_tags)
     #get the clock rate from the constraint file
     board_dict = saputils.get_board_config("sycamore1")
@@ -120,8 +122,9 @@ class Test (unittest.TestCase):
       print "Error reading JSON Config File: %s" % str(err)
       self.assertEqual(True, False)
 
-    result = self.project.read_template(self.project.project_tags["TEMPLATE"])
-    self.assertEqual(result, True)
+    #this will throw an exception if something failed
+    self.project.read_template(self.project.project_tags["TEMPLATE"])
+
     board_dict = saputils.get_board_config(self.project.project_tags["board"])
     cfiles = board_dict["default_constraint_files"]
     self.project.filegen.set_tags(self.project.project_tags)
