@@ -4,6 +4,7 @@ import sys
 import json
 import mock
 
+# Append to path so imports work.
 sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir))
 sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
 sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 'saplib'))
@@ -169,6 +170,72 @@ class UTest(unittest.TestCase):
       self.assertEqual(v, bind_dict[k])
     for k,v in slave3.binding.iteritems():
       self.assertEqual(v, bind_dict[k])
+
+  def test_set_project_location(self):
+    '''Test "normal" functionality of set_project_location.'''
+    self.sc.project_tags = self.EXAMPLE_CONFIG
+    self.sc.set_project_location("p1_location")
+    self.assertEqual(self.sc.project_tags['BASE_DIR'], "p1_location")
+
+  def test_set_project_location_none(self):
+    '''Test "None" passed to set_project_location.'''
+    self.sc.project_tags = self.EXAMPLE_CONFIG
+    self.sc.set_project_location(None)
+    self.assertEqual(self.sc.project_tags['BASE_DIR'], None)
+
+  def test_set_project_location_empty_str(self):
+    '''Test "" passed to set_project_location.'''
+    self.sc.project_tags = self.EXAMPLE_CONFIG
+    self.sc.set_project_location('')
+    self.assertEqual(self.sc.project_tags['BASE_DIR'], '')
+
+  def test_get_project_location(self):
+    '''Test "normal" functionality of get_project_location.'''
+    self.sc.project_tags = { 'BASE_DIR': 'p1_location' }
+    self.assertEqual(self.sc.get_project_location(), "p1_location")
+
+  def test_get_project_location_none(self):
+    '''Test "normal" functionality of get_project_location.'''
+    self.sc.project_tags = { 'BASE_DIR': None }
+    self.assertEqual(self.sc.get_project_location(), None)
+
+  def test_get_project_location_empty_str(self):
+    '''Test "normal" functionality of get_project_location.'''
+    self.sc.project_tags = { 'BASE_DIR': '' }
+    self.assertEqual(self.sc.get_project_location(), "")
+
+  def test_set_project_name(self):
+    '''Test "normal" functionality of set_project_name.'''
+    self.sc.project_tags = self.EXAMPLE_CONFIG
+    self.sc.set_project_name("p1_name")
+    self.assertEqual(self.sc.project_tags['PROJECT_NAME'], "p1_name")
+
+  def test_set_project_name_none(self):
+    '''Test "None" passed to set_project_name.'''
+    self.sc.project_tags = self.EXAMPLE_CONFIG
+    self.sc.set_project_name(None)
+    self.assertEqual(self.sc.project_tags['PROJECT_NAME'], None)
+
+  def test_set_project_name_empty_str(self):
+    '''Test "" passed to set_project_name.'''
+    self.sc.project_tags = self.EXAMPLE_CONFIG
+    self.sc.set_project_name('')
+    self.assertEqual(self.sc.project_tags['PROJECT_NAME'], '')
+
+  def test_get_project_name(self):
+    '''Test "normal" functionality of get_project_name.'''
+    self.sc.project_tags = { 'PROJECT_NAME': 'p1_name' }
+    self.assertEqual(self.sc.get_project_name(), "p1_name")
+
+  def test_get_project_name_none(self):
+    '''Test "normal" functionality of get_project_name.'''
+    self.sc.project_tags = { 'PROJECT_NAME': None }
+    self.assertEqual(self.sc.get_project_name(), None)
+
+  def test_get_project_name_empty_str(self):
+    '''Test "normal" functionality of get_project_name.'''
+    self.sc.project_tags = { 'PROJECT_NAME': '' }
+    self.assertEqual(self.sc.get_project_name(), "")
 
 
 
