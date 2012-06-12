@@ -258,7 +258,7 @@ class IntTest(unittest.TestCase):
 #    self.sc.set_constraint_file_name("bored of writing unit tests")
     result = self.sc.get_constraint_file_names()
 
-    self.assertEqual(result[0], "s3esk_sycamore.ucf")
+    self.assertIn("s3esk_sycamore.ucf", result)
 
   def test_add_remove_constraint(self):
     file_name = os.getenv("SAPLIB_BASE") + "/example_project/gpio_example.json"
@@ -267,8 +267,6 @@ class IntTest(unittest.TestCase):
     result = self.sc.get_project_constraint_files()
     self.assertIn("test file", result)
     self.sc.remove_project_constraint_file("test file")
-
-<<<<<<< HEAD
 
 class Test (unittest.TestCase):
   """Unit test for gen_drt.py"""
@@ -419,7 +417,6 @@ class Test (unittest.TestCase):
     slave_name = self.sc.add_slave( "tft1",
                     filename,
                     sc.Slave_Type.peripheral)
-=======
     result = self.sc.get_project_constraint_files()
     self.assertNotIn("test file", result)
 
@@ -430,7 +427,6 @@ class Test (unittest.TestCase):
 #    self.sc.set_fpga_part_number("bored of writing unit tests")
 #    result = self.sc.get_fpga_part_number()
 #    self.assertEqual(result, "bored of writing unit tests")
->>>>>>> gui-tests
 
   def test_initialize_graph(self):
     #load a file
@@ -440,7 +436,6 @@ class Test (unittest.TestCase):
 
     slave_count = self.sc.get_number_of_peripheral_slaves()
 
-<<<<<<< HEAD
     host_name = self.sc.sgm.get_slave_name_at(sc.Slave_Type.peripheral, 1)
     arb_master = "lcd"
 
@@ -473,7 +468,6 @@ class Test (unittest.TestCase):
 
     home_dir = saputils.resolve_linux_path("~")
     self.sc.save_config_file(home_dir + "/arb_test_out.json")
-=======
     self.assertEqual(slave_count, 2)
 
   def test_get_number_of_slaves(self):
@@ -506,27 +500,22 @@ class Test (unittest.TestCase):
 
     # Add a binding for the tft screen.
     self.sc.set_binding(slave_name, "data_en", "lcd_e")
->>>>>>> gui-tests
 
     # Now we have something sigificantly different than what was loaded in.
     self.sc.set_project_name("arbitrator_project")
     self.sc.apply_slave_tags_to_project()
     pt = self.sc.project_tags
 
-<<<<<<< HEAD
   def test_set_host_interface(self):
     file_name = os.getenv("SAPLIB_BASE") + "/example_project/gpio_example.json" 
     self.sc.load_config_file(file_name)
     self.sc.initialize_graph()
-=======
     # Check to see if the new slave took.
     self.assertIn("tft1", pt["SLAVES"].keys())
->>>>>>> gui-tests
 
     # Check to see if the arbitrator was set up.
     self.assertIn("lcd", pt["SLAVES"]["console"]["BUS"].keys())
 
-<<<<<<< HEAD
     self.sc.set_host_interface("ft_host_interface")
     name = self.sc.get_host_interface_name()
     
@@ -555,7 +544,6 @@ class Test (unittest.TestCase):
 
   
     self.assertEqual(name, "name1")
-=======
     # Check to see if the arbitrator is attached to the slave.
     self.assertEqual("tft1", pt["SLAVES"]["console"]["BUS"]["lcd"])
 
@@ -583,7 +571,6 @@ class Test (unittest.TestCase):
     bus_name = self.sc.get_bus_type()
 
     self.assertEqual(bus_name, "wishbone")
->>>>>>> gui-tests
 
   def test_rename_slave(self):
     file_name = os.getenv("SAPLIB_BASE") + "/example_project/gpio_example.json"
@@ -594,7 +581,6 @@ class Test (unittest.TestCase):
 
     self.sc.rename_slave(SlaveType.PERIPHERAL, 1, "name1")
 
-<<<<<<< HEAD
   def test_add_slave(self):
     file_name = os.getenv("SAPLIB_BASE") + "/example_project/gpio_example.json" 
     self.sc.load_config_file(file_name)
@@ -861,7 +847,6 @@ class Test (unittest.TestCase):
       self.assertEqual(True, False)
 
     self.assertEqual(True, True)
-=======
     name = self.sc.get_slave_name(SlaveType.PERIPHERAL, 1)
 
     self.assertEqual(name, "name1")
@@ -907,7 +892,6 @@ class Test (unittest.TestCase):
     file_name = os.getenv("SAPLIB_BASE") + "/example_project/gpio_example.json"
     self.sc.load_config_file(file_name)
     self.sc.initialize_graph()
->>>>>>> gui-tests
 
     filename = saputils.find_rtl_file_location("wb_console.v")
     self.sc.add_slave("test1", filename, SlaveType.MEMORY)
