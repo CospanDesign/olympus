@@ -48,3 +48,15 @@ class PreProcessorError(Exception):
     self.value = value
   def __str__(self):
     return repr(self.value)
+
+class ArbitratorError(Exception):
+  """ArbitratorError
+
+  Errors associated with generatign arbitrators
+    User didn't specify the number of masters required
+  """
+  def __init__(self, value):
+    self.value = value
+  def __str__(self):
+    return repr(self.value)
+

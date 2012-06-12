@@ -1,12 +1,36 @@
-import saputils
 import os
 from string import Template
+import saputils
+from saperror import ArbitratorError
 
 
-"""Analyzes tags, generates arbitrators, sets tags to indicate connections"""
+"""Arbitrator Factory
+
+Analyzes the project tags and determine if one or many arbitrators are required
+"""
+
+__author__ = 'dave.mccoy@cospandesign.com (Dave McCoy)'
+
+"""Changes:
+  06/12/2012
+    -Added Documentation and licsense
+"""
+
+
 def get_number_of_arbitrator_hosts(module_tags = {}, debug = False):
-  """
+  """get_number_of_arbitrator_hosts
+
   returns the number of arbitrator hosts found inside the module
+
+  Args:
+    module_tags: the tags for this module
+      can be obtained with saputils.get_module_tags
+
+  Return:
+    the number of arbitrator hosts associated with this module
+
+  Raises:
+    Nothing
   """
 
   #go through all the inports and verify that after the first
@@ -65,11 +89,38 @@ def get_number_of_arbitrator_hosts(module_tags = {}, debug = False):
 
 
 def is_arbitrator_host(module_tags = {}, debug = False):
-  """determines if a slave can be an arbitrator host"""
+  """is_arbitrator_host
+
+  Determins if a slave can be an arbitrator host
+
+  Args:
+    module_tags: The tags that are associated with this modue
+      can be obtained with saputils.get_module_tags
+
+  Return:
+    True: Slave is an arbitrator host
+    False: Slave is not an arbitrator host
+
+  Raises:
+    Nothing
+  """
   return (len(get_number_of_arbitrator_hosts(module_tags, debug)) > 0)
 
 def is_arbitrator_required(tags = {}, debug = False):
-  """analyze the project tags to determine if any arbitration is requried"""
+  """is_arbitrator_required
+  
+  Analyzes the project tags and determines if an arbitrator is requried
+
+  Args:
+    tags: Project tags
+
+  Return:
+    True: An arbitrator is required
+    False: An arbitrator is not required
+
+  Raises:
+    Nothing
+  """
   if debug:
     print "in is_arbitrator_required()"
   #count the number of times a device is referenced
@@ -82,12 +133,25 @@ def is_arbitrator_required(tags = {}, debug = False):
     if ("BUS" in slave_tags[slave]):
       if (len(slave_tags[slave]["BUS"]) > 0):
         return True
-#FOR THIS FIRST ONE YOU MUST SPECIFIY THE PARTICULAR MEMORY SLAVE AS APPOSED TO JUST MEMORY WHICH IS THAT ACTUAL MEMORY INTERCONNECT
+#XXX: FOR THIS FIRST ONE YOU MUST SPECIFIY THE PARTICULAR MEMORY SLAVE AS APPOSED TO JUST MEMORY WHICH IS THAT ACTUAL MEMORY INTERCONNECT
 
   return False
 
 def generate_arbitrator_tags(tags = {}, debug = False):
-  """generate the arbitrator tags required to generate all the arbitrators, and how and where to connect all the arbitrators"""
+  """generate_arbitrator_tags
+
+  generate a dictionary (tags) that is required to generate all the
+  arbitrators and how and where to connect all the arbitrators
+
+  Args:
+    tags: Project tags
+
+  Return:
+    dictionary of arbitrators to generating
+
+  Raises:
+    Nothing
+  """
   arb_tags = {}
   if (not is_arbitrator_required(tags)):
     return {}
@@ -117,21 +181,33 @@ def generate_arbitrator_tags(tags = {}, debug = False):
 
   return arb_tags
 
-def generate_arbitrator_buffer(master_count = 0, debug = False):
+def generate_arbitrator_buffer(master_count, debug = False):
+  """generate_arbitrator_buffer
+
+  generate a buffer for an arbitrator with the specified master_count
+
+  Args:
+    master_count: The number of masters that this arbitrator must control
+
+  Return:
+    A buffer that contains a verilog based Arbitrator with
+
+  Raises:
+    IOError
+    ArbitratorError
+  """
 #need to open up the arbitrator file and create a buffer
 
-  if (master_count == 0):
-    if (debug):
-      print "master_count == 0, no arbitrators to generate"
-    return ""
+  if not isinstance(master_count, (int, long)):
+    raise ArbitratorError("master_count is not a number")
 
-  try:
-    filename = os.getenv("SAPLIB_BASE") + "/hdl/rtl/wishbone/arbitrator/wishbone_arbitrator.v"
-    filein = open(filename)
-    buf = filein.read()
-    filein.close()
-  except IOError as err:
-    print "File Error: " + str(err)
+  if master_count <= 1:
+    raise ArbitratorError("master_count must be > 1")
+
+  filename = os.getenv("SAPLIB_BASE") + "/hdl/rtl/wishbone/arbitrator/wishbone_arbitrator.v"
+  filein = open(filename)
+  buf = filein.read()
+  filein.close()
 
 
   template = Template(buf)
@@ -363,7 +439,21 @@ def generate_arbitrator_buffer(master_count = 0, debug = False):
 
 
 def already_existing_arb_bus(arb_tags = {}, arb_slave = "", debug = False):
-  """check if the arbitrated slave already exists in the arbitrator tags"""
+  """already_existing_arb_bus
+  
+  Check if the arbitrated slave already exists in the arbitrator tags
+
+  Args:
+    arb_tags: arbitrator tags
+    arb_slave: possible arbitrator slave
+
+  Return:
+    True: There is already an arbitrator bus associated with this slave
+    False: There is not already an arbitrator bus associated with this slave
+
+  Raises:
+    Nothing
+  """
   for arb_item in arb_tags.keys():
     if (arb_item == arb_slave):
       return True
