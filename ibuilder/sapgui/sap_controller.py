@@ -379,8 +379,7 @@ class SapController:
 #    self.project_tags["BUILD_TOOL"] = vendor_tool
 
   def get_vendor_tools(self):
-#    board_dict = saputils.get_board_config(self.project_tags["board"])
-#    return board_dict["build_tool"]
+    '''Gets the loaded vendor tools name.'''
     return self.board_dict["build_tool"]
 
   def set_board_name(self, board_name):
