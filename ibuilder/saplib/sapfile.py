@@ -271,16 +271,19 @@ class SapFile:
     if (self.has_dependencies(filename)):
       deps = self.get_list_of_dependencies(filename)
       for d in deps:
-        result = saputils.find_module_filename(d)
-        if (len(result) == 0):
-          print "Error: couldn't find dependency filename"
+        try:
+          result = saputils.find_module_filename(d)
+          if (len(result) == 0):
+            print "Error: couldn't find dependency filename"
+            continue
+          f = saputils.find_module_filename(d)
+          if (f not in self.verilog_dependency_list and
+            f not in self.verilog_file_list):
+            if debug:
+              print "found dependency: " + f
+            self.verilog_dependency_list.append(f)
+        except ModuleNotFound as err:
           continue
-        f = saputils.find_module_filename(d)
-        if (f not in self.verilog_dependency_list and
-          f not in self.verilog_file_list):
-          if debug:
-            print "found dependency: " + f
-          self.verilog_dependency_list.append(f)
 
   def resolve_dependencies(self, filename, debug = True):
     """resolve_dependencies

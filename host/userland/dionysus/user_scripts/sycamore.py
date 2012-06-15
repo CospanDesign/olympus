@@ -4,7 +4,7 @@
 import time
 import sys
 import string
-from pyftdi.ftdi import Ftdi
+from pyftdi.pyftdi.ftdi import Ftdi
 from array import array as Array
 import getopt 
 
@@ -466,7 +466,6 @@ def sycamore_unit_test(syc = None):
 #			for i in range (0, len(mem_data)):
 #				print "reading " + str(mem_data[i]) + " from " + str(i * 4)
 	
-"""	
 		if (device_id == 1):
 			print "found gpio"
 			print "enable all GPIO's"
@@ -513,7 +512,6 @@ def sycamore_unit_test(syc = None):
 					grd = syc.read(1, dev_index, 0)
 					gpio_read = grd[0] << 24 | grd[1] << 16 | grd[2] << 8 | grd[3] 
 					print "gpio read: " + hex(gpio_read)
-"""
 
 
 def usage():

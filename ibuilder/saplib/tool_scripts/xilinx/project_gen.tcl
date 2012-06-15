@@ -151,16 +151,15 @@ wait_on_run synth_1
 #now run the implementation
 #can set different implementation strategies set the propertly like in synthesis
 #set_property strategy MapTiming[get_runs impl_1]
+set_property add_step Bitgen [get_runs impl_1]
+#generate a bin file
+config_run impl_1 -program bitgen -option {More Options} -value {-g Binary:yes}
 launch_runs -runs impl_1
 wait_on_run impl_1
 
 #now we can open the design for editing in the TCL script
 #open_impl_design
 
-#or generate a bit file
-set_property add_step Bitgen [get_runs impl_1]
-config_run impl_1 -program bitgen -option {More Options} -value {-g Binary:yes}
-launch_runs impl_1
 
 #launch_impact
 
