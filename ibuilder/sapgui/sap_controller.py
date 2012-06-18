@@ -16,11 +16,11 @@ from sap_graph_manager import get_unique_name
 from saperror import ModuleNotFound
 from saperror import SlaveError
 
-def enum(*sequential, **named):
-  enums = dict(zip(sequential, range(len(sequential))), **named)
-  return type('Enum', (), enums)
+class StateError(RuntimeError):
+  pass
 
 class SapController:
+
   def __init__(self):
     self.new_design()
     self.filename = ""
@@ -28,6 +28,8 @@ class SapController:
     # Add some variable functions for dependency injection.
     self.get_board_config = saputils.get_board_config
     self.get_unique_name = get_unique_name
+    self.get_constraint_filenames = saputils.get_constraint_filenames
+    self.new_sgm = lambda: gm.SapGraphManager()
 
   def load_config_file(self, file_name, debug=False):
     """Loads a sycamore configuration file into memory.  Raises an IOError if
@@ -372,11 +374,9 @@ class SapController:
     return self.project_tags["PROJECT_NAME"]
 
 #  def set_vendor_tools(self, vendor_tool):
-#    """
-#    sets the vendor build tool, currently only
-#    Xilinx is supported
-#    """
-#    self.project_tags["BUILD_TOOL"] = vendor_tool
+#    """Sets the vendor build tool.  Currently, only Xilinx is
+#    supported."""
+#    self.project_tags["build_tool"] = vendor_tool
 
   def get_vendor_tools(self):
     '''Gets the loaded vendor tools name.'''
@@ -388,38 +388,36 @@ class SapController:
       self.project_tags["board"] = ""
 
     self.project_tags["board"] = board_name
-    self.board_dict = saputils.get_board_config(board_name)
+    self.board_dict = self.get_board_config(board_name)
 
   def get_board_name(self):
     if "board" in self.project_tags.keys():
       return self.project_tags["board"]
     return "undefined"
 
-  def get_constraint_file_names(self):
-    board_name = self.project_tags["board"]
-    return saputils.get_constraint_filenames(board_name)
+  def get_board_constraint_filenames(self):
+    '''Gets the constraint file names for the board.'''
+    return self.get_constraint_filenames(self.project_tags["board"])
 
   def add_project_constraint_file(self, constraint_file):
-    pt = self.project_tags
-    cfiles = pt["constraint_files"]
-    if constraint_file not in cfiles:
-      cfiles.append(constraint_file)
+    # TODO make constraint files a set
+    if constraint_file not in self.project_tags["constraint_files"]:
+      self.project_tags["constraint_files"].append(constraint_file)
 
   def remove_project_constraint_file(self, constraint_file):
-    pt = self.project_tags
-    cfiles = pt["constraint_files"]
+    cfiles = self.project_tags["constraint_files"]
     if constraint_file in cfiles:
       cfiles.remove(constraint_file)
 
   def set_project_constraint_files(self, constraint_files):
-#    print "project constraint files: " + str(constarint_files)
+#    print "project constraint files: " + str(constraint_files)
     self.project_tags["constraint_files"] = constraint_files
 
   def get_project_constraint_files(self):
-    """Returns the list files with the users constraints (if specified).  If
-    no user-constraints exist, returns the default contraint files from the
-    board config file, populate the user constraint files with those
-    constraints, and then return the newly-populated user constraint files."""
+    """Returns the list files with the users constraints (if specified).  If no
+    user-constraints exist, returns the default constraint files from the
+    board's config file, populates the user constraint files with those
+    constraints, and returns the newly-populated user constraint files."""
     pt = self.project_tags
     if "constraint_files" in pt.keys():
       if len(pt["constraint_files"]) == 0:
@@ -430,7 +428,7 @@ class SapController:
 
   def get_fpga_part_number(self):
 #    import saputils
-#    board_dict = saputils.get_board_config(self.project_tags["board"])
+#    board_dict = self.get_board_config(self.project_tags["board"])
 #    return board_dict["fpga_part_number"]
     return self.board_dict["fpga_part_number"]
 
@@ -440,7 +438,7 @@ class SapController:
 
   def new_design(self):
     """Initialize an empty design."""
-    self.sgm = gm.SapGraphManager()
+    self.sgm = self.new_sgm()
     self.bus_type = "wishbone"
     self.tags = {}
     self.file_name = ""

@@ -15,6 +15,7 @@ import sap_controller as sc
 from gen_scripts.gen import Gen
 from sap_graph_manager import SlaveType
 from sap_graph_manager import NodeType
+from sap_controller import StateError
 
 class UTest(unittest.TestCase):
   '''Unit tests for sap_controller.py'''
@@ -57,6 +58,22 @@ class UTest(unittest.TestCase):
     "constraint_files": []
   }
 
+  # New config from SapController.
+  NEW_CONFIG = {
+    "PROJECT_NAME": "project",
+    "BASE_DIR": "~/sycamore_projects",
+    "BUILD_TOOL": "xilinx",
+    "TEMPLATE": "wishbone_template.json",
+    "INTERFACE": {
+      "filename": "uart_io_handler.v"
+    },
+    "SLAVES": {},
+    "MEMORY": {},
+    "board": "sycamore1",
+    "bind": {},
+    "constraint_files": []
+  }
+
   # Data found in saplib/hdl/boards/xilinx-s3esk/config.json
   BOARD_CONFIG = {
     "board_name": "Spartan 3 Starter Board",
@@ -68,6 +85,14 @@ class UTest(unittest.TestCase):
     ],
     "invert_reset": False
   }
+
+  # Files found in /saplib/hdl/boards/xilinx-s3esk/ ending in 'ucf'
+  BOARD_CONSTRAINT_FILES = [
+    's3esk_ddr.ucf',
+    's3esk_sycamore.ucf',
+    's3esk_tft.ucf',
+    'sycamore_serial.ucf'
+  ]
 
   def setUp(self):
     '''Creates a new SapController for each test.'''
@@ -202,7 +227,7 @@ class UTest(unittest.TestCase):
   def test_get_project_location_nothing_loaded_raises_error(self):
     '''Tests that calling get_project_location without having loaded a
     configuration first raises an error.'''
-    self.assertRaises(StateError, self.sc.get_project_location, 'foo')
+    self.assertRaises(StateError, self.sc.get_project_location)
 
   def test_get_project_location_none(self):
     '''Test None from get_project_location.'''
@@ -225,11 +250,11 @@ class UTest(unittest.TestCase):
     configuration first raises an error.'''
     self.assertRaises(StateError, self.sc.set_project_name, 'foo')
 
-  def test_set_project_name_none(self):
+  def test_set_project_name_none_raises_TypeError(self):
     '''Test None passed to set_project_name.'''
     self.sc.project_tags = self.EXAMPLE_CONFIG
     self.sc.set_project_name(None)
-    self.assertEqual(self.sc.project_tags['PROJECT_NAME'], None)
+    self.assertRaises(TypeError, self.sc.set_project_name, None)
 
   def test_set_project_name_empty_str(self):
     '''Test "" passed to set_project_name.'''
@@ -245,7 +270,7 @@ class UTest(unittest.TestCase):
   def test_get_project_name_nothing_loaded_raises_error(self):
     '''Tests that calling get_project_name without having loaded a
     configuration first raises an error.'''
-    self.assertRaises(StateError, self.sc.get_project_name, 'foo')
+    self.assertRaises(StateError, self.sc.get_project_name)
 
   def test_get_project_name_none(self):
     '''Test None from get_project_name.'''
@@ -256,6 +281,250 @@ class UTest(unittest.TestCase):
     '''Test "" from get_project_name.'''
     self.sc.project_tags = { 'PROJECT_NAME': '' }
     self.assertEqual(self.sc.get_project_name(), "")
+
+#  def test_set_vendor_tools(self):
+#    '''Test "normal" functionality of set_vendor_tools.'''
+#    self.sc.project_tags = self.EXAMPLE_CONFIG
+#    self.sc.set_vendor_tools("toolchain")
+#    self.assertEqual(self.sc.project_tags['build_tool'], "toolchain")
+#
+#  def test_set_vendor_tools_nothing_loaded_raises_error(self):
+#    '''Tests that calling set_vendor_tools without having loaded a
+#    configuration first raises an error.'''
+#    self.assertRaises(StateError, self.sc.set_vendor_tools, 'foo')
+#
+#  def test_set_vendor_tools_none(self):
+#    '''Test None passed to set_vendor_tools.'''
+#    self.sc.project_tags = self.EXAMPLE_CONFIG
+#    self.sc.set_vendor_tools(None)
+#    self.assertEqual(self.sc.project_tags['build_tool'], None)
+#
+#  def test_set_vendor_tools_empty_str(self):
+#    '''Test "" passed to set_vendor_tools.'''
+#    self.sc.project_tags = self.EXAMPLE_CONFIG
+#    self.sc.set_vendor_tools('')
+#    self.assertEqual(self.sc.project_tags['build_tool'], '')
+
+  def test_get_vendor_tools(self):
+    '''Test "normal" functionality of get_vendor_tools.'''
+    self.sc.board_dict = { 'build_tool': 'toolchain' }
+    self.assertEqual(self.sc.get_vendor_tools(), "toolchain")
+
+  def test_get_vendor_tools_nothing_loaded_raises_error(self):
+    '''Tests that calling get_vendor_tools without having loaded a
+    configuration first raises an error.'''
+    self.assertRaises(StateError, self.sc.get_vendor_tools)
+
+  def test_get_vendor_tools_none(self):
+    '''Test None from get_vendor_tools.'''
+    self.sc.board_dict = { 'build_tool': None }
+    self.assertEqual(self.sc.get_vendor_tools(), None)
+
+  def test_get_vendor_tools_empty_str(self):
+    '''Test "" from get_vendor_tools.'''
+    self.sc.board_dict = { 'build_tool': '' }
+    self.assertEqual(self.sc.get_vendor_tools(), "")
+
+  def test_set_board_name(self):
+    '''Test "normal" functionality of set_board_name.'''
+    self.sc.project_tags = self.EXAMPLE_CONFIG
+    self.sc.get_board_config = (lambda x:
+        (x == 'b1_name' and self.BOARD_CONFIG) or
+        self.fail("Unexpected call: get_board_config(%s)" % x))
+    self.sc.set_board_name("b1_name")
+    self.assertEqual(self.sc.project_tags['board'], "b1_name")
+
+  def test_set_board_name_nothing_loaded_raises_error(self):
+    '''Tests that calling set_board_name without having loaded a
+    configuration first raises an error.'''
+    self.sc.get_board_config = (lambda x:
+        self.fail('should not have gotten this far'))
+    self.assertRaises(StateError, self.sc.set_board_name, 'foo')
+
+  def test_set_board_name_none_raises_TypeError(self):
+    '''Test None passed to set_board_name.'''
+    self.sc.project_tags = self.EXAMPLE_CONFIG
+    def raise_te(x):
+      self.assertEqual(None, x)
+      raise TypeError
+    self.sc.get_board_config = raise_te
+    self.assertRaises(TypeError, self.sc.set_board_name, None)
+
+  def test_set_board_name_empty_str_raises_ValueError(self):
+    '''Test "" passed to set_board_name.'''
+    self.sc.project_tags = self.EXAMPLE_CONFIG
+    def raise_ve(x):
+      self.assertEqual('', x)
+      raise ValueError
+    self.sc.get_board_config = raise_ve
+    self.assertRaises(ValueError, self.sc.set_board_name, '')
+
+  def test_get_board_name(self):
+    '''Test "normal" functionality of get_board_name.'''
+    self.sc.project_tags = { 'board': 'b1_name' }
+    self.assertEqual(self.sc.get_board_name(), "b1_name")
+
+  def test_get_board_name_nothing_loaded_raises_error(self):
+    '''Tests that calling get_board_name without having loaded a
+    configuration first raises an error.'''
+    self.assertRaises(StateError, self.sc.get_board_name)
+
+  def test_get_board_name_none(self):
+    '''Test None from get_board_name.'''
+    self.sc.project_tags = { 'board': None }
+    self.assertEqual(self.sc.get_board_name(), None)
+
+  def test_get_board_name_empty_str(self):
+    '''Test "" from get_board_name.'''
+    self.sc.project_tags = { 'board': '' }
+    self.assertEqual(self.sc.get_board_name(), "")
+
+  def test_get_board_constraint_filenames(self):
+    board_name = 'boardnameyoyoyo'
+    self.sc.project_tags = { 'board': board_name }
+    self.sc.get_constraint_filenames = (lambda x:
+        (x == board_name and self.BOARD_CONSTRAINT_FILES) or
+        self.fail('Unexpected board name: ' + board_name))
+    self.assertEqual(self.sc.get_board_constraint_filenames(),
+            self.BOARD_CONSTRAINT_FILES)
+
+  def test_get_board_constraint_filenames_nothing_loaded_raises_StateError(self):
+    self.assertRaises(StateError, self.sc.get_board_constraint_filenames)
+
+  def test_get_board_constraint_filenames_empty_okay(self):
+    board_name = 'boardnameyoyoyo'
+    self.sc.project_tags = { 'board': board_name }
+    def scfns(x):
+      self.assertEqual(x, board_name)
+      return []
+    self.sc.get_constraint_filenames = scfns
+    self.assertEqual(self.sc.get_board_constraint_filenames(), [])
+
+  def test_add_project_constraint_file(self):
+    self.sc.project_tags = { 'constraint_files': ['cons1'] }
+    self.sc.add_project_constraint_file('cons2')
+    self.assertEqual(self.sc.project_tags['constraint_files'],
+        ['cons1', 'cons2'])
+
+  def test_add_project_constraint_file_nothin_loaded_raises_StateError(self):
+    self.assertRaises(StateError, self.sc.add_project_constraint_file('foo'))
+
+  def test_add_project_constraint_file_already_added(self):
+    self.sc.project_tags = { 'constraint_files': ['cons1', 'cons2'] }
+    self.sc.add_project_constraint_file('cons2')
+    self.assertEqual(self.sc.project_tags['constraint_files'],
+        ['cons1', 'cons2'])
+
+  def test_add_project_constraint_file_empty(self):
+    self.sc.project_tags = { 'constraint_files': [] }
+    self.sc.add_project_constraint_file('cons1')
+    self.assertEqual(self.sc.project_tags['constraint_files'], ['cons1'])
+
+  def test_add_project_constraint_file_none_raises_TypeError(self):
+    self.sc.project_tags = { 'constraint_files': ['cons1', 'cons2'] }
+    self.sc.add_project_constraint_file('cons1')
+    self.assertRaises(TypeError, self.sc.add_project_constraint_file, None)
+
+  def test_remove_project_constraint_file_first(self):
+    self.sc.project_tags = { 'constraint_files': ['cons1', 'cons2', 'cons3'] }
+    self.sc.remove_project_constraint_file('cons1')
+    self.assertEquals(self.sc.project_tags['constraint_files'],
+            ['cons2', 'cons3'])
+
+  def test_remove_project_constraint_file_last(self):
+    self.sc.project_tags = { 'constraint_files': ['cons1', 'cons2', 'cons3'] }
+    self.sc.remove_project_constraint_file('cons3')
+    self.assertEquals(self.sc.project_tags['constraint_files'],
+            ['cons1', 'cons2'])
+
+  def test_remove_project_constraint_file_middle(self):
+    self.sc.project_tags = { 'constraint_files': ['cons1', 'cons2', 'cons3'] }
+    self.sc.remove_project_constraint_file('cons2')
+    self.assertEquals(self.sc.project_tags['constraint_files'],
+            ['cons1', 'cons3'])
+
+  def test_remove_project_constraint_file_dne(self):
+    self.sc.project_tags = { 'constraint_files': ['cons1', 'cons2', 'cons3'] }
+    self.sc.remove_project_constraint_file('cons4')
+    self.assertEquals(self.sc.project_tags['constraint_files'],
+            ['cons1', 'cons2', 'cons3'])
+
+  def test_remove_project_constraint_file_nothing_loaded_raises_StateError(self):
+    self.assertRaises(StateError, self.sc.remove_project_constraint_file, 'foo')
+
+  def test_remove_project_constraint_file_empty(self):
+    self.sc.project_tags = { 'constraint_files': [] }
+    self.sc.remove_project_constraint_file('cons4')
+    self.assertEquals(self.sc.project_tags['constraint_files'], [])
+
+  def test_set_project_constraint_files(self):
+    self.sc.project_tags = { 'constraint_files': [] }
+    self.sc.set_project_constraint_files(self.BOARD_CONSTRAINT_FILES)
+    self.assertEqual(self.BOARD_CONSTRAINT_FILES,
+        self.sc.project_tags['constraint_files'])
+
+  def test_set_project_constraint_files_nothing_loaded_raises_StateError(self):
+    self.assertRaises(StateErorr, self.sc.set_project_constraint_files,
+        self.BOARD_CONSTRAINT_FILES)
+
+  def test_set_project_constraint_files_overwrite(self):
+    self.sc.project_tags = { 'constraint_files': ['foo', 'bar', 'baz'] }
+    self.sc.set_project_constraint_files(self.BOARD_CONSTRAINT_FILES)
+    self.assertEqual(self.BOARD_CONSTRAINT_FILES,
+        self.sc.project_tags['constraint_files'])
+
+  def test_set_project_constraint_files_none_raises_TypeError(self):
+    self.sc.project_tags = { 'constraint_files': ['foo', 'bar', 'baz'] }
+    self.assertRaises(TypeError, self.sc.set_project_constraint_files, None)
+
+  def test_set_project_constraint_files_empty_str_raises_TypeError(self):
+    self.sc.project_tags = { 'constraint_files': ['foo', 'bar', 'baz'] }
+    self.assertRaises(TypeError, self.sc.set_project_constraint_files, '')
+
+  def test_get_project_constraint_files(self):
+    self.sc.project_tags = {
+        'default_constraint_files': self.BOARD_CONSTRAINT_FILES
+    }
+    self.assertEqual(self.sc.get_project_constraint_files(),
+        self.BOARD_CONSTRAINT_FILES)
+
+  def test_get_project_constraint_files_nothing_loaded_raises_StateError(self):
+    self.assertRaises(StateError, self.sc.get_project_constraint_files, None)
+
+  def test_get_project_constraint_files_pt_empty(self)
+    self.sc.project_tags = {}
+    self.sc.board_dict = {
+        'default_constraint_files': self.BOARD_CONSTRAINT_FILES
+    }
+    self.assertEqual(self.sc.get_project_constraint_files(),
+        self.BOARD_CONSTRAINT_FILES)
+
+  def test_get_project_constraint_files_board_config_not_loaded_raises_StateError(self):
+    self.sc.project_tags = {}
+    self.assertRaises(StateError, self.sc.get_project_constraint_files, [])
+
+  def test_get_fpga_part_number(self):
+    self.sc.board_dict = { 'fpga_part_number': 'number' }
+    self.assertEqual(self.sc.get_fpga_part_number(), 'number')
+
+  def test_get_fpga_part_number_nothing_loaded_raises_StateError(self):
+    self.assertRaises(StateError, self.sc.get_fpga_part_number, 'foo')
+
+  def test_new_design(self):
+    o = object()
+    self.sc.new_sgm = lambda: o
+    self.sc.new_design()
+    self.assertEqual(self.sc.sgm, o)
+    self.assertEqual(self.sc.tags, {})
+    self.assertEqual(self.sc.file_name, '')
+    self.assertEqual(self.sc.project_tags, self.NEW_CONFIG)
+
+  def test_set_bus_type(self):
+    self.set_bus_type('bus_type')
+    self.assertEqual('bus_type', self.sc.bus_type)
+
+  def test_set_bus_type_none_raises_TypeError(self):
+    self.assertRaises(TypeError, self.sc.set_bus_type, 'bus_type')
 
 
 
@@ -339,13 +608,10 @@ class IntTest(unittest.TestCase):
     result = self.sc.get_board_name()
     self.assertEqual(result, "bored of writing unit tests")
 
-  def test_constraint_file_name(self):
+  def test_constraint_filename(self):
     file_name = os.getenv("SAPLIB_BASE") + "/example_project/gpio_example.json"
     self.sc.load_config_file(file_name)
-
-#    self.sc.set_constraint_file_name("bored of writing unit tests")
-    result = self.sc.get_constraint_file_names()
-
+    result = self.sc.get_board_constraint_filenames()
     self.assertEqual(result[0], "s3esk_sycamore.ucf")
 
   def test_add_remove_constraint(self):
