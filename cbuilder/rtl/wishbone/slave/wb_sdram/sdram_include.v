@@ -8,6 +8,8 @@
 
 `timescale 1ns/10ps
 
+
+
 `define SYS_CLK_FREQUENCY   50000     // in kHz
 
 //Sequential
@@ -26,6 +28,7 @@
 //				1:	Interleaved
 //A[2:0]	Burst Length
 //				001:	1
+
 
 
 //----------------------------------------------------------------------------
