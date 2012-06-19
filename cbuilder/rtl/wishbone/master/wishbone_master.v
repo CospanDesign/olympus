@@ -347,7 +347,7 @@ always @ (posedge clk) begin
         end //end working with mem_bus
         else begin //peripheral bus
           if (wb_ack_i) begin
-                      wb_stb_o    <= 0;
+            wb_stb_o    <= 0;
             if (local_data_count == 0) begin
               $display ("WBM: in_data_count == 0");
               wb_cyc_o  <= 0;

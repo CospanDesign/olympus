@@ -480,7 +480,7 @@ def test_memory(syc = None):
       else:
         print "Memory slave is on peripheral bus"
 
-      data_out  = Array('B', [0x11, 0x22, 0x33, 0x44])
+      data_out  = Array('B', [0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88])
       syc.write(dev_index, 0, data_out)
       print "Read:"
       time.sleep(1)
@@ -494,7 +494,7 @@ def test_memory(syc = None):
       print " "
       time.sleep(1)
 
-      mem_data = syc.read(1, dev_index, 0)
+      mem_data = syc.read(2, dev_index, 0)
       print "mem data: " + str(mem_data);
       print "hex: "
       for i in range (0, len(mem_data)):
@@ -503,7 +503,7 @@ def test_memory(syc = None):
       print " "
       time.sleep(1)
 
-      mem_data = syc.read(1, dev_index, 0)
+      mem_data = syc.read(1, dev_index, 4)
       print "mem data: " + str(mem_data);
       print "hex: "
       for i in range (0, len(mem_data)):

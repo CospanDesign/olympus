@@ -65,13 +65,15 @@ input               auto_refresh;
 //FIFO
 input       [35:0]  fifo_data;
 output  reg         fifo_read;
-output  wire        fifo_empty;
+input               fifo_empty;
 
-parameter           IDLE          = 4'h0;
-parameter           REFRESH_WAIT  = 4'h1;
-parameter           ACTIVE        = 4'h2;
-parameter           WRITE_COMMAND = 4'h3;
-parameter           WRITE_BOTTOM  = 4'h4;
+parameter           IDLE            = 4'h0;
+parameter           REFRESH_WAIT    = 4'h1;
+parameter           ACTIVE          = 4'h2;
+parameter           WRITE_COMMAND   = 4'h3;
+parameter           WRITE_BOTTOM    = 4'h4;
+parameter           BURST_TERMINATE = 4'h5;
+parameter           PRECHARGE       = 4'h6;
 
 reg     [3:0]       state;
 reg     [15:0]      delay;
@@ -147,7 +149,6 @@ always @(posedge clk) begin
           //$display ("SDRAM_WRITE: Issue the write command");
           command       <=  `SDRAM_CMD_WRITE;
           address       <=  {4'b0000, column};
-          address[10]   <=  1;                //auto precharge
           data_out      <=  fifo_data[31:16];     
           data_mask     <=  fifo_data[35:34];
           state         <=  WRITE_BOTTOM;
@@ -155,11 +156,27 @@ always @(posedge clk) begin
         end
         WRITE_BOTTOM: begin
           command       <=  `SDRAM_CMD_NOP;
-          //$display ("SDRAM_WRITE: Write Bottom Row");
           data_out      <=  fifo_data[15:0];
           data_mask     <=  fifo_data[33:32];
           write_address <=  write_address + 2;
-          delay         <=  `T_WR + `T_RP - 1;
+          //if there is more data to write then continue on with the write
+          //and issue a command to the AFIFO to grab more data
+//          if (fifo_empty) begin
+            state         <=  BURST_TERMINATE;
+//          end
+//          else begin
+//            state         <=  WRITE_COMMAND;
+//            fifo_read     <=  1;
+//          end
+        end
+        BURST_TERMINATE: begin
+          command       <=  `SDRAM_CMD_TERM;
+          delay         <=  `T_WR;
+          state         <=  PRECHARGE;
+        end
+        PRECHARGE: begin
+          command       <=  `SDRAM_CMD_PRE;
+          delay         <=  `T_RP;
           state         <=  IDLE;
         end
         default: begin

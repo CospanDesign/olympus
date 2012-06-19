@@ -73,7 +73,9 @@ parameter           ACTIVATE        = 4'h2;
 parameter           READ_COMMAND    = 4'h3;
 parameter           READ_TOP        = 4'h4;
 parameter           READ_BOTTOM     = 4'h5;
-parameter           FIFO_FULL_WAIT  = 4'h6;
+parameter           BURST_TERMINATE = 4'h6;
+parameter           PRECHARGE       = 4'h7;
+parameter           FIFO_FULL_WAIT  = 4'h8;
 
 reg         [3:0]   state = IDLE;
 reg         [15:0]  delay;
@@ -111,6 +113,7 @@ always @ (posedge clk) begin
 
   end
   else begin
+    fifo_write          <=  0;
 
     if (read_top) begin
       fifo_data[31:16]  <=  data_in;
@@ -169,7 +172,6 @@ always @ (posedge clk) begin
           command       <=  `SDRAM_CMD_READ;
           state         <=  READ_TOP;
           address       <=  {4'b0000, column[7:0]};
-          address[10]   <=  1;  //Auto precharge
           delay         <=  `T_CAS - 1;
         end
         READ_TOP: begin
@@ -181,13 +183,35 @@ always @ (posedge clk) begin
           $display ("SDRAM_READ: Reading bottom word");
           read_address  <=  read_address + 2;
           read_bottom   <=  1;
+          if (fifo_full || ~enable) begin
+            state       <=  BURST_TERMINATE;
+          end
+          else begin
+            state       <=  READ_TOP;
+          end
+        end
+        BURST_TERMINATE: begin
+          command       <=  `SDRAM_CMD_TERM;
+          delay         <=  `T_WR;
+          state         <=  PRECHARGE;
+        end
+        PRECHARGE: begin
+          command       <=  `SDRAM_CMD_PRE;
           delay         <=  `T_RP;
-          state         <=  IDLE;
+          if (enable) begin
+            state       <=  FIFO_FULL_WAIT;
+          end
+          else begin
+            state       <=  IDLE;
+          end
         end
         FIFO_FULL_WAIT: begin
           if (auto_refresh) begin
             $display ("REFRESH happend during a FIFO_FULL_WAIT");
-            state       <=  READ_FINISHED;
+            state       <=  IDLE;
+          end
+          else if (~enable) begin
+            state       <=  IDLE;
           end
           else if (~fifo_full) begin
             $display ("FIFO not full anymore");

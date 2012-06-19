@@ -353,17 +353,17 @@ initial begin
       end //end read_count == 4
     end //end while ! eof
   end //end not reset
-  #100000
+  #1000
   $display("TB: Closing Files");
   $fclose (fd_in);
   $fclose (fd_out);
   $finish();
 end
 
-parameter TB_IDLE   = 4'h0;
+parameter TB_IDLE     = 4'h0;
 parameter TB_EXECUTE  = 4'h1;
 parameter TB_WRITE    = 4'h2;
-parameter TB_READ   = 4'h3;
+parameter TB_READ     = 4'h3;
 
 reg [3:0] state = TB_IDLE;
 
@@ -407,6 +407,9 @@ always @ (posedge clk) begin
       $display ("TB: Master timed out while executing command: %h", in_command);
       state <= TB_IDLE;
       command_finished <= 1;
+      if (in_data_count > 0) begin
+        reading_multiple  <=  1;
+      end
 
     end //end reached the end of a timeout
 
@@ -499,6 +502,22 @@ always @ (posedge clk) begin
         state <= TB_IDLE;
       end //somethine wrong here
     endcase //state machine
+    if (out_en) begin
+      $display ("TB: read: S:A:D = %h:%h:%h", out_status, out_address, out_data);
+      if (out_data_count == 0) begin
+        if (reading_multiple) begin
+          reading_multiple  <= 0;
+        end
+        else begin
+          command_finished  <= 1;
+          state <= TB_IDLE;
+        end
+      end
+      else begin
+        reading_multiple  <= 1;
+        timeout_count <= `TIMEOUT_COUNT;
+      end
+    end
     if (out_en && out_status == `PERIPH_INTERRUPT) begin
       $display("TB: Output Handler Recieved interrupt");
       $display("TB:\tcommand: %h", out_status);

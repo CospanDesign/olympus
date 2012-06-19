@@ -27,7 +27,25 @@
 //				0:	Sequential
 //				1:	Interleaved
 //A[2:0]	Burst Length
-//				001:	1
+//				001:	2
+
+//Sequential
+`define SDRAM_INIT_LMR	12'b000000100111
+//A[11:10]	RESERVED: 0, 0
+//A[9]		Write Burst Mode
+//				0: 	Programed burst length
+//				1:	Single Location Address
+//A[8:7]	Operation Mode
+//				00: Standard Operation Mode
+//A[6:4]	CAS Latency
+//				010: 2
+//				011: 3
+//A[3]		Burst Type
+//				0:	Sequential
+//				1:	Interleaved
+//A[2:0]	Burst Length
+//				111:	Page Burst
+
 
 
 

@@ -129,6 +129,7 @@ reg           write_enable;
 wire  [15:0]  data_out;
 
 wire          writing;
+wire          write_fifo_empty;
 assign        writing = ~write_idle;
 
 
@@ -170,7 +171,7 @@ sdram_write write_path (
 
   //Control
   .idle(write_idle),
-  .enable(write_enable),
+  .enable(app_write_enable),
   .auto_refresh(refresh),
   
   //Application address
@@ -180,6 +181,7 @@ sdram_write write_path (
   .fifo_data(write_path_data),
   .fifo_read(write_path_read_pulse),
   .fifo_empty(write_fifo_empty)
+
 );
 
 //Read path
@@ -189,7 +191,7 @@ reg           read_fifo_reset;
 wire  [11:0]  read_address;
 wire  [1:0]   read_bank;
 wire  [31:0]  read_path_data;
-reg           read_enable;
+//reg           read_enable;
 
 wire  [15:0]  data_in;
 assign        data_in = data;
@@ -234,7 +236,7 @@ sdram_read read_path (
   .data_in(data_in),
 
   //Control
-  .enable(read_enable),
+  .enable(app_read_enable),
   .idle(read_idle),
   .auto_refresh(refresh),
 
@@ -302,7 +304,7 @@ always @(posedge sdram_clk) begin
     init_bank               <=  2'b00;
     init_address            <=  12'h000;
     sdram_ready             <=  0;
-    read_enable             <=  0;
+//    read_enable             <=  0;
     write_enable            <=  0;
     read_fifo_reset         <=  1;
   end
@@ -352,7 +354,7 @@ always @(posedge sdram_clk) begin
           sdram_ready       <=  1;
           //the write/read path are disabled until the app calls write/read in this state
           write_enable      <=  0;
-          read_enable       <=  0;
+//          read_enable       <=  0;
           read_fifo_reset   <=  1;
           //waiting for user to initiate a command
           if (refresh) begin
@@ -371,7 +373,7 @@ always @(posedge sdram_clk) begin
             //$display ("SDRAM_INIT: read initiated");
             state           <=  READING;
             //get rid of any data that is in the read FIFO
-            read_enable     <=  1;
+//            read_enable     <=  1;
             read_fifo_reset <=  0;
           end
         end

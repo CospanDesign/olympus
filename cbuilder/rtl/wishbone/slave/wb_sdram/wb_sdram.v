@@ -110,6 +110,8 @@ reg					fifo_rd;
 wire				wr_fifo_full;
 wire				rd_fifo_empty;
 
+reg       [3:0] delay;
+reg         reading;
 
 
 sdram ram (
@@ -151,6 +153,8 @@ always @ (posedge clk) begin
 		wbs_int_o		<= 0;
 		fifo_wr			<= 0;
 		fifo_rd			<= 0;
+    delay       <= 0;
+    reading     <= 0;
 	end
 	else begin
 		fifo_wr		<=	0;
@@ -167,20 +171,32 @@ always @ (posedge clk) begin
 			//master is requesting somethign
 			if (wbs_we_i) begin
 				//write request
-				$display("user wrote %h to address %h", wbs_dat_i, wbs_adr_i);
 				if (~wr_fifo_full & ~wbs_ack_o) begin
+				  $display("user wrote %h to address %h", wbs_dat_i, wbs_adr_i);
 					wbs_ack_o <= 1;
 					fifo_wr		<=	1;
 				end
 			end
 
 			else begin 
-				//read request
-				if (~rd_fifo_empty) begin
-				//	$display("user reading %h", wbs_dat_o);
-					fifo_rd	<=	1;
-					wbs_ack_o <= 1;
-				end
+        if (delay > 0) begin
+          delay <= delay - 1;
+        end
+        else begin
+          if (reading) begin
+            wbs_ack_o <=  1;
+            reading <=  0;
+          end
+          else begin
+    				//read request
+	    			if (~rd_fifo_empty & ~wbs_ack_o) begin
+		    		//	$display("user reading %h", wbs_dat_o);
+			    		fifo_rd	<=	1;
+              reading <=  1;
+              delay   <=  1;
+				    end
+          end
+        end
 			end
 		end
 	end
