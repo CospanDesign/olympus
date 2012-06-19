@@ -3,6 +3,7 @@ all:
 clean:
 	rm design
 	rm *.vcd
+  rm *.output.txt
 sim:
 	vvp design
 wave:
