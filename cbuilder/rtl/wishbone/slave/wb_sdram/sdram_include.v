@@ -8,32 +8,10 @@
 
 `timescale 1ns/10ps
 
-//---------------------------------------------------------------------------
-// Frequency and timeouts
-//---------------------------------------------------------------------------
 `define SYS_CLK_FREQUENCY   50000     // in kHz
-`define SDRAM_CLK_MULTIPLY    2        
-`define SDRAM_CLK_DIVIDE      1
 
-//---------------------------------------------------------------------------
-// Width
-//---------------------------------------------------------------------------
-`define CMD_WIDTH  3
-`define A_WIDTH    12
-`define BA_WIDTH   2
-`define DQ_WIDTH   16
-`define DQS_WIDTH  2
-`define DM_WIDTH   2
-
-
-//----------------------------------------------------------------------------
-// Configuration registers
-//----------------------------------------------------------------------------
-//Burst
-//Burst Length = 2 (32 bits)
-//CAS Latency = 2
 //Sequential
-`define SDRAM_INIT_LMR	12'b000000110001
+`define SDRAM_INIT_LMR	12'b000000100001
 //A[11:10]	RESERVED: 0, 0
 //A[9]		Write Burst Mode
 //				0: 	Programed burst length
@@ -47,18 +25,8 @@
 //				0:	Sequential
 //				1:	Interleaved
 //A[2:0]	Burst Length
-//				001:	2
+//				001:	1
 
-
-//----------------------------------------------------------------------------
-// FML constants
-//----------------------------------------------------------------------------
-`define FML_ADR_RNG     25:4 
-`define FML_ADR_BA_RNG  25:24
-`define FML_ADR_ROW_RNG 23:11
-`define FML_ADR_COL_RNG 10:4
-`define FML_DAT_RNG     31:0
-`define FML_BE_RNG       3:0
 
 //----------------------------------------------------------------------------
 // SDRAM constants
@@ -76,21 +44,15 @@
 `define ADR_ROW_RNG   23:11
 `define ADR_COL_RNG   10:4
 
-//ACTIVE -> READ 2 clock cycles 7E
-`define T_RCD	2			
-//READ -> DATA READY 2 clock cycles for CAS latency
-`define T_CAS	3			
-//PRECHARGE -> finished	
-`define T_RP	2			
-//READ -> READ
-`define T_CCD	1			
-//AUTO REFRESH to ready
-`define T_RFC	7		
-//XXX: 16 IS ONLY FOR SIMULATION
-`define T_PLL	11000
-//MODE Register Set
-`define T_MRD	2
+`define T_RCD	2			//ACTIVE -> READ/WRITE 2 clock cycles 7E
+`define T_CAS	2			//READ -> DATA READY 2 clock cycles for CAS latency
+`define T_RP	2			//PRECHARGE -> finished	
+`define T_CCD	1			//READ -> READ
+`define T_RFC	7		  //AUTO REFRESH to ready
+`define T_PLL	11000 //XXX: 16 IS ONLY FOR SIMULATION
+`define T_MRD	2     //MODE Register Set
+`define T_WR  2     //Writing to memory
 
 //Auto Refresh Timeout
-`define T_AR_TIMEOUT	6000000
+`define T_AR_TIMEOUT	1500
 `endif

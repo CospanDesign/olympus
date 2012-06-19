@@ -26,220 +26,176 @@ SOFTWARE.
 
 
 module sdram (
-	clk,
-	rst,
+  clk,
+  rst,
 
-	wr_fifo_wr,
-	wr_fifo_data,
-	wr_fifo_mask,
-	wr_fifo_full,
+  app_write_pulse,
+  app_write_data,
+  app_write_mask,
+  write_fifo_full,
 
+  app_read_pulse,
+  app_read_data,
+  read_fifo_empty,
 
-	rd_fifo_rd,
-	rd_fifo_data,
-	rd_fifo_empty,
-	rd_fifo_reset,
+  //Wishbone command
+  sdram_ready,
 
-	//Wishbone command
-	write_en,
-	read_en,
-	sdram_ready,
-	address,
+  app_write_enable,
+  app_read_enable,
+  app_address,
 
-	sd_clk,
-	cs_n,
-	cke,
-	ras_n,
-	cas_n,
-	we_n,
+  sd_clk,
+  cs_n,
+  cke,
+  ras,
+  cas,
+  we,
 
-	addr,
-	bank,
-	data,
-	data_mask
+  address,
+  bank,
+  data,
+  data_mask
 );
 
-input 				clk;
-input 				rst;
+input         clk;
+input         rst;
 
-input				wr_fifo_wr;
-input	[31:0]		wr_fifo_data;
-input	[3:0]		wr_fifo_mask;
-output				wr_fifo_full;
+input         app_write_pulse;
+input [31:0]  app_write_data;
+input [3:0]   app_write_mask;
+output        write_fifo_full;
 
-input				rd_fifo_rd;
-output	[31:0]		rd_fifo_data;
-output				rd_fifo_empty;
-input				rd_fifo_reset;
+input         app_read_pulse;
+output [31:0] app_read_data;
+output        read_fifo_empty;
 
-//XXX: is this implemented inside the state machine?
-input				write_en;
-input				read_en;
-input	[21:0]		address;
-output				sdram_ready;
+input         app_write_enable;
+input         app_read_enable;
 
-output				sd_clk;
-output				cke;
-output 				cs_n;
-output				ras_n;
-output				cas_n;
-output				we_n;
+input [21:0]  app_address;
+output reg    sdram_ready;
 
-output	reg	[11:0]	addr;
-output	reg	[1:0]	bank;
-inout		[15:0]	data;
-output	reg	[1:0]	data_mask;
+output        sd_clk;
+output reg    cke;
+output reg    cs_n;
+output        ras;
+output        cas;
+output        we;
 
-wire		[15:0]	data_out;
-reg					sdram_reset = 1;
-reg					init_cke;
-reg					init_cs_n;
+output      [11:0]  address;
+output      [1:0]   bank;
+inout       [15:0]  data;
+output      [1:0]   data_mask;
 
 
+wire          sdram_clock_ready;
+wire          sdram_clk;
 
-reg					wr_en;
-reg					rd_en;
-
-wire				sdram_clk;
-
-assign 	data	=	(!write_ready) ? data_out:16'hZZZZ;
-assign	cke		=	(sdram_reset) ? 0 : init_cke;	
-assign	cs_n	=	(sdram_reset) ? 1 : init_cs_n;
-
-
-
-parameter			RESET		=	8'h0;
-parameter			INIT		=	8'h1;
-parameter			CKE_HIGH	=	8'h2;
-parameter			PRECHARGE	=	8'h3;
-parameter			AUTO_RFRSH1	=	8'h4;
-parameter			AUTO_RFRSH2	=	8'h5;
-parameter			LMR			=	8'h6;
-parameter			READY		=	8'h7;
-parameter			READ		=	8'h8;
-parameter			WRITE		=	8'h9;
-
-reg		[7:0]		state;
-reg		[24:0]		delay;
-
-reg		[2:0]		init_command;
-reg		[2:0]		command;
-
-assign	ras_n		=	command[2];
-assign	cas_n		=	command[1];
-assign	we_n		=	command[0];
-
-
-//INIT State Machine variables
-reg		[11:0]		init_addr;
-reg		[1:0]		init_bank;
-
-//asynchronous
-//assign the command to the correct state machine (init, read, write)
-always @ (
-	sdram_ready, 
-	read_ready, 
-	write_ready, 
-	init_command, 
-	read_command, 
-	write_command) begin
-
-	if (!sdram_ready) begin
-		command		<=	init_command;
-	end
-	else begin
-		if (!read_ready) begin
-			command	<=	read_command;
-		end
-		else if (!write_ready) begin
-			command	<= write_command;
-		end
-		else begin
-			command	<= init_command;
-		end
-	end
-end
-
-always @ (
-	sdram_ready, 
-	read_en, 
-	write_en, 
-	read_phy_addr, 
-	read_phy_bank,
-	write_phy_addr, 
-	write_phy_bank, 
-	init_addr, 
-	init_bank,
-	read_data_mask,
-	write_data_mask) begin
-
-	if (!sdram_ready) begin
-		addr		<=	init_addr;
-		bank		<=	init_bank;
-		data_mask	<=	write_data_mask;
-	end
-	else begin
-		if (read_en) begin
-			addr		<=	read_phy_addr;
-			bank		<=	read_phy_bank;
-			data_mask	<=	read_data_mask;
-		end
-		else if (write_en) begin
-			addr		<=	write_phy_addr;
-			bank		<=	write_phy_bank;
-			data_mask	<=	write_data_mask;
-		end
-		else begin
-			addr		<=	init_addr;
-			bank		<=	init_bank;
-			data_mask	<=	write_data_mask;
-		end
-	end
-end
-
-
-
-
-wire					clock_ready;
-
-//instantiate the digital clock manager
+//Generate the SDRAM Clock
 sdram_clkgen clkgen (
-	.rst(rst),
-	.clk(clk),
+  .clk (clk),
+  .rst (rst),
 
-	.locked(clock_ready),
-	.out_clk(sdram_clk),
-	.phy_out_clk(sd_clk)
+  .locked(sdram_clock_ready),
+  .out_clk(sdram_clk),
+  .phy_out_clk(sd_clk)
 );
 
-//instantiate the write fifo (36 bits)
-wire	[35:0]		wr_data;
-wire				wr_fifo_rd;
-wire				wr_fifo_empty;
 
-wire	[31:0]		rd_data;
-wire	[35:0]		wr_data_in;
-assign	wr_data_in	=	{(wr_fifo_mask), (wr_fifo_data)};
+//setup the cke
+always @(posedge clk) begin
+  if (rst || ~sdram_clock_ready) begin
+    cke <= 0;
+  end
+  else begin
+    if (sdram_clock_ready) begin
+      cke <=  1;
+    end
+  end
+end
 
+reg           refresh_ack;
+reg           refresh;
+
+//Write path
+wire  [2:0]   write_command;
+wire  [11:0]  write_address;
+wire  [1:0]   write_bank;
+wire          write_idle;
+wire  [1:0]   write_data_mask;
+wire  [35:0]  write_path_data;
+reg           write_enable;
+wire  [15:0]  data_out;
+
+wire          writing;
+assign        writing = ~write_idle;
+
+
+//Write FIFO
 afifo 
 	#(		.DATA_WIDTH(36),
 			.ADDRESS_WIDTH(8)
 	)
 fifo_wr (
-	.rst(sdram_reset),
+	.rst(rst || ~sdram_ready),
 
+  //Clocks
 	.din_clk(clk),
 	.dout_clk(sdram_clk),
 
-	.data_in(wr_data_in),
-	.data_out(wr_data),
-	.full(wr_fifo_full),
-	.empty(wr_fifo_empty),
+  //Data
+	.data_in({app_write_mask, app_write_data}),
+	.data_out(write_path_data),
 
-	.wr_en(wr_fifo_wr),
-	.rd_en(wr_fifo_rd)
+  //Status
+	.full(write_fifo_full),
+	.empty(write_fifo_empty),
 
+  //Commands
+	.wr_en(app_write_pulse),
+	.rd_en(write_path_read_pulse)
 );
+
+sdram_write write_path (
+  .rst(rst || ~sdram_ready),
+  .clk(sdram_clk),
+
+  //Write Path SDRAM Control
+  .command(write_command),
+  .address(write_address),
+  .bank(write_bank),
+  .data_out(data_out),
+  .data_mask(write_data_mask),
+
+  //Control
+  .idle(write_idle),
+  .enable(write_enable),
+  .auto_refresh(refresh),
+  
+  //Application address
+  .app_address(app_address),
+
+  //Data Out Path
+  .fifo_data(write_path_data),
+  .fifo_read(write_path_read_pulse),
+  .fifo_empty(write_fifo_empty)
+);
+
+//Read path
+wire  [2:0]   read_command;
+wire          read_idle;
+reg           read_fifo_reset;
+wire  [11:0]  read_address;
+wire  [1:0]   read_bank;
+wire  [31:0]  read_path_data;
+reg           read_enable;
+
+wire  [15:0]  data_in;
+assign        data_in = data;
+
+wire          reading;
+assign        reading = ~read_idle;
 
 //instantiate the read fifo (32 bits)
 afifo 
@@ -247,260 +203,233 @@ afifo
 			.ADDRESS_WIDTH(8)
 	)
 fifo_rd (
-	.rst(sdram_reset || rd_fifo_reset),
+	.rst(~app_read_enable),
 
+  //Clocks
 	.din_clk(sdram_clk),
 	.dout_clk(clk),
 
-	.data_in(rd_data),
-	.data_out(rd_fifo_data),
-	.full(rd_fifo_full),
-	.empty(rd_fifo_empty),
+  //Data
+	.data_in(read_path_data),
+	.data_out(app_read_data),
 
-	.wr_en(rd_fifo_wr),
-	.rd_en(rd_fifo_rd)
+  //Status
+	.full(read_fifo_full),
+	.empty(read_fifo_empty),
 
+  //Commands
+	.wr_en(read_path_write_pulse),
+	.rd_en(app_read_pulse)
 );
 
-reg					auto_refresh;
-wire	[2:0]		write_command;
-wire	[11:0]		write_phy_addr;
-wire	[1:0]		write_phy_bank;
-wire	[1:0]		write_data_mask;
 
-//instantiate the write state machine
-sdram_write sdram_wr (
-	.rst(sdram_reset),
-	.clk(sdram_clk),
+sdram_read read_path (
+  .rst(rst || ~sdram_ready),
+  .clk(sdram_clk),
 
-	//SDRAM PHY I/O
-	.command(write_command),
-	.addr(write_phy_addr),
-	.bank(write_phy_bank),
-	.data_out(data_out),
+  //Read Path SDRAM Control
+  .command(read_command),
+  .address(read_address),
+  .bank(read_bank),
+  .data_in(data_in),
 
-	.data_mask(write_data_mask),
+  //Control
+  .enable(read_enable),
+  .idle(read_idle),
+  .auto_refresh(refresh),
 
-	//sdram_controller
-	.en(wr_en),
-	.ready(write_ready),
-	.address(address),
-	.auto_refresh(auto_refresh),
+  //application address
+  .app_address(app_address),
 
-	//FIFO Out
-	.fifo_data(wr_data),
-	.fifo_empty(wr_fifo_empty),
-	.fifo_rd(wr_fifo_rd)
-);
-//instantiate the read state machine
-wire	[2:0]		read_command;
-wire	[11:0]		read_phy_addr;
-wire	[1:0]		read_phy_bank;
-wire	[1:0]		read_data_mask;
-
-wire				read_ready;
-wire	[1:0]		read_bank;
-
-sdram_read sdram_rd (
-	.rst(sdram_reset),
-	.clk(sdram_clk),
-
-	//SDRAM PHY I/O
-	.command(read_command),
-	.addr(read_phy_addr),
-	.bank(read_phy_bank),
-	.data_in(data),
-	.data_mask(read_data_mask),
-
-	//READ State Machine interface
-	.en(rd_en),
-	.ready(read_ready),
-	.auto_refresh(auto_refresh),
-	.address(address),
-
-	//RD FIFO
-	.fifo_data(rd_data),
-	.fifo_full(rd_fifo_full),
-	.fifo_wr(rd_fifo_wr)
+  //Data In Path
+  .fifo_data(read_path_data),
+  .fifo_write(read_path_write_pulse),
+  .fifo_full(read_fifo_full)
 );
 
-//XXX: ATTACH THIS TO THE DCM!!
+//Initialization Write Path
+reg   [2:0]   init_command;
+reg   [11:0]  init_address;
+reg   [1:0]   init_bank;
 
-assign	sdram_ready	=	(!sdram_reset & (delay == 0) & (state == READY || state == READ || state == WRITE));
+wire  [2:0]   command;
+
+//Combine all the ras/cas/we
+assign command  = ~write_idle ? write_command : ~read_idle ? read_command : init_command;
+assign ras  = command[2];
+assign cas  = command[1];
+assign we   = command[0];
+assign bank = ~write_idle ? write_bank : ~read_idle ? read_bank : init_bank;
+assign address  = ~write_idle ? write_address : ~read_idle ? read_address : init_address;
+
+//XXX: Disable Data mask for testing
+//assign data_mask = ~write_idle ? write_data_mask : 2'b00; 
+assign data_mask = 2'b00;
+
+//Attach the tristate Data to an in and out
+
+assign        data = writing ? data_out : 16'hZZZZ;
+
+parameter     START               = 4'h0;
+parameter     PRECHARGE           = 4'h1;
+parameter     AUTO_REFRESH1       = 4'h2;
+parameter     AUTO_REFRESH2       = 4'h3;
+parameter     LOAD_MODE_REGISTER  = 4'h4;
+parameter     IDLE                = 4'h5;
+parameter     READING             = 4'h6;
+parameter     WRITING             = 4'h7;
+parameter     AUTO_REFRESH_PRE    = 4'h8;
+parameter     AUTO_REFRESH        = 4'h9;
 
 
 
-always @ (posedge clk) begin
-	if (rst) begin
-		sdram_reset	<=	1;
-	end
-	else begin
-		//wait till the DCM has stabalized
-		if (clock_ready) begin
-			//when it does then keep SDRAM_reset high for one more clock cycle
-			sdram_reset	<=	0;
-		end
-	end
+//General Registers
+reg   [3:0]   state;
+reg   [15:0]  delay;
+
+always @(posedge sdram_clk) begin
+
+  read_fifo_reset           <=  0;
+  refresh_ack               <=  0;
+  init_bank                 <=  2'b00;
+
+  if (rst || ~cke) begin
+    //either the whole device is in reset or the DCM is not settled
+    state                   <=  START;
+    delay                   <=  16'h0;
+    cs_n                    <=  1;
+    init_command            <=  `SDRAM_CMD_NOP;
+    init_bank               <=  2'b00;
+    init_address            <=  12'h000;
+    sdram_ready             <=  0;
+    read_enable             <=  0;
+    write_enable            <=  0;
+    read_fifo_reset         <=  1;
+  end
+  else begin
+    
+    if (delay > 0) begin
+      init_command          <=  `SDRAM_CMD_NOP;
+      delay                 <=  delay - 1;
+    end
+    else begin
+      case (state)
+        START: begin
+          //$display ("SDRAM_INIT: START Initialization");
+          //wait for the PLL to settle
+          delay             <=  `T_PLL;
+          state             <=  PRECHARGE;
+        end
+        PRECHARGE: begin
+          //$display ("SDRAM_INIT: PRECHARGE");
+          cs_n              <=  0;
+          init_command      <=  `SDRAM_CMD_PRE; 
+          init_address[10]  <=  1;
+          delay             <=  `T_RP;
+          state             <=  AUTO_REFRESH1;
+          init_bank         <=  2'b11;
+        end
+        AUTO_REFRESH1: begin
+          //$display ("SDRAM_INIT: AUTO_REFRESH1");
+          init_command      <=  `SDRAM_CMD_AR;
+          delay             <=  `T_RFC;
+          state             <=  AUTO_REFRESH2;
+        end
+        AUTO_REFRESH2: begin
+          //$display ("SDRAM_INIT: AUTO_REFRESH2");
+          init_command      <=  `SDRAM_CMD_AR;
+          delay             <=  `T_RFC;
+          state             <=  LOAD_MODE_REGISTER;
+        end
+        LOAD_MODE_REGISTER: begin
+          //$display ("SDRAM_INIT: LOAD_MODE_REGISTER");
+          init_command      <=  `SDRAM_CMD_MRS;
+          delay             <=  `T_MRD;
+          init_address      <=  `SDRAM_INIT_LMR;
+          state             <=  IDLE;
+        end
+        IDLE: begin
+          sdram_ready       <=  1;
+          //the write/read path are disabled until the app calls write/read in this state
+          write_enable      <=  0;
+          read_enable       <=  0;
+          read_fifo_reset   <=  1;
+          //waiting for user to initiate a command
+          if (refresh) begin
+            //$display ("SDRAM_INIT: Auto Refresh");
+            //init_bank       <=  2'b11;
+            state           <=  AUTO_REFRESH_PRE;
+          end
+          //if the user starts a write enable the write path
+          if (app_write_enable) begin
+            //$display ("SDRAM_INIT: write initiated");
+            state           <=  WRITING;
+            write_enable    <=  1;
+          end
+          //if the user starts a read enable the read path
+          if (app_read_enable) begin
+            //$display ("SDRAM_INIT: read initiated");
+            state           <=  READING;
+            //get rid of any data that is in the read FIFO
+            read_enable     <=  1;
+            read_fifo_reset <=  0;
+          end
+        end
+        READING: begin
+          if (read_idle && ~app_read_enable) begin
+            state <=  IDLE;
+          end
+        end
+        WRITING: begin
+          if (write_idle && ~app_write_enable) begin
+            state <=  IDLE;
+          end
+        end
+        AUTO_REFRESH_PRE: begin
+          init_command    <= `SDRAM_CMD_PRE;
+          init_address[10]<=  1;
+          state           <= AUTO_REFRESH;
+          delay           <= `T_RP; 
+        end
+        AUTO_REFRESH: begin
+          init_command    <= `SDRAM_CMD_AR;
+          state           <=  IDLE;
+          delay           <=  `T_RFC;
+          refresh_ack     <=  1;
+
+        end
+
+        default: begin
+          //$display ("Shouldn't be here");
+          state <=  START;
+        end
+      endcase
+    end
+  end
 end
 
 
-reg	lauto_refresh;
+//auto refresh master timeout
+reg   [31:0]  auto_refresh_count;
 
-always @ (negedge sdram_clk, posedge rst) begin
-	if (sdram_reset || rst) begin
-//		$display ("sdram: resetting variables");
-		init_cke		<= 0;
-		init_cs_n		<= 1;
-		init_command	<= `SDRAM_CMD_NOP;
-		init_addr		<= 12'h0;
-		init_bank		<= 2'h0;
-		state			<= RESET;
-		delay			<= 	10;
-		wr_en			<=	0;
-		rd_en			<=	0;
-		lauto_refresh	<=	0;
-	end
-	else begin
-		if (state == READY && auto_refresh) begin
-			lauto_refresh	<=	1;
-		end
-		if (delay > 0) begin
-			delay <= delay - 1;
-			init_command	<= `SDRAM_CMD_NOP;
-		end
-		else begin
-			case (state)
-				RESET: begin
-					$display ("sdram: RESET");
-//					init_cke			<=	0;
-					init_cke			<=	1;
-					init_cs_n			<=	1;
-					//wait for the digital clock manager to settle
-					//once settled then kick off an INIT
-					state				<=	INIT;
-
-				end
-				INIT: begin
-					$display ("sdram: INIT");
-					init_cke			<=	1;
-					delay				<=	`T_PLL;
-					state				<=	CKE_HIGH;
-				end
-				CKE_HIGH: begin
-					$display ("sdram: CKE_HIGH");
-//					init_cke			<=	1;
-					init_cs_n			<=	0;
-					delay				<=	`T_PLL;
-					state				<=	PRECHARGE;
-				end
-				PRECHARGE: begin
-					$display ("sdram: PRECHARGE");
-					init_command		<= `SDRAM_CMD_PRE;
-					//precharge all
-					init_addr[10]		<=	1;
-					delay				<=	`T_RP;
-					state				<=	AUTO_RFRSH1;
-				end
-				AUTO_RFRSH1: begin
-					$display ("sdram: AUTO_RFRSH1");
-					init_command		<=	`SDRAM_CMD_AR;
-					delay				<=	`T_RFC;
-					state				<=	AUTO_RFRSH2;
-				end
-				AUTO_RFRSH2: begin
-					$display ("sdram: AUTO_RFRSH2");
-					init_command		<=	`SDRAM_CMD_AR;
-					delay				<=	`T_RFC;
-					state				<=	LMR;
-				end
-				LMR: begin
-					$display ("sdram: LMR");
-					init_command		<=	`SDRAM_CMD_MRS;
-					state				<=	READY;
-					init_addr			<=	`SDRAM_INIT_LMR;
-					delay				<=	`T_MRD;
-				end
-				READY: begin
-					//listen from a init_command from the wishbone bus
-					init_addr			<=	12'h00;
-					if (lauto_refresh) begin
-						init_command	<=	`SDRAM_CMD_AR;
-						delay			<=	`T_RFC;
-						lauto_refresh	<=	0;
-					end
-					if (write_en || !wr_fifo_empty) begin
-						$display ("sdram: WRITE");
-						wr_en	<=	1;
-						state	<=	WRITE;
-					end
-					else if (read_en) begin
-						$display ("sdram: READ");
-						rd_en	<=	1;
-						state	<=	READ;
-					end
-				end
-				READ: begin
-					//deassert the read state machine
-					rd_en	<=	0;
-					
-					//continue reading if wishbone
-					if (read_en) begin
-						rd_en	<=	1;	
-					end
-					//wait for the ready from the read state machine
-					if (~read_en & read_ready) begin
-						//change back to ready
-						state				<= READY;
-					end
-				end
-				WRITE: begin
-					wr_en	<=	0;
-					if (write_en || !wr_fifo_empty) begin
-						wr_en	<=	1;
-					end
-					//wait for wishbone to say it's finished
-					//wait for the ready signal
-					//wait for the write FIFO to be empty
-					if (write_ready && wr_fifo_empty) begin
-						//deassert the en
-						//change back to READY state
-						state	<= READY;
-					end
-				end
-				default: begin
-					$display ("sdram: in undefined state");
-					state				<= INIT;
-				end
-			endcase
-		end
-
-	end
+always @(posedge sdram_clk) begin
+  if (rst || ~sdram_ready) begin
+    auto_refresh_count  <=  `T_AR_TIMEOUT;
+    refresh <=  0;
+  end
+  else begin
+    if (refresh_ack || ~sdram_ready) begin
+      refresh <= 0;
+    end
+    if (auto_refresh_count > 0) begin
+      auto_refresh_count  <= auto_refresh_count - 1;
+    end
+    else begin
+      auto_refresh_count  <= `T_AR_TIMEOUT;
+      refresh             <= 1;
+    end
+  end
 end
 
-//auto refresh timeout
-/*
-	NOTE: this could have been
-		in the above block but it is more readible here
-		and conveys that it is independent of the main state
-		machine
-*/
-reg	[31:0]			ar_timeout;
-always @ (negedge sdram_clk) begin
-	if (sdram_reset) begin
-		ar_timeout		<= `T_AR_TIMEOUT;
-	end
-	else begin
-		//auto refresh pulse
-		auto_refresh		<= 0;	
-		if (ar_timeout > 0) begin
-			ar_timeout 	<=	ar_timeout - 1;
-		end
-		else begin
-			ar_timeout	<=	`T_AR_TIMEOUT; 
-			auto_refresh	<= 1;
-		end
-	end
-end
 
-endmodule 
-
+endmodule

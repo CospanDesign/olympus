@@ -62,9 +62,9 @@ module wb_sdram (
 	sdram_clk,
 	sdram_cke,
 	sdram_cs_n,
-	sdram_ras_n,
-	sdram_cas_n,
-	sdram_we_n,
+	sdram_ras,
+	sdram_cas,
+	sdram_we,
 
 	sdram_addr,
 	sdram_bank,
@@ -78,30 +78,30 @@ input 				clk;
 input 				rst;
 
 //wishbone slave signals
-input 				wbs_we_i;
-input 				wbs_stb_i;
-input 				wbs_cyc_i;
-input		[3:0]	wbs_sel_i;
-input		[31:0]	wbs_adr_i;
+input 				    wbs_we_i;
+input 				    wbs_stb_i;
+input 				    wbs_cyc_i;
+input		  [3:0]	  wbs_sel_i;
+input		  [31:0]	wbs_adr_i;
 input  		[31:0]	wbs_dat_i;
 output		[31:0]	wbs_dat_o;
-output reg			wbs_ack_o;
-output reg			wbs_int_o;
+output reg			  wbs_ack_o;
+output reg			  wbs_int_o;
 
 
 //SDRAM signals
 output				sdram_clk;
 output				sdram_cke;
 output				sdram_cs_n;
-output				sdram_ras_n;
-output				sdram_cas_n;
-output				sdram_we_n;
+output				sdram_ras;
+output				sdram_cas;
+output				sdram_we;
 
 output		[11:0]	sdram_addr;
-output		[1:0]	sdram_bank;
-inout		[15:0]	sdram_data;
-output		[1:0]	sdram_data_mask;
-output				sdram_ready;
+output		[1:0]	  sdram_bank;
+inout		  [15:0]	sdram_data;
+output		[1:0]	  sdram_data_mask;
+output				    sdram_ready;
 
 
 reg					fifo_wr;
@@ -109,7 +109,6 @@ reg					fifo_rd;
 
 wire				wr_fifo_full;
 wire				rd_fifo_empty;
-reg					rd_fifo_reset;
 
 
 
@@ -117,29 +116,28 @@ sdram ram (
 	.clk(clk),
 	.rst(rst),
 
-	.wr_fifo_wr(fifo_wr),
-	.wr_fifo_data(wbs_dat_i),
-	.wr_fifo_mask(~wbs_sel_i),
-	.wr_fifo_full(wr_fifo_full),
+	.app_write_pulse(fifo_wr),
+	.app_write_data(wbs_dat_i),
+	.app_write_mask(~wbs_sel_i),
+	.write_fifo_full(wr_fifo_full),
 
-	.rd_fifo_rd(fifo_rd),
-	.rd_fifo_data(wbs_dat_o),
-	.rd_fifo_empty(rd_fifo_empty),
-	.rd_fifo_reset(rd_fifo_reset),
+	.app_read_pulse(fifo_rd),
+	.app_read_data(wbs_dat_o),
+	.read_fifo_empty(rd_fifo_empty),
 
-	.write_en(wbs_we_i & wbs_cyc_i),
-	.read_en(~wbs_we_i & wbs_cyc_i),
+	.app_write_enable(wbs_we_i & wbs_cyc_i),
+	.app_read_enable(~wbs_we_i & wbs_cyc_i),
 	.sdram_ready(sdram_ready),
-	.address(wbs_adr_i[23:2]),
+	.app_address(wbs_adr_i[23:2]),
 	
 	.sd_clk(sdram_clk),
 	.cke(sdram_cke),
 	.cs_n(sdram_cs_n),
-	.ras_n(sdram_ras_n),
-	.cas_n(sdram_cas_n),
-	.we_n(sdram_we_n),
+	.ras(sdram_ras),
+	.cas(sdram_cas),
+	.we(sdram_we),
 
-	.addr(sdram_addr),
+	.address(sdram_addr),
 	.bank(sdram_bank),
 	.data(sdram_data),
 	.data_mask(sdram_data_mask)
@@ -153,16 +151,14 @@ always @ (posedge clk) begin
 		wbs_int_o		<= 0;
 		fifo_wr			<= 0;
 		fifo_rd			<= 0;
-		rd_fifo_reset	<=	1;
 	end
 	else begin
 		fifo_wr		<=	0;
 		fifo_rd		<=	0;
 		
-		rd_fifo_reset		<=	1;
-		if (wbs_cyc_i) begin
-			rd_fifo_reset	<=	0;
-		end
+		//if (wbs_cyc_i) begin
+	//		rd_fifo_reset	<=	0;
+		//end
 		//when the master acks our ack, then put our ack down
 		if (wbs_ack_o & ~wbs_stb_i)begin
 			wbs_ack_o <= 0;

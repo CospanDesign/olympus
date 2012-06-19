@@ -246,8 +246,8 @@ module mt48lc4m16
             DQ0_zd } = DQ_zd;
 
     parameter UserPreload   = 1'b1;
-	parameter mem_file_name = "none";  //"mt48lc4m16.mem";
- 	//parameter mem_file_name = "mt48lc4m16.mem";
+  parameter mem_file_name = "none";  //"mt48lc4m16.mem";
+  //parameter mem_file_name = "mt48lc4m16.mem";
     parameter TimingModel   = "DefaultTimingModel";
     parameter PartID        = "mt48lc4m16";
     parameter hi_bank       = 3;
@@ -342,8 +342,8 @@ module mt48lc4m16
 
     // tdevice values: values for internal delays
 
-	parameter TRAS_VAL = 37;
-	parameter TRCD_VAL = 15;
+  parameter TRAS_VAL = 37;
+  parameter TRCD_VAL = 15;
     time tdevice_TRASmin   = 37;
     time tdevice_TRASmax   = 1200000;
     time tdevice_TRC   = 66;
@@ -771,13 +771,14 @@ module mt48lc4m16
         statebank[1] = pwron;
         statebank[2] = pwron;
         statebank[3] = pwron;
-        #100000 PoweredUp = 1'b1;
-//		$display("Powerup Finished at %d", $time);
+        $display ("Powering up! Time: %d", $time);
+        #100 PoweredUp = 1'b1;
+        $display ("Powerup Finished at %d", $time);
     end
 
     always @(posedge ras_in[0])
     begin:TRASrise0
-//		$display ("ras in for bank 0 high, tdevice_TRASmin = %d", tdevice_TRASmin);
+//    $display ("ras in for bank 0 high, tdevice_TRASmin = %d", tdevice_TRASmin);
         ras_out[0] <= #tdevice_TRASmin ras_in[0];
     end
 
@@ -817,12 +818,12 @@ module mt48lc4m16
 
     always @(posedge rcdt_in[0])
     begin:TRCDrise0
-//		$display ("TRD went high");
+//    $display ("TRD went high");
         rcdt_out[0] <= #5 1'b1;
     end
     always @(negedge rcdt_in[0])
     begin:TRCDfall0
-//		$display ("TRD went low");
+//    $display ("TRD went low");
         rcdt_out[0] <= #tdevice_TRCD 1'b0;
     end
 
@@ -963,6 +964,7 @@ module mt48lc4m16
 
                 precharge :
                 begin
+                    $display ("\tRAM: Precharge");
                     if (cur_bank == bank)
                     // It is only an error if this bank is selected
                         if (command != nop && command != pre)
@@ -1006,7 +1008,7 @@ module mt48lc4m16
                     end
                     else if (command == act)
                     begin
-						$display ("Activate Command Received");
+                        $display ("\tRAM: Activate Command Received");
                         statebank[bank] = bank_act;
                         ras_in[bank] = 1'b1;
                         ras_in [bank] <= #70 1'b0;
@@ -1017,11 +1019,12 @@ module mt48lc4m16
                         MemAddr[bank][19:8] = A; // latch row addr
                     end
                     else
-               $display ("Illegal command received in idle state.",$time);
+                      $display ("Illegal command received in idle state.",$time);
                 end
 
-                mode_set :
+              mode_set :
                 begin
+                    $display ("\tRAM: Setting mode to %h", ModeReg);
                     if (ModeReg[7] != 0 || ModeReg[8] != 0)
                         $display ("Illegal operating mode set.");
                     if (command != nop)
@@ -1059,9 +1062,12 @@ module mt48lc4m16
                     else
                         $display ("Invalid burst length specified.");
 
+                    $display ("Burst Length set to %h", BurstLen);
                     // read burst type
-                    if (~ModeReg[3])
+                    if (~ModeReg[3]) begin
                         Burst = sequential;
+                        $display ("Burst Type == Sequential");
+                    end
                     else if (ModeReg[3])
                         Burst = interleave;
                     else
@@ -1094,6 +1100,7 @@ module mt48lc4m16
 
                 auto_refresh :
                 begin
+                    $display ("\tRAM: Auto Refresh Entered");
                     if (Ref_Cnt < 8192)
                         Ref_Cnt = Ref_Cnt + 1;
                     if (command != nop)
@@ -1105,6 +1112,7 @@ module mt48lc4m16
 
                 bank_act :
                 begin
+                    $display ("\tRAM: Bank Activate");
                     if (command == pre && (cur_bank == bank || A[10]))
                     begin
                         if (~ras_out[bank])
@@ -1125,7 +1133,7 @@ module mt48lc4m16
                         begin
                             $display ("read command received too soon");
                             $display ("after active",$time);
-							$display ("rcdt_out[bank] == %d", rcdt_out[bank]);
+                            $display ("rcdt_out[bank] == %d", rcdt_out[bank]);
                         end
                         if (A[10] == 1'bx)
                         begin
@@ -1159,8 +1167,8 @@ module mt48lc4m16
                         begin
                             $display ("write command received too soon");
                             $display ("after active",$time);
-							$display ("bank: %h", bank);
-							$display ("rcdt_out[bank] = %d", rcdt_out[bank]);
+              $display ("bank: %h", bank);
+              $display ("rcdt_out[bank] = %d", rcdt_out[bank]);
                         end
                         if (A[10] == 1'bx)
                         begin
@@ -1195,8 +1203,9 @@ module mt48lc4m16
                     end
                 end
 
-                write :
+              write :
                 begin
+                    $display ("\tRAM: Write");
                     if (command == bst)
                     begin
                         statebank[bank] = bank_act;
@@ -1257,7 +1266,7 @@ module mt48lc4m16
                     begin
                         if (~ras_out[bank])
                         begin
- 			               $display ("precharge command does not meet tRAS time",$time);
+                     $display ("precharge command does not meet tRAS time",$time);
                         end
                         if (~DQM0_ipd)
                         begin
@@ -1294,8 +1303,9 @@ module mt48lc4m16
                     $display ("Illegal command received in write state",$time);
                 end
 
-                read :
+              read :
                 begin
+                    $display ("\tRAM: Read");
                     if (command == bst)
                     begin
                         statebank[bank] = bank_act;
@@ -1331,9 +1341,9 @@ module mt48lc4m16
                         begin
                             if (rcdt_out[bank])
                             begin
-                				$display ("write command received too soon after active",$time);
-								$display ("Bank: %h", bank);
-								$display ("rcdt_out[bank]: %h", rcdt_out[bank]);
+                        $display ("write command received too soon after active",$time);
+                $display ("Bank: %h", bank);
+                $display ("rcdt_out[bank]: %h", rcdt_out[bank]);
                             end
                             if (A[10] == 1'bx)
                             begin
@@ -1399,8 +1409,9 @@ module mt48lc4m16
                     $display ("Illegal command received in read state",$time);
                 end
 
-                write_auto_pre :
+              write_auto_pre :
                 begin
+                    $display ("\tRAM: Write with auto precharge");
                     if (command == nop || cur_bank != bank)
                         if (BurstCnt[bank] == BurstLen || WB == single)
                         begin
@@ -1424,12 +1435,14 @@ module mt48lc4m16
                     $display ("Illegal command received in write state.",$time);
                 end
 
-                read_auto_pre :
+             read_auto_pre :
                 begin
+                    $display ("\tRAM: Read with auto precharge");
                     if (command == nop || (cur_bank != bank && command != rd
                         && command != writ))
                         if (BurstCnt[bank] == BurstLen)
                         begin
+                            $display ("\tRAM: Read W/ SP Continue Reading");
                             statebank[bank] = precharge;
                             statebank[bank] <= #tdevice_TRP idle;
                             BurstCnt[bank] = 1'b0;
@@ -1437,6 +1450,7 @@ module mt48lc4m16
                         end
                         else
                         begin
+                            $display ("\tRAM: Read W/ AP Start Reading");
                             if (Burst == sequential)
                                 BurstInc[bank] = (BurstInc[bank]+1) % BurstLen;
                             else
@@ -1449,6 +1463,7 @@ module mt48lc4m16
                     else if ((command == rd || command == writ) && cur_bank
                         != bank)
                     begin
+                        $display ("\tRAM: Case 3");
                         statebank[bank] = precharge;
                         statebank[bank] <= #tdevice_TRP idle;
                     end

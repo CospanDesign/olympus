@@ -26,246 +26,169 @@ SOFTWARE.
 `include "sdram_include.v"
 
 module sdram_write (
-	rst,
-	clk,
+  rst,
+  clk,
 
-	command,	
-	addr,
-	bank,
-	data_out,
-	data_mask,
+  command,  
+  address,
+  bank,
+  data_out,
+  data_mask,
 
-	//sdram controller
-	en,
-	ready,
-	address,
-	auto_refresh,
+  idle,
+  enable,
+  auto_refresh,
+  
+  app_address,
 
-	//FIFO in
-	fifo_data,
-	fifo_empty,
-	fifo_rd
+  fifo_data,
+  fifo_read,
+  fifo_empty
 );
 
-input				rst;
-input				clk;
+input               rst;
+input               clk;
 
 //RAM control
-output	reg	[2:0]	command;
-output	reg	[11:0]	addr;
-output	reg	[1:0]	bank;
-output	reg	[15:0]	data_out;
-output	reg	[1:0]	data_mask;
+output  reg [2:0]   command;
+output  reg [11:0]  address;
+output  reg [1:0]   bank;
+output  reg [15:0]  data_out;
+output  reg [1:0]   data_mask;
 
 //sdram controller
-input				en;
-output				ready;
-input		[21:0]	address;
-input				auto_refresh;
+output              idle;
+input               enable;
+input       [21:0]  app_address;
+input               auto_refresh;
 
 //FIFO
-input		[35:0]	fifo_data;
-input				fifo_empty;
-output	reg			fifo_rd;
+input       [35:0]  fifo_data;
+output  reg         fifo_read;
+output  wire        fifo_empty;
+
+parameter           IDLE          = 4'h0;
+parameter           REFRESH_WAIT  = 4'h1;
+parameter           ACTIVE        = 4'h2;
+parameter           WRITE_COMMAND = 4'h3;
+parameter           WRITE_BOTTOM  = 4'h4;
+
+reg     [3:0]       state;
+reg     [15:0]      delay;
+
+//this address gets latched in when the user initiates a write
+reg		  [21:0]			write_address;
+
+wire    [11:0]      row;
+wire    [7:0]       column;
+
+//assign  bank    =   write_address[21:20];
+assign  row     =   write_address[19:8];
+assign  column  =   write_address[7:0]; //4 Byte Boundary
 
 
-parameter	IDLE				=	8'h0;
-parameter	ACTIVE				=	8'h1;
-parameter	WRITE_CMD			=	8'h2;
-parameter	WRITE_TOP_WORD		=	8'h3;
-parameter	WRITE_BOTTOM_WORD	=	8'h4;
-parameter	PRECHARGE			=	8'h5;
-parameter	FIFO_EMPTY_WAIT		=	8'h6;	
-parameter	RESTART				=	8'h7;
+//assign idle
+assign  idle    =   ((delay == 0) && ((state == IDLE) || (state == REFRESH_WAIT)));
 
-reg		[7:0]			state;
-reg		[15:0]			delay;
+always @(posedge clk) begin
+  //Always reset FIFO Read
+  fifo_read <=  0;
 
+  if (rst) begin
+    command       <=  `SDRAM_CMD_NOP;
+    state         <=  IDLE;
+    delay         <=  0;
+    write_address <=  22'h000000;
+    bank          <=  2'b00;
+    data_out      <=  16'h0000;
+    data_mask     <=  2'b0;
+    address       <=  12'h000;
 
-reg						lfifo_empty;
-reg						lauto_refresh;
-reg		[21:0]			laddress;
+  end
+  else begin
+    data_out  <=  16'h0000;
+    if (delay > 0) begin
+      command     <=  `SDRAM_CMD_NOP;
+      delay       <=  delay - 1;
+    end
+    else begin
+      case (state)
+        IDLE: begin
+          //data_out      <=  16'hZZZZ;
+          if (enable & ~fifo_empty) begin
+            //$display ("SDRAM WRITE: IDLE New Data!");
+            write_address <=  app_address;
+            state       <=  ACTIVE;
+          end
+        end
+        REFRESH_WAIT: begin
+          //don't update the write_address
+          if (fifo_empty) begin
+            //$display ("SDRAM_WRITE: REFRESH_WAIT go to IDLE");
+            state <=  IDLE;
+          end
+          //more data
+          else if (~auto_refresh) begin
+            //were finished waiting for auto refresh
+            //$display ("SDRAM_WRITE: REFRESH WAIT Finished continue writing");
+            state <=  ACTIVE;
+          end
+        end
+        ACTIVE: begin
+          //$display ("SDRAM_WRITE: ACTIVATE ROW %h", row);
+          command       <=  `SDRAM_CMD_ACT;
+          delay         <=  `T_RCD;
+          bank          <=  write_address[21:20];
+          address       <=  row;
+          state         <=  WRITE_COMMAND;
+          fifo_read     <=  1;
+        end
+        WRITE_COMMAND: begin
+          //$display ("SDRAM_WRITE: Issue the write command");
+          command       <=  `SDRAM_CMD_WRITE;
+          address       <=  {4'b0000, column};
+          address[10]   <=  1;                //auto precharge
+          data_out      <=  fifo_data[31:16];     
+          //data_out      <=  16'hFFFF;
+          //data_mask     <=  fifo_data[35:34];
+          data_mask     <=  2'b00;
+          state         <=  WRITE_BOTTOM;
+          //increment our local version of the address
+        end
+        WRITE_BOTTOM: begin
+          command       <=  `SDRAM_CMD_NOP;
+          //$display ("SDRAM_WRITE: Write Bottom Row");
+          data_out      <=  fifo_data[15:0];
+          //data_out      <=  16'hFFFF;
+          //data_mask     <=  fifo_data[33:32];
+          data_mask     <=  2'b00;
+          write_address <=  write_address + 2;
+          delay         <=  `T_WR + `T_RP - 1;
 
-wire	[1:0]			w_bank;
-wire	[11:0]			row;
-wire	[7:0]			column;
-
-assign	ready		=	((delay == 0) & (state == IDLE));
-assign	w_bank		=	laddress[21:20];
-assign	row			=	laddress[19:8];
-assign	column		=	laddress[7:0];
-
-always @ (negedge clk) begin
-	if (rst) begin
-		command			<=	`SDRAM_CMD_NOP; 
-		addr			<=	12'h0;
-		data_mask		<=	2'h0;
-
-		state			<=	IDLE;
-
-		lauto_refresh	<=	0;
-		laddress		<=	0;
-		lfifo_empty		<=	1;
-		delay			<=	10;
-		fifo_rd			<=	0;
-		bank			<=	0;
-	end
-	else begin
-		//auto refresh only goes high for one clock cycle
-		//so capture it
-//		data_out	<=	16'hZZZZ;
-data_out	<=	16'h0000; 
-		if (auto_refresh & en) begin
-			//because en is high it is my responsibility
-			lauto_refresh	<= 1;
-		end
-		fifo_rd		<= 0;
-
-		if (delay > 0) begin
-			delay	<= delay - 1;
-			command	<= `SDRAM_CMD_NOP;
-		end
-		else begin
-			case (state)
-				IDLE: begin
-					if (en & !fifo_empty) begin
-						laddress		<= address;
-						state			<= ACTIVE;
-					end
-					else if (lauto_refresh) begin
-						state		<=	IDLE;	
-						command		<=	`SDRAM_CMD_AR;
-						delay		<=	`T_RFC - 1;
-						lauto_refresh	<=	0;
-					end
-				end
-				ACTIVE: begin
-					$display ("sdram_write: ACTIVE");
-					command 		<=	`SDRAM_CMD_ACT;
-					delay			<=	`T_RCD - 1;
-//addr	<=	12'h0;
-//bank	<=	2'h0;
-
-					addr			<=	row;
-					bank			<=	w_bank;
-					state			<=	WRITE_CMD;
-					fifo_rd			<=	1;
-				end
-				WRITE_CMD: begin
-					$display ("sdram_write: WRITE_CMD");
-					command			<=	`SDRAM_CMD_WRITE;
-//addr	<=	12'h0;
-					addr			<=	{4'b0000, column};
-					laddress		<=	laddress + 2;
-					//disable auto precharge
-					addr[10]		<=	0;
-
-					lfifo_empty		<=	fifo_empty;
-					state			<=	WRITE_BOTTOM_WORD;
-//					data_mask		<=	fifo_data[35:34];
-					data_out		<= 	fifo_data[31:16];
-data_mask	<=	2'b00;
-//data_out	<=	16'h1234;
-					delay			<=	0;
-
-				end
-//				WRITE_TOP_WORD: begin
-//					$display ("sdram_write: WRITE_TOP_WORD");
-//					laddress		<=	laddress + 2;
-//					lfifo_empty		<=	fifo_empty;
-//					state			<=	WRITE_BOTTOM_WORD;
-//					data_mask		<=	fifo_data[35:34];
-//					data_out		<= 	fifo_data[31:16];
-//					delay			<=	0;
-//				end
-				WRITE_BOTTOM_WORD: begin
-					command			<= `SDRAM_CMD_NOP;
-					$display ("sdram_write: WRITE_BOTTOM_WORD");
-					data_out		<=	fifo_data[15:0];
-//					data_mask		<=	fifo_data[33:32];
-data_mask	<=	2'b00;
-//data_out	<=	16'h5678;
-					state			<=	PRECHARGE;
-					delay			<=	0;
-//					if (!lfifo_empty & !lauto_refresh) begin
-//						state	<=	PRECHARGE;
-		//				if (column	==	8'h00) begin
-//							if (row == 8'h00) begin
-		//						state	<=	PRECHARGE;
-//							end
-//							else begin
-//								state	<= PRECHARGE;
-//							end
-		//				end
-		//				else begin
-		//					state	<= WRITE_TOP_WORD;
-		//					fifo_rd	<=	1;
-		//				end
-//					end
-//					else begin
-						//go into a holding
-//						state	<=	PRECHARGE;
-//					end
-				end
-				PRECHARGE:	 begin
-					command		<=	`SDRAM_CMD_PRE;
-					delay		<=	`T_RP - 1;
-					//precharge all banks (just for the first version)
-					addr[10]	<=	1;
-					if (!fifo_empty) begin
-						state	<=	ACTIVE;
-					end
-					else begin
-						state	<=	FIFO_EMPTY_WAIT;
-						$display("sdram_write: go to FIFO_EMPTY_WAIT");
-					end
-				end
-				FIFO_EMPTY_WAIT: begin
-//					lfifo_empty	<= fifo_empty;
-					if (lauto_refresh) begin
-						$display("sdram_write: auto refresh");
-						//state	<=	RESTART;
-						command	<=	`SDRAM_CMD_AR;
-						delay	<=	`T_RFC - 1;
-						lauto_refresh	<=	0;
-					end
-					else if (!fifo_empty) begin
-						$display ("\tdone waiting for the FIFO");
-						$display ("\tstart a new write cycle");
-						state	<= ACTIVE;	
-					end
-					else if (!en) begin
-						$display("sdram_write: finished write state machine");
-						state	<= IDLE;
-					end
-
-				end
-/*
-				RESTART: begin
-					if (!fifo_empty & !lauto_refresh) begin
-						state	<= ACTIVE;
-					end
-					else if (fifo_empty) begin
-						//go into a holding
-						state	<=	FIFO_EMPTY_WAIT;
-					end
-					else begin
-						//execute the auto refresh and then
-						//go to the RESTART state
-						state	<=	RESTART;
-						command	<=	`SDRAM_CMD_AR;
-						delay	<=	`T_RFC - 1;
-					end
-	
-				end
-*/
-				default: begin
-					$display ("sdram_write: got to an unknown state");
-					state	<= IDLE;
-				end
-			endcase
-		end
-	end
+          //go to IDLE either because we are finished or there is an auto refresh due
+//          if (fifo_empty) begin
+            state       <=  IDLE;
+//          end
+//          else begin
+//            //there is more data
+//            if (auto_refresh) begin
+//              //but we need to wait for an auto refresh
+//              state     <= REFRESH_WAIT; 
+//            end
+//            else begin
+//              //more data to process
+//              state     <=  ACTIVE; 
+//            end
+//          end
+        end
+        default: begin
+          //$display ("SDRAM_WRITE: Shouldn't have gotten here");
+          state <=  IDLE;
+        end
+      endcase
+    end
+  end
 end
+
 
 endmodule

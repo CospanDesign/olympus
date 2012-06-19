@@ -122,9 +122,9 @@ wire    wbs1_int_i;
 wire    sdram_clk;
 wire    sdram_cke;
 wire    sdram_cs_n;
-wire    sdram_ras_n;
-wire    sdram_cas_n;
-wire    sdram_we_n;
+wire    sdram_ras;
+wire    sdram_cas;
+wire    sdram_we;
 
 wire  [11:0]  sdram_addr;
 wire  [1:0] sdram_bank;
@@ -178,10 +178,10 @@ ram (
         .DQML (sdram_data_mask[0]),
         .CLK  (sdram_clk),
         .CKE  (sdram_cke),
-        .WENeg  (sdram_we_n),
-        .RASNeg (sdram_ras_n),
+        .WENeg  (sdram_we),
+        .RASNeg (sdram_ras),
         .CSNeg  (sdram_cs_n),
-        .CASNeg (sdram_cas_n)
+        .CASNeg (sdram_cas)
 );
 
 //slave 1
@@ -203,9 +203,9 @@ wb_sdram s1 (
   .sdram_clk(sdram_clk ),
   .sdram_cke(sdram_cke ),
   .sdram_cs_n(sdram_cs_n ),
-  .sdram_ras_n(sdram_ras_n ),
-  .sdram_cas_n(sdram_cas_n ),
-  .sdram_we_n(sdram_we_n ),
+  .sdram_ras(sdram_ras ),
+  .sdram_cas(sdram_cas ),
+  .sdram_we(sdram_we ),
 
   .sdram_addr(sdram_addr ),
   .sdram_bank(sdram_bank ),
@@ -334,24 +334,26 @@ initial begin
           end
 
           //so time porgresses wait a tick
-          #4
+          #10
           //this doesn't need to be here, but there is a bug with iverilog that wont allow me to put a delay in right before an 'end' statement
           execute_command <= 1;
-        end //while command is not finished
-        while (command_finished) begin
-          #100
-          execute_command <= 0;
-        end
-        #500
-        $display ("TB: finished command");
-        //if (!$feof(fd_in)) begin
+        //end //while command is not finished
+        //while (~command_finished) begin
+        //  #100
+        //  execute_command <= 1;
+        //end
+               //if (!$feof(fd_in)) begin
         //  ch = $fgetc(fd_in);
           //$display("ch: %h", ch);
-        //end
+        end
+        execute_command <= 0;
+        #500
+        $display ("TB: finished command");
+
       end //end read_count == 4
     end //end while ! eof
   end //end not reset
-  #100
+  #100000
   $display("TB: Closing Files");
   $fclose (fd_in);
   $fclose (fd_out);
@@ -476,7 +478,7 @@ always @ (posedge clk) begin
         //read data from the master
         if (out_en) begin
           $display ("TB: read: S:A:D = %h:%h:%h", out_status, out_address, out_data);
-          out_ready <= 0;
+          //out_ready <= 0;
           if (out_data_count == 0) begin
             if (reading_multiple) begin
               reading_multiple  <= 0;
