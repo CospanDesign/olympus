@@ -149,9 +149,7 @@ always @(posedge clk) begin
           address       <=  {4'b0000, column};
           address[10]   <=  1;                //auto precharge
           data_out      <=  fifo_data[31:16];     
-          //data_out      <=  16'hFFFF;
-          //data_mask     <=  fifo_data[35:34];
-          data_mask     <=  2'b00;
+          data_mask     <=  fifo_data[35:34];
           state         <=  WRITE_BOTTOM;
           //increment our local version of the address
         end
@@ -159,27 +157,10 @@ always @(posedge clk) begin
           command       <=  `SDRAM_CMD_NOP;
           //$display ("SDRAM_WRITE: Write Bottom Row");
           data_out      <=  fifo_data[15:0];
-          //data_out      <=  16'hFFFF;
-          //data_mask     <=  fifo_data[33:32];
-          data_mask     <=  2'b00;
+          data_mask     <=  fifo_data[33:32];
           write_address <=  write_address + 2;
           delay         <=  `T_WR + `T_RP - 1;
-
-          //go to IDLE either because we are finished or there is an auto refresh due
-//          if (fifo_empty) begin
-            state       <=  IDLE;
-//          end
-//          else begin
-//            //there is more data
-//            if (auto_refresh) begin
-//              //but we need to wait for an auto refresh
-//              state     <= REFRESH_WAIT; 
-//            end
-//            else begin
-//              //more data to process
-//              state     <=  ACTIVE; 
-//            end
-//          end
+          state         <=  IDLE;
         end
         default: begin
           //$display ("SDRAM_WRITE: Shouldn't have gotten here");

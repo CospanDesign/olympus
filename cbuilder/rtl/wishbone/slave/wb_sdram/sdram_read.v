@@ -75,7 +75,7 @@ parameter           READ_TOP        = 4'h4;
 parameter           READ_BOTTOM     = 4'h5;
 parameter           FIFO_FULL_WAIT  = 4'h6;
 
-reg         [3:0]   state;
+reg         [3:0]   state = IDLE;
 reg         [15:0]  delay;
 
 reg         [21:0]  read_address;
@@ -179,10 +179,9 @@ always @ (posedge clk) begin
         end
         READ_BOTTOM: begin
           $display ("SDRAM_READ: Reading bottom word");
-          read_address  <=  read_address + 4;
+          read_address  <=  read_address + 2;
           read_bottom   <=  1;
           delay         <=  `T_RP;
-//          state         <=  READ_FINISHED;
           state         <=  IDLE;
         end
         FIFO_FULL_WAIT: begin
@@ -203,29 +202,5 @@ always @ (posedge clk) begin
     end
   end
 end
-
-//Can only read data on the positive edge of the clock so I need another block
-//input data controller
-/*
-always @ (posedge clk) begin
-  //always reset the FIFO write to 0 to send a pulse
-  fifo_write <=  0;
-  if (rst) begin
-    fifo_data   <=  32'h0000;
-  end
-  else begin
-    if (read_top) begin
-      fifo_data[31:16]  <=  data_in;
-      //fifo_data[31:16]  <=  16'h3C4D;
-    end
-    else if (read_bottom) begin
-      fifo_data[15:0]   <=  data_in;
-      //fifo_data[15:0] <=  16'h1A2B;
-      //send a write pulse to the FIFO
-      fifo_write           <=  1;
-    end
-  end
-end
-*/
 
 endmodule
