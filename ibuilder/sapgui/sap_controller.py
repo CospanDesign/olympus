@@ -22,14 +22,18 @@ class StateError(RuntimeError):
 class SapController:
 
   def __init__(self):
-    self.new_design()
-    self.filename = ""
-
     # Add some variable functions for dependency injection.
     self.get_board_config = saputils.get_board_config
     self.get_unique_name = get_unique_name
     self.get_constraint_filenames = saputils.get_constraint_filenames
     self.new_sgm = lambda: gm.SapGraphManager()
+    self.new_sf = lambda: sapfile.SapFile()
+    self.get_module_tags = saputils.get_module_tags
+    self.find_rtl_file_location = saputils.find_rtl_file_location
+
+    # Initialize this object.
+    self.new_design()
+    self.filename = ""
 
   def load_config_file(self, file_name, debug=False):
     """Loads a sycamore configuration file into memory.  Raises an IOError if
@@ -88,12 +92,12 @@ class SapController:
 
     # Get module data for the DRT.
     try:
-      file_name = saputils.find_rtl_file_location("device_rom_table.v")
+      file_name = self.find_rtl_file_location("device_rom_table.v")
     except ModuleNotFound as ex:
       if debug:
         print "Invalid Module Name: %s" % (host_interface_name)
 
-    parameters = saputils.get_module_tags(  filename = file_name, bus=self.get_bus_type())
+    parameters = self.get_module_tags(filename = file_name, bus=self.get_bus_type())
     self.sgm.set_parameters(drt_name, parameters)
 
     # Attempt to load data from the tags.
@@ -109,7 +113,7 @@ class SapController:
           file_name = None
 
         if file_name is not None:
-          file_name = saputils.find_rtl_file_location(file_name)
+          file_name = self.find_rtl_file_location(file_name)
 
         uname = self.add_slave(  slave_name,
                     file_name,
@@ -138,7 +142,7 @@ class SapController:
       for slave_name in self.project_tags["MEMORY"].keys():
 
         file_name = self.project_tags["MEMORY"][slave_name]["filename"]
-        file_name = saputils.find_rtl_file_location(file_name)
+        file_name = self.find_rtl_file_location(file_name)
         uname =  self.add_slave(  slave_name,
                     file_name,
                     SlaveType.MEMORY,
@@ -154,8 +158,8 @@ class SapController:
 
     # Check if there is a host interface defined.
     if "INTERFACE" in self.project_tags:
-      file_name = saputils.find_rtl_file_location(self.project_tags["INTERFACE"]["filename"])
-      parameters = saputils.get_module_tags(  filename = file_name, bus=self.get_bus_type())
+      file_name = self.find_rtl_file_location(self.project_tags["INTERFACE"]["filename"])
+      parameters = self.get_module_tags(filename = file_name, bus=self.get_bus_type())
       self.set_host_interface(parameters["module"])
       if "bind" in self.project_tags["INTERFACE"].keys():
         self.sgm.set_config_bindings(hi_name,
@@ -309,7 +313,7 @@ class SapController:
 
       # Add filenames.
       module = sc_slave.parameters["module"]
-      sf = sapfile.SapFile()
+      sf = self.new_sf()
       filename = sf.find_module_filename(module)
       pt_slave["filename"] = filename
 
@@ -464,7 +468,7 @@ class SapController:
 
   def set_host_interface(self, host_interface_name, debug = False):
     """Sets the host interface type.  If host_interface_name is not a valid
-    module name (or cannot be found for whatever reason), throws a
+    module name (or cannot be found for whatever reason), raises a
     ModuleNotFound exception."""
     hi_name = self.get_unique_name("Host Interface", NodeType.HOST_INTERFACE)
 
@@ -473,13 +477,13 @@ class SapController:
       self.sgm.add_node("Host Interface", NodeType.HOST_INTERFACE)
 
     # Check if the host interface is valid.
-    sf = sapfile.SapFile()
+    sf = self.new_sf()
     file_name = sf.find_module_filename(host_interface_name)
-    file_name = saputils.find_rtl_file_location(file_name)
+    file_name = self.find_rtl_file_location(file_name)
 
     # If the host interface is valid then get all the tags ...
-    parameters = saputils.get_module_tags(filename = file_name,
-                                          bus = self.get_bus_type())
+    parameters = self.get_module_tags(filename=file_name,
+                                      bus=self.get_bus_type())
     # ... and set them up.
     self.sgm.set_parameters(hi_name, parameters)
     return True
@@ -757,7 +761,7 @@ class SapController:
     if filename is not None:
 #      print "filename: " + filename
       if len(filename) > 0:
-        parameters = saputils.get_module_tags(filename, self.bus_type)
+        parameters = self.get_module_tags(filename, self.bus_type)
         self.sgm.set_parameters(uname, parameters)
 
         # Check if there are already some parameter declarations within the
@@ -809,9 +813,9 @@ class SapController:
 
     # moving to the other bus, need to sever connections.
     self.remove_slave(from_slave_type, from_slave_index)
-    sf = sapfile.SapFile()
+    sf = self.new_sf()
     filename = sf.find_module_filename(tags["module"])
-    filename = saputils.find_rtl_file_location(filename)
+    filename = self.find_rtl_file_location(filename)
     self.add_slave(slave_name, filename, to_slave_type, to_slave_index)
 
   def generate_project(self):
