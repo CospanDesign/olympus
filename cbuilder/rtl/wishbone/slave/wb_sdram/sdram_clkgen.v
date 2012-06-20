@@ -55,7 +55,7 @@ PLL_BASE #(
   .CLKOUT0_DIVIDE       (9),
 //Simulations differ from real world in that the phase must be 0, not 90 degrees
 `ifndef SIMULATION
-  .CLKOUT0_PHASE        (90.00),
+  .CLKOUT0_PHASE        (180.00),
 `else
   .CLKOUT0_PHASE        (0.00),
 `endif

@@ -57,7 +57,9 @@
 					"direction":"input"
 				}
 			}
-		},
+  	}
+  },
+  "MEMORY":{
 		"mem1":{
 			"filename":"wb_sdram.v",
 			"bind":{

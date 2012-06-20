@@ -87,19 +87,20 @@ class Dionysus (object):
       # AA = Address (4 bytes)
       # DD = Data (4 bytes)
 
-
     #create an array with the identification byte (0xCD)
     #and code for write (0x01)
 
     data_out = Array('B', [0xCD, 0x01]) 
     if mem_device:
+      print "memory device"
       data_out = Array ('B', [0xCD, 0x11])
-    
     
     #append the length into the frist 32 bits
     fmt_string = "%06X" % (length) 
     data_out.fromstring(fmt_string.decode('hex'))
-    offset_string = "%02X" % (dev_index + 1)
+    offset_string = "00"
+    if not mem_device:
+      offset_string = "%02X" % (dev_index + 1)
     data_out.fromstring(offset_string.decode('hex'))
     addr_string = "%06X" % offset
     data_out.fromstring(addr_string.decode('hex'))
@@ -108,8 +109,6 @@ class Dionysus (object):
 
     if (self.dbg):
       print "data write string: " + str(data_out)
-
-
 
     #avoid the akward stale bug
     self.dev.purge_buffers()
@@ -148,17 +147,16 @@ class Dionysus (object):
     read_data = Array('B')
 
     write_data = Array('B', [0xCD, 0x02]) 
-
     if mem_device:
-      data_out = Array ('B', [0xCD, 0x12])
+      print "memory device"
+      write_data = Array ('B', [0xCD, 0x12])
   
     fmt_string = "%06X" % (length) 
     write_data.fromstring(fmt_string.decode('hex'))
-
-    offset_string = ""
+    offset_string = "00"
     if drt:
       offset_string = "%02X" % device_offset
-    else:
+    elif not mem_device:
       offset_string = "%02X" % (device_offset + 1)
 
     write_data.fromstring(offset_string.decode('hex'))
@@ -480,12 +478,13 @@ def test_memory(syc = None):
       else:
         print "Memory slave is on peripheral bus"
 
-      data_out  = Array('B', [0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88])
-      syc.write(dev_index, 0, data_out)
+      data_out  = Array('B', [0xAA, 0xBB, 0xCC, 0xDD, 0x55, 0x66, 0x77, 0x88])
+      #data_out  = Array('B', [0x11, 0x22, 0x33, 0x44])
+      syc.write(dev_index, 0, data_out, mem_bus)
       print "Read:"
       time.sleep(1)
 
-      mem_data = syc.read(1, dev_index, 0)
+      mem_data = syc.read(1, dev_index, 0, mem_bus)
       print "mem data: " + str(mem_data);
       print "hex: "
       for i in range (0, len(mem_data)):
@@ -494,7 +493,8 @@ def test_memory(syc = None):
       print " "
       time.sleep(1)
 
-      mem_data = syc.read(2, dev_index, 0)
+      #mem_data = syc.read(1, dev_index, 0, mem_bus)
+      mem_data = syc.read(2, dev_index, 0, mem_bus)
       print "mem data: " + str(mem_data);
       print "hex: "
       for i in range (0, len(mem_data)):
@@ -503,7 +503,8 @@ def test_memory(syc = None):
       print " "
       time.sleep(1)
 
-      mem_data = syc.read(1, dev_index, 4)
+      #mem_data = syc.read(1, dev_index, 0, mem_bus)
+      mem_data = syc.read(1, dev_index, 4, mem_bus)
       print "mem data: " + str(mem_data);
       print "hex: "
       for i in range (0, len(mem_data)):
@@ -512,7 +513,7 @@ def test_memory(syc = None):
       print " "
       time.sleep(1)
 
-      mem_data = syc.read(1, dev_index, 0)
+      mem_data = syc.read(1, dev_index, 0, mem_bus)
       print "mem data: " + str(mem_data);
       print "hex: "
       for i in range (0, len(mem_data)):
