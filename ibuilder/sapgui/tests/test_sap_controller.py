@@ -491,7 +491,7 @@ class UTest(unittest.TestCase):
   def test_get_project_constraint_files_nothing_loaded_raises_StateError(self):
     self.assertRaises(StateError, self.sc.get_project_constraint_files, None)
 
-  def test_get_project_constraint_files_pt_empty(self)
+  def test_get_project_constraint_files_pt_empty(self):
     self.sc.project_tags = {}
     self.sc.board_dict = {
         'default_constraint_files': self.BOARD_CONSTRAINT_FILES
@@ -524,7 +524,121 @@ class UTest(unittest.TestCase):
     self.assertEqual('bus_type', self.sc.bus_type)
 
   def test_set_bus_type_none_raises_TypeError(self):
-    self.assertRaises(TypeError, self.sc.set_bus_type, 'bus_type')
+    self.assertRaises(TypeError, self.sc.set_bus_type, None)
+
+  def test_set_bus_type_bad_raises_ValueError(self):
+    self.assertRaises(ValueError, self.sc.set_bus_type, 'bad')
+
+  def test_set_bus_type_wishbone(self):
+    self.sc.set_bus_type('Wishbone')
+    self.assertEqual(self.sc.bus_type, 'Wishbone')
+
+  def test_set_bus_type_axie(self):
+    self.sc.set_bus_type('Axie')
+    self.assertEqual(self.sc.bus_type, 'Axie')
+
+  def test_set_host_interface(self):
+    unique_name = 'uniquename'
+    self.sc.get_unique_name = (lambda a,b:
+        (a == 'Host Interface' and b == NodeType.HOST_INTERFACE and
+          unique_name) or self.fail('Unexpected args: %s,%s' % (a,b)))
+
+    self.sc.sgm = mock.Mock()
+    self.sc.sgm.get_node_names = lambda: ['foo', 'bar', 'baz']
+    self.sc.sgm.add_node = (lambda x,y: 
+        (x == 'Host Interface' and y == NodeType.HOST_INTERFACE) or
+        self.fail('Unexpected args: %s,%s' % (x,y)))
+
+    # Args:
+    arg_hin = 'host-iface-name'
+
+    sf = mock.Mock()
+    sf.find_module_filename = (lambda x: (x == arg_hin and 'fname1') or
+        self.fail('unexpected arg: ' + x))
+    self.sc.find_rtl_file_location = (lambda x: (x == 'fname1' and 'fname2') or
+        self.fail('unexpected arg: ' + x))
+    self.sc.new_sf = lambda: sf
+
+    params = ['p1', 'p2', 'p3']
+    self.sc.get_bus_type = lambda: 'bus_type'
+    self.sc.get_module_tags = (lambda filename,bus:
+        (filename == 'fname2' and bus == 'bus_type' and params) or
+        self.fail('Unexpected args: filename=%s,bus=%s' % (filename,bus)))
+    self.sc.sgm.set_parameters = (lambda x,y:
+        (x == unique_name and y == params) or
+        self.fail('unexpected args; %s,%s' % (x,y)))
+
+    self.assertTrue(self.sc.set_host_interface(arg_hin))
+
+  def test_set_host_interface_adds_new_hi(self):
+    uname = 'unique1'
+    self.sc.get_unique_name = mock.Mock(return_value=uname)
+    self.sc.sgm = mock.Mock()
+    self.sc.sgm.get_node_names = mock.Mock(return_value=['foo', 'bar', 'baz'])
+    self.sc.sgm.add_node = mock.Mock()
+
+    # Fill-in functions that we're not testing here, but are overridden to make
+    # the unit test quicker.
+    self.sc.sgm.set_parameters = mock.Mock(return_value=None)
+    sf = mock.Mock()
+    sf.find_module_filename = mock.Mock(return_value='fname1')
+    self.sc.new_sf = mock.Mock(return_value=sf)
+    self.sc.find_rtl_file_location = mock.Mock(return_value='fname2')
+    self.sc.get_module_tags = mock.Mock(return_value=['a', 'b'])
+    self.sc.get_bus_type = mock.Mock(return_value=None)
+
+    # Assertions (& test-part).
+    self.assertTrue(self.sc.set_host_interface('arg-hin'))
+    self.sc.get_unique_name.assert_called_once_with('Host Interface',
+        NodeType.HOST_INTERFACE)
+    self.sc.sgm.add_node.assert_called_once_with('Host Interface',
+        NodeType.HOST_INTERFACE)
+
+  def test_set_host_interface_doesnt_add_existing_hi(self):
+    uname = 'foo'
+    self.sc.get_unique_name = mock.Mock(return_value=uname)
+    self.sc.sgm = mock.Mock()
+    self.sc.sgm.get_node_names = mock.Mock(return_value=['foo', 'bar', 'baz'])
+    self.sc.sgm.add_node = mock.Mock(
+        side_effect=AssertionError('Should not call, %s already added' % uname))
+
+    # Fill-in functions that we're not testing here.
+    self.sc.sgm.set_parameters = mock.Mock(return_value=None)
+    sf = mock.Mock()
+    sf.find_module_filename = mock.Mock(return_value='fname1')
+    self.sc.new_sf = mock.Mock(return_value=sf)
+    self.sc.find_rtl_file_location = mock.Mock(return_value='fname2')
+    self.sc.get_module_tags = mock.Mock(return_value=['a', 'b'])
+    self.sc.get_bus_type = mock.Mock(return_value=None)
+
+    # Assertions (& test-part).
+    self.assertTrue(self.sc.set_host_interface('arg-hin'))
+    self.sc.get_unique_name.assert_called_once_with('Host Interface',
+        NodeType.HOST_INTERFACE)
+
+  def test_set_host_interface_raises_ModuleNotFound(self):
+    uname = 'unique1'
+    self.sc.get_unique_name = mock.Mock(return_value=uname)
+    self.sc.sgm = mock.Mock()
+    self.sc.sgm.get_node_names = mock.Mock(return_value=['foo', 'bar', 'baz'])
+    self.sc.sgm.add_node = mock.Mock()
+
+    # Fill-in functions that we're not testing here, but are overridden to make
+    # the unit test quicker.
+    self.sc.sgm.set_parameters = mock.Mock(return_value=None)
+    sf = mock.Mock()
+    sf.find_module_filename = mock.Mock(return_value='fname1')
+    self.sc.new_sf = mock.Mock(return_value=sf)
+    self.sc.find_rtl_file_location = mock.Mock(return_value='fname2')
+    self.sc.get_module_tags = mock.Mock(return_value=['a', 'b'])
+    self.sc.get_bus_type = mock.Mock(return_value=None)
+
+    # Assertions (& test-part).
+    self.assertTrue(self.sc.set_host_interface('arg-hin'))
+    self.sc.get_unique_name.assert_called_once_with('Host Interface',
+        NodeType.HOST_INTERFACE)
+    self.sc.sgm.add_node.assert_called_once_with('Host Interface',
+        NodeType.HOST_INTERFACE)
 
 
 
