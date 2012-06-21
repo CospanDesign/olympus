@@ -101,9 +101,9 @@ class UTest(unittest.TestCase):
   def test_load_config_file(self):
     '''Loads the config file and compares it to EXAMPLE_CONFIG.'''
     # Set up the object so that we test only this function.
-    self.sc.get_board_config = (lambda x: self.BOARD_CONFIG)
-    self.sc.get_project_constraint_files = (
-        lambda: self.BOARD_CONFIG['default_constraint_files'])
+    self.sc.get_board_config = mock.Mock(return_value=self.BOARD_CONFIG)
+    self.sc.get_project_constraint_files = mock.Mock(
+        return_value=self.BOARD_CONFIG['default_constraint_files'])
 
     # Load the example file from the example dir.
     fname = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir,
@@ -139,35 +139,26 @@ class UTest(unittest.TestCase):
     hi.unique_name = "uniquename0"
     hi.binding = {'0': 'u0', '1': 'u1'}
 
-    slave0 = mock.Mock()
-    slave1 = mock.Mock()
-    slave3 = mock.Mock()
-    slave2 = mock.Mock()
-
-    slave0.unique_name = 'slavename0'
-    slave1.unique_name = 'slavename1'
-    slave2.unique_name = 'slavename2'
-    slave3.unique_name = 'slavename3'
-
-    slave0.binding = {'s2': 'even', 's3': 'odd'}
-    slave1.binding = {'s4': 'even', 's5': 'odd'}
-    slave2.binding = {'s6': 'even', 's7': 'odd'}
-    slave3.binding = {'s8': 'even', 's9': 'odd'}
+    slaves = []
+    for i in xrange(4):
+      slaves.append(mock.Mock())
+      slaves[i].unique_name = 'slavename%d' % i
+      slaves[i].binding = { 's%d' % (2*i+2): 'even', 's%d' % (2*i+3): 'odd' }
 
     # The mock methods that use the above mock objects.
     self.sc.sgm = mock.Mock()
     self.sc.sgm.get_node_bindings = (lambda x:
         (x == hi.unique_name and hi.binding) or
-        (x == slave0.unique_name and slave0.binding) or
-        (x == slave1.unique_name and slave1.binding) or
-        (x == slave2.unique_name and slave2.binding) or
-        (x == slave3.unique_name and slave3.binding) or
+        (x == slaves[0].unique_name and slaves[0].binding) or
+        (x == slaves[1].unique_name and slaves[1].binding) or
+        (x == slaves[2].unique_name and slaves[2].binding) or
+        (x == slaves[3].unique_name and slaves[3].binding) or
         self.fail('unexpected name: %s' % x))
     self.sc.sgm.get_slave_at = (lambda i,x:
-        (i == 0 and ((x == SlaveType.PERIPHERAL and slave0) or
-                     (x == SlaveType.MEMORY and slave1))) or
-        (i == 1 and ((x == SlaveType.PERIPHERAL and slave2) or
-                     (x == SlaveType.MEMORY and slave3))) or
+        (i == 0 and ((x == SlaveType.PERIPHERAL and slaves[0]) or
+                     (x == SlaveType.MEMORY and slaves[1]))) or
+        (i == 1 and ((x == SlaveType.PERIPHERAL and slaves[2]) or
+                     (x == SlaveType.MEMORY and slaves[3]))) or
         self.fail('Unexpected: get_slave_at(%d,%s)' % (i,x)))
     self.sc.get_unique_name = (lambda x,y:
         (x == "Host Interface" and
@@ -184,17 +175,12 @@ class UTest(unittest.TestCase):
 
     # Test.
     self.assertEquals(len(bind_dict), sum(map(lambda x: len(x.binding),
-        (hi, slave0, slave1, slave2, slave3))))
+        (hi, slaves[0], slaves[1], slaves[2], slaves[3]))))
     for k,v in hi.binding.iteritems():
       self.assertEqual(v, bind_dict[k])
-    for k,v in slave0.binding.iteritems():  # FIXME too much copy/paste here.
-      self.assertEqual(v, bind_dict[k])
-    for k,v in slave1.binding.iteritems():
-      self.assertEqual(v, bind_dict[k])
-    for k,v in slave2.binding.iteritems():
-      self.assertEqual(v, bind_dict[k])
-    for k,v in slave3.binding.iteritems():
-      self.assertEqual(v, bind_dict[k])
+    for slave in slaves:
+      for k,v in slave.binding.iteritems():
+        self.assertEqual(v, bind_dict[k])
 
   def test_set_project_location(self):
     '''Test "normal" functionality of set_project_location.'''
@@ -328,36 +314,31 @@ class UTest(unittest.TestCase):
   def test_set_board_name(self):
     '''Test "normal" functionality of set_board_name.'''
     self.sc.project_tags = self.EXAMPLE_CONFIG
-    self.sc.get_board_config = (lambda x:
-        (x == 'b1_name' and self.BOARD_CONFIG) or
-        self.fail("Unexpected call: get_board_config(%s)" % x))
+    self.sc.get_board_config = mock.Mock(return_value=self.BOARD_CONFIG)
     self.sc.set_board_name("b1_name")
     self.assertEqual(self.sc.project_tags['board'], "b1_name")
+    self.sc.get_board_config.assert_called_once_with('b1_name')
 
   def test_set_board_name_nothing_loaded_raises_error(self):
     '''Tests that calling set_board_name without having loaded a
     configuration first raises an error.'''
-    self.sc.get_board_config = (lambda x:
-        self.fail('should not have gotten this far'))
+    self.sc.get_board_config = mock.Mock(
+        side_effect=AssertionError('should not have gotten this far'))
     self.assertRaises(StateError, self.sc.set_board_name, 'foo')
 
   def test_set_board_name_none_raises_TypeError(self):
     '''Test None passed to set_board_name.'''
     self.sc.project_tags = self.EXAMPLE_CONFIG
-    def raise_te(x):
-      self.assertEqual(None, x)
-      raise TypeError
-    self.sc.get_board_config = raise_te
+    self.sc.get_board_config = mock.Mock(side_effect=TypeError)
     self.assertRaises(TypeError, self.sc.set_board_name, None)
+    self.sc.get_board_config.assert_called_once_with(None)
 
   def test_set_board_name_empty_str_raises_ValueError(self):
     '''Test "" passed to set_board_name.'''
     self.sc.project_tags = self.EXAMPLE_CONFIG
-    def raise_ve(x):
-      self.assertEqual('', x)
-      raise ValueError
-    self.sc.get_board_config = raise_ve
+    self.sc.get_board_config = mock.Mock(side_effect=ValueError)
     self.assertRaises(ValueError, self.sc.set_board_name, '')
+    self.sc.get_board_config.assert_called_once_with('')
 
   def test_get_board_name(self):
     '''Test "normal" functionality of get_board_name.'''
@@ -382,11 +363,11 @@ class UTest(unittest.TestCase):
   def test_get_board_constraint_filenames(self):
     board_name = 'boardnameyoyoyo'
     self.sc.project_tags = { 'board': board_name }
-    self.sc.get_constraint_filenames = (lambda x:
-        (x == board_name and self.BOARD_CONSTRAINT_FILES) or
-        self.fail('Unexpected board name: ' + board_name))
+    self.sc.get_constraint_filenames = mock.Mock(
+        return_value=self.BOARD_CONSTRAINT_FILES)
     self.assertEqual(self.sc.get_board_constraint_filenames(),
             self.BOARD_CONSTRAINT_FILES)
+    self.sc.get_constraint_filenames.assert_called_once_with(board_name)
 
   def test_get_board_constraint_filenames_nothing_loaded_raises_StateError(self):
     self.assertRaises(StateError, self.sc.get_board_constraint_filenames)
@@ -394,11 +375,9 @@ class UTest(unittest.TestCase):
   def test_get_board_constraint_filenames_empty_okay(self):
     board_name = 'boardnameyoyoyo'
     self.sc.project_tags = { 'board': board_name }
-    def scfns(x):
-      self.assertEqual(x, board_name)
-      return []
-    self.sc.get_constraint_filenames = scfns
+    self.sc.get_constraint_filenames = mock.Mock(return_value=[])
     self.assertEqual(self.sc.get_board_constraint_filenames(), [])
+    self.sc.get_constraint_filenames.assert_called_once_with(board_name)
 
   def test_add_project_constraint_file(self):
     self.sc.project_tags = { 'constraint_files': ['cons1'] }
@@ -511,10 +490,11 @@ class UTest(unittest.TestCase):
     self.assertRaises(StateError, self.sc.get_fpga_part_number, 'foo')
 
   def test_new_design(self):
-    o = object()
-    self.sc.new_sgm = lambda: o
+    sgm = mock.Mock()
+    self.sc.new_sgm = mock.Mock(return_value=sgm)
     self.sc.new_design()
-    self.assertEqual(self.sc.sgm, o)
+    self.sc.new_sgm.assert_called_once_with()
+    self.assertEqual(self.sc.sgm, sgm)
     self.assertEqual(self.sc.tags, {})
     self.assertEqual(self.sc.file_name, '')
     self.assertEqual(self.sc.project_tags, self.NEW_CONFIG)
@@ -539,36 +519,35 @@ class UTest(unittest.TestCase):
 
   def test_set_host_interface(self):
     unique_name = 'uniquename'
-    self.sc.get_unique_name = (lambda a,b:
-        (a == 'Host Interface' and b == NodeType.HOST_INTERFACE and
-          unique_name) or self.fail('Unexpected args: %s,%s' % (a,b)))
+    self.sc.get_unique_name = mock.Mock(return_value=unique_name)
 
     self.sc.sgm = mock.Mock()
-    self.sc.sgm.get_node_names = lambda: ['foo', 'bar', 'baz']
-    self.sc.sgm.add_node = (lambda x,y: 
-        (x == 'Host Interface' and y == NodeType.HOST_INTERFACE) or
-        self.fail('Unexpected args: %s,%s' % (x,y)))
+    self.sc.sgm.get_node_names = mock.Mock(return_value=['foo', 'bar', 'baz'])
+    self.sc.sgm.add_node = mock.Mock()
 
     # Args:
     arg_hin = 'host-iface-name'
 
     sf = mock.Mock()
-    sf.find_module_filename = (lambda x: (x == arg_hin and 'fname1') or
-        self.fail('unexpected arg: ' + x))
-    self.sc.find_rtl_file_location = (lambda x: (x == 'fname1' and 'fname2') or
-        self.fail('unexpected arg: ' + x))
+    sf.find_module_filename = mock.Mock(return_value='fname1')
+    self.sc.find_rtl_file_location = mock.Mock(return_value='fname2')
     self.sc.new_sf = lambda: sf
 
     params = ['p1', 'p2', 'p3']
     self.sc.get_bus_type = lambda: 'bus_type'
-    self.sc.get_module_tags = (lambda filename,bus:
-        (filename == 'fname2' and bus == 'bus_type' and params) or
-        self.fail('Unexpected args: filename=%s,bus=%s' % (filename,bus)))
-    self.sc.sgm.set_parameters = (lambda x,y:
-        (x == unique_name and y == params) or
-        self.fail('unexpected args; %s,%s' % (x,y)))
+    self.sc.get_module_tags = mock.Mock(return_value=params)
+    self.sc.sgm.set_parameters = mock.Mock()
 
     self.assertTrue(self.sc.set_host_interface(arg_hin))
+    self.sc.get_unique_name.assert_called_once_with(
+        'Host Interface', NodeType.HOST_INTERFACE)
+    self.sc.sgm.add_node.assert_called_once_with(
+        'Host Interface', NodeType.HOST_INTERFACE)
+    sf.find_module_filename.assert_called_once_with(arg_hin)
+    self.sc.find_rtl_file_location.assert_called_once_with('fname1')
+    self.sc.get_module_tags.assert_called_once_with(
+        filename='fname2', bus='bus_type')
+    self.sc.sgm.set_parameters.assert_called_once_with(unique_name, params)
 
   def test_set_host_interface_adds_new_hi(self):
     uname = 'unique1'
@@ -633,7 +612,7 @@ class UTest(unittest.TestCase):
     self.sc.get_module_tags = mock.Mock(return_value=['a', 'b'])
     self.sc.get_bus_type = mock.Mock(return_value=None)
 
-    # Assertions (& test-part).
+    # Test and Assert.
     self.assertTrue(self.sc.set_host_interface('arg-hin'))
     self.sc.get_unique_name.assert_called_once_with('Host Interface',
         NodeType.HOST_INTERFACE)
