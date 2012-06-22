@@ -418,7 +418,7 @@ class Dionysus (object):
     self.dev.write_data_set_chunksize(0x10000)
     self.dev.read_data_set_chunksize(0x10000)
 
-    self.dev.set_flowctrl('hw2')
+    self.dev.set_flowctrl('hw')
     self.dev.purge_buffers()
   
 
