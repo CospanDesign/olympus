@@ -68,7 +68,7 @@ output  reg         fifo_read;
 input               fifo_empty;
 
 parameter           IDLE            = 4'h0;
-parameter           REFRESH_WAIT    = 4'h1;
+parameter           FIFO_WAIT       = 4'h1;
 parameter           ACTIVE          = 4'h2;
 parameter           WRITE_COMMAND   = 4'h3;
 parameter           WRITE_BOTTOM    = 4'h4;
@@ -83,6 +83,7 @@ reg		  [21:0]			write_address;
 
 wire    [11:0]      row;
 wire    [7:0]       column;
+wire                continue_writing;
 
 //assign  bank    =   write_address[21:20];
 assign  row     =   write_address[19:8];
@@ -90,7 +91,8 @@ assign  column  =   write_address[7:0]; //4 Byte Boundary
 
 
 //assign idle
-assign  idle    =   ((delay == 0) && ((state == IDLE) || (state == REFRESH_WAIT)));
+assign  idle    =   ((delay == 0) && ((state == IDLE) || (state == FIFO_WAIT)));
+
 
 always @(posedge clk) begin
   //Always reset FIFO Read
@@ -117,20 +119,20 @@ always @(posedge clk) begin
       case (state)
         IDLE: begin
           //data_out      <=  16'hZZZZ;
-          if (enable & ~fifo_empty) begin
+          if (enable & ~fifo_empty & ~auto_refresh) begin
             //$display ("SDRAM WRITE: IDLE New Data!");
             write_address <=  app_address;
             state       <=  ACTIVE;
           end
         end
-        REFRESH_WAIT: begin
+        FIFO_WAIT: begin
           //don't update the write_address
-          if (fifo_empty) begin
-            //$display ("SDRAM_WRITE: REFRESH_WAIT go to IDLE");
+          if (fifo_empty & ~enable) begin
+            //$display ("SDRAM_WRITE: FIFO_WAIT go to IDLE");
             state <=  IDLE;
           end
           //more data
-          else if (~auto_refresh) begin
+          else if (~auto_refresh & ~fifo_empty) begin
             //were finished waiting for auto refresh
             //$display ("SDRAM_WRITE: REFRESH WAIT Finished continue writing");
             state <=  ACTIVE;
@@ -152,22 +154,23 @@ always @(posedge clk) begin
           data_out      <=  fifo_data[31:16];     
           data_mask     <=  fifo_data[35:34];
           state         <=  WRITE_BOTTOM;
+          write_address <=  write_address + 2;
           //increment our local version of the address
         end
         WRITE_BOTTOM: begin
           command       <=  `SDRAM_CMD_NOP;
           data_out      <=  fifo_data[15:0];
           data_mask     <=  fifo_data[33:32];
-          write_address <=  write_address + 2;
           //if there is more data to write then continue on with the write
           //and issue a command to the AFIFO to grab more data
-//          if (fifo_empty) begin
+          if (fifo_empty || ({write_address[7:1], 1'b0} == 8'h00)) begin
+            //we could have reached the end of a row here
             state         <=  BURST_TERMINATE;
-//          end
-//          else begin
-//            state         <=  WRITE_COMMAND;
-//            fifo_read     <=  1;
-//          end
+          end
+          else begin
+            state         <=  WRITE_COMMAND;
+            fifo_read     <=  1;
+          end
         end
         BURST_TERMINATE: begin
           command       <=  `SDRAM_CMD_TERM;
@@ -177,7 +180,7 @@ always @(posedge clk) begin
         PRECHARGE: begin
           command       <=  `SDRAM_CMD_PRE;
           delay         <=  `T_RP;
-          state         <=  IDLE;
+          state         <=  FIFO_WAIT;
         end
         default: begin
           //$display ("SDRAM_WRITE: Shouldn't have gotten here");

@@ -178,12 +178,12 @@ always @ (posedge clk) begin
           $display ("SDRAM_READ: Reading top word");
           read_top      <=  1;
           state         <=  READ_BOTTOM;
+          read_address  <=  read_address + 2;
         end
         READ_BOTTOM: begin
           $display ("SDRAM_READ: Reading bottom word");
-          read_address  <=  read_address + 2;
           read_bottom   <=  1;
-          if (fifo_full || ~enable) begin
+          if (fifo_full || ~enable || ({read_address[7:1], 1'b0} == 8'h00)) begin
             state       <=  BURST_TERMINATE;
           end
           else begin
@@ -198,22 +198,13 @@ always @ (posedge clk) begin
         PRECHARGE: begin
           command       <=  `SDRAM_CMD_PRE;
           delay         <=  `T_RP;
-          if (enable) begin
-            state       <=  FIFO_FULL_WAIT;
-          end
-          else begin
-            state       <=  IDLE;
-          end
+          state       <=  FIFO_FULL_WAIT;
         end
         FIFO_FULL_WAIT: begin
-          if (auto_refresh) begin
-            $display ("REFRESH happend during a FIFO_FULL_WAIT");
+          if (~enable) begin
             state       <=  IDLE;
           end
-          else if (~enable) begin
-            state       <=  IDLE;
-          end
-          else if (~fifo_full) begin
+          else if (~auto_refresh && ~fifo_full) begin
             $display ("FIFO not full anymore");
             state       <=  ACTIVATE;
           end

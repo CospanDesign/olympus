@@ -396,7 +396,7 @@ always @ (posedge clk) begin
             `COMMAND_WRITE: begin
               out_status  <= ~in_command;
               debug_out[1]  <= ~debug_out[1];
-              //local_data_count  <=  in_data_count;
+              local_data_count  <=  in_data_count;
               if (command_flags & `FLAG_MEM_BUS) begin
                 mem_bus_select  <= 1; 
                 mem_adr_o     <= in_address;

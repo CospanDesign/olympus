@@ -125,7 +125,7 @@ wire  [1:0]   write_bank;
 wire          write_idle;
 wire  [1:0]   write_data_mask;
 wire  [35:0]  write_path_data;
-reg           write_enable;
+//reg           write_enable;
 wire  [15:0]  data_out;
 
 wire          writing;
@@ -265,8 +265,8 @@ assign bank = ~write_idle ? write_bank : ~read_idle ? read_bank : init_bank;
 assign address  = ~write_idle ? write_address : ~read_idle ? read_address : init_address;
 
 //XXX: Disable Data mask for testing
-//assign data_mask = ~write_idle ? write_data_mask : 2'b00; 
-assign data_mask = 2'b00;
+assign data_mask = ~write_idle ? write_data_mask : 2'b00; 
+//assign data_mask = 2'b00;
 
 //Attach the tristate Data to an in and out
 
@@ -305,7 +305,7 @@ always @(posedge sdram_clk) begin
     init_address            <=  12'h000;
     sdram_ready             <=  0;
 //    read_enable             <=  0;
-    write_enable            <=  0;
+//    write_enable            <=  0;
     read_fifo_reset         <=  1;
   end
   else begin
@@ -353,7 +353,7 @@ always @(posedge sdram_clk) begin
         IDLE: begin
           sdram_ready       <=  1;
           //the write/read path are disabled until the app calls write/read in this state
-          write_enable      <=  0;
+//          write_enable      <=  0;
 //          read_enable       <=  0;
           read_fifo_reset   <=  1;
           //waiting for user to initiate a command
@@ -363,13 +363,13 @@ always @(posedge sdram_clk) begin
             state           <=  AUTO_REFRESH_PRE;
           end
           //if the user starts a write enable the write path
-          if (app_write_enable) begin
+          if (app_write_enable || ~write_fifo_empty) begin
             //$display ("SDRAM_INIT: write initiated");
             state           <=  WRITING;
-            write_enable    <=  1;
+//            write_enable    <=  1;
           end
           //if the user starts a read enable the read path
-          if (app_read_enable) begin
+          if (app_read_enable & write_idle) begin
             //$display ("SDRAM_INIT: read initiated");
             state           <=  READING;
             //get rid of any data that is in the read FIFO
@@ -383,7 +383,8 @@ always @(posedge sdram_clk) begin
           end
         end
         WRITING: begin
-          if (write_idle && ~app_write_enable) begin
+          //if (write_idle && ~app_write_enable) begin
+          if (write_idle && write_fifo_empty) begin
             state <=  IDLE;
           end
         end

@@ -2,6 +2,7 @@
 
 
 import time
+import random
 import sys
 import string
 from pyftdi.pyftdi.ftdi import Ftdi
@@ -462,6 +463,107 @@ def test_buttons(syc, dev_index):
        print "gpio read: " + hex(gpio_read)
 
 
+def test_all_memory (syc = None):
+ for dev_index in range (0, syc.num_of_devices):
+    device_id = string.atoi(syc.drt_lines[((dev_index + 1) * 8)], 16)
+    flags = string.atoi(syc.drt_lines[((dev_index + 1) * 8) + 1], 16)
+    address_offset = string.atoi(syc.drt_lines[((dev_index + 1) * 8) + 2], 16)
+    num_of_registers = string.atoi(syc.drt_lines[((dev_index + 1) * 8) + 3], 16)
+    data_list = list()
+
+    if (device_id == 5):
+      print "found Memory device"
+      mem_bus = False
+      if ((flags & 0x00010000) > 0):
+        print "Memory slave is on Memory bus"
+        mem_bus = True 
+      else:
+        print "Memory slave is on peripheral bus"
+
+      print "Writing to all memory locations"
+      n1 = 0x00
+      n2 = 0x00
+      n3 = 0x00
+      n4 = 0x00
+      
+      rand = int(random.random() * 256.0)
+      
+      #Create 1024 * 2 array
+      data_out = Array('B')
+      num = 0
+      try:
+        for i in range (0, 4 * 64):
+          num = (i + rand) % 255
+          if (i / 256) % 2 == 1:
+            data_out.append( 255 - (num))
+          else:
+            data_out.append(num)
+
+ 
+      except OverflowError as err:
+        print "Overflow Error: %d >= 256" % num
+        sys.exit(1)
+ 
+
+      print "Generated a continuous stream of data with a random start"
+#      print "Data: "
+#      for i in range (0, len(data_out)):
+#        print "\t%X" % data_out[i]
+
+#      bank_count = 4
+#      row_count = 12
+#      column_count = 10
+#      data_out = Array('B', [n1, n2, n3, n4])
+      print "Writing %d DWORDS of data" % (len(data_out))
+      syc.write(dev_index, 0, data_out, mem_bus)
+
+#      time.sleep(1)
+
+      print "Reading %d DWORDS of data" % (len(data_out))
+      data_in = syc.read(len(data_out) / 4, dev_index, 0,  mem_bus)
+
+      print "Comparing values"
+      fail = False
+      fail_count = 0
+      if len(data_out) != len(data_in):
+        print "data_in length not equal to data_out length:"
+        print "\tdata_in: %d, data_out: %d" % (len(data_in), len(data_out))
+        fail = True
+
+      else:
+        for i in range (0, len(data_out)):
+          if data_in[i] != data_out[i]:
+            fail = True
+            print "Mismatch at %d: READ DATA 0x%X != WRITE DATA 0x%X" % (i, data_in[i], data_out[i])
+            fail_count += 1
+ 
+      if not fail:
+        print "Memory test passed!"
+      elif (fail_count == 0):
+        print "Data length of data_in and data_out do not match"
+      else:
+        print "Failed: %d mismatches" % fail_count
+
+#      for b in range (0, bank_count):
+#        for r in range (0, row_count):
+#          syc.write(dev_index, b * (2 ** 22) + r * (2 ** 10), data_out, mem_bus)
+#          print "Wrote To Column at: Bank: 0x%X Row: 0x%X" % (b, r) 
+#             
+#      print "Reading from all memory locations"
+#      data_in = Array('B')
+#      for b in range (0, bank_count):
+#        for r in range (0, row_count):
+#          data_in = syc.read(2048, dev_index,  b * (2 ** 22) + r * (2 ** 10), data_out, mem_bus)
+#          for i in data_in:
+#            if data_in[i] != (i % 256):
+#              print "Error: %X != %X" % (data_in[i], i % 256)
+# 
+#          print "Read from Column at: Bank: 0x%X Row: 0x%X" % (b, r) 
+       
+    
+
+  
+
 def test_memory(syc = None):
   for dev_index in range (0, syc.num_of_devices):
     device_id = string.atoi(syc.drt_lines[((dev_index + 1) * 8)], 16)
@@ -469,6 +571,7 @@ def test_memory(syc = None):
     address_offset = string.atoi(syc.drt_lines[((dev_index + 1) * 8) + 2], 16)
     num_of_registers = string.atoi(syc.drt_lines[((dev_index + 1) * 8) + 3], 16)
     data_list = list()
+
     if (device_id == 5):
       print "found Memory device"
       mem_bus = False
@@ -504,7 +607,7 @@ def test_memory(syc = None):
       time.sleep(1)
 
       #mem_data = syc.read(1, dev_index, 0, mem_bus)
-      mem_data = syc.read(1, dev_index, 4, mem_bus)
+      mem_data = syc.read(1, dev_index, 8, mem_bus)
       print "mem data: " + str(mem_data);
       print "hex: "
       for i in range (0, len(mem_data)):
@@ -551,6 +654,7 @@ def usage():
   print "-h\t--help\t\t\t: displays this help"
   print "-d\t--debug\t\t\t: runs the debug analysis"
   print "-m\t--memory\t\t\t: test only memory"
+  print "-l\t--long\t\t\t\t: long memory test"
   print ""
   
 
@@ -558,12 +662,13 @@ if __name__ == '__main__':
   print "starting..."
   argv = sys.argv[1:]
   mem_only = False
+  long_mem_test = False
 
   try:
     syc = Dionysus(0x0403, 0x8530)
     if (len(argv) > 0):
       opts = None
-      opts, args = getopt.getopt(argv, "hdm", ["help", "debug", "memory"])
+      opts, args = getopt.getopt(argv, "hdml", ["help", "debug", "memory", "long"])
       for opt, arg in opts:
         if opt in ("-h", "--help"):
           usage()
@@ -575,6 +680,9 @@ if __name__ == '__main__':
         elif opt in ("-m", "--memory"):
           mem_only = True
 
+        elif opt in ("-l", "--long"):
+          long_mem_test = True
+
 
     if (syc.ping()):
       print "Ping responded successfully"
@@ -585,7 +693,10 @@ if __name__ == '__main__':
         print "testing get_device_index..." + str(syc.get_device_index(1) == 0)
         print "testing get_address_from_index..." + str(syc.get_address_from_dev_index(0) == 0x01000000)
 
-      if mem_only:
+      if long_mem_test:
+        test_all_memory(syc) 
+
+      elif mem_only:
         test_memory(syc)
 
       else:

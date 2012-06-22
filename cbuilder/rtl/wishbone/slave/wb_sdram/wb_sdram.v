@@ -113,6 +113,8 @@ wire				rd_fifo_empty;
 reg       [3:0] delay;
 reg         reading;
 
+reg         writing;
+
 
 sdram ram (
 	.clk(clk),
@@ -127,7 +129,7 @@ sdram ram (
 	.app_read_data(wbs_dat_o),
 	.read_fifo_empty(rd_fifo_empty),
 
-	.app_write_enable(wbs_we_i & wbs_cyc_i),
+	.app_write_enable(writing),
 	.app_read_enable(~wbs_we_i & wbs_cyc_i),
 	.sdram_ready(sdram_ready),
 	.app_address(wbs_adr_i[23:2]),
@@ -155,6 +157,7 @@ always @ (posedge clk) begin
 		fifo_rd			<= 0;
     delay       <= 0;
     reading     <= 0;
+    writing     <= 0;
 	end
 	else begin
 		fifo_wr		<=	0;
@@ -164,12 +167,17 @@ always @ (posedge clk) begin
 	//		rd_fifo_reset	<=	0;
 		//end
 		//when the master acks our ack, then put our ack down
+    if (~wbs_cyc_i) begin
+      writing <=  0;
+    end
 		if (wbs_ack_o & ~wbs_stb_i)begin
 			wbs_ack_o <= 0;
 		end
 		if (wbs_stb_i & wbs_cyc_i) begin
+      
 			//master is requesting somethign
 			if (wbs_we_i) begin
+        writing <=  1;
 				//write request
 				if (~wr_fifo_full & ~wbs_ack_o) begin
 				  $display("user wrote %h to address %h", wbs_dat_i, wbs_adr_i);

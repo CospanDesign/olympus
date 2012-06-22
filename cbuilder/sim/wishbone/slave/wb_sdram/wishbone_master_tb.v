@@ -429,7 +429,8 @@ always @ (posedge clk) begin
         if (master_ready) begin
           //send the command over 
           in_ready  <= 1;
-          if ((in_command & 32'h0000FFFF) == 1) begin
+          if ((in_command & 32'h0000000F) == 1) begin
+            $display ("TB: Writing");
             //write command
             //in_commands are read from the above initial statement
             //in_data count
@@ -443,6 +444,7 @@ always @ (posedge clk) begin
           end
           else begin
             //read command
+            $display ("TB: Reading");
             state <= TB_READ;
           end
         end
@@ -453,7 +455,7 @@ always @ (posedge clk) begin
           //got a response
           $display ("TB: read: S:A:D = %h:%h:%h\n", out_status, out_address, out_data);
         end
-        else if (master_ready && ~in_ready) begin
+        else if (master_ready & ~in_ready) begin
           if (in_data_count == 0) begin
             $display("TB: finished write");
             //wrote last double word of data
@@ -502,6 +504,7 @@ always @ (posedge clk) begin
         state <= TB_IDLE;
       end //somethine wrong here
     endcase //state machine
+    /*
     if (out_en) begin
       $display ("TB: read: S:A:D = %h:%h:%h", out_status, out_address, out_data);
       if (out_data_count == 0) begin
@@ -518,6 +521,7 @@ always @ (posedge clk) begin
         timeout_count <= `TIMEOUT_COUNT;
       end
     end
+    */
     if (out_en && out_status == `PERIPH_INTERRUPT) begin
       $display("TB: Output Handler Recieved interrupt");
       $display("TB:\tcommand: %h", out_status);
