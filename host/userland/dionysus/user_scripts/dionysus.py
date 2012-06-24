@@ -42,6 +42,15 @@ class Dionysus (object):
   def get_read_timeout(self):
     return self.read_timeout
 
+  def reset(self):
+    data = Array('B')
+    data.extend([0XCD, 0x03, 0x00, 0x00]);
+    print "Sending reset..."
+    self.dev.purge_buffers()
+    self.dev.write_data(data)
+    return True
+ 
+
   def ping(self):
     data = Array('B')
     data.extend([0XCD, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
@@ -205,7 +214,8 @@ class Dionysus (object):
   def debug(self):
     #self.dev.set_dtr_rts(True, True)
     #self.dev.set_dtr(False)
-    print "DSR: " + str(self.dev.get_dsr())
+    print "CTS: " + str(self.dev.get_cts())
+#    print "DSR: " + str(self.dev.get_dsr())
     s1 = self.dev.modem_status()
     print "S1: " + str(s1)
 
@@ -520,6 +530,7 @@ def test_all_memory (syc = None):
 #      time.sleep(1)
 
       print "Reading %d DWORDS of data" % (len(data_out))
+      data_in = Array('B')
       data_in = syc.read(len(data_out) / 4, dev_index, 0,  mem_bus)
 
       print "Comparing values"
@@ -683,6 +694,8 @@ if __name__ == '__main__':
         elif opt in ("-l", "--long"):
           long_mem_test = True
 
+
+    syc.reset()
 
     if (syc.ping()):
       print "Ping responded successfully"

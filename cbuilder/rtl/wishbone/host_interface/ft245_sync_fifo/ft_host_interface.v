@@ -8,6 +8,8 @@ module ft_host_interface (
 	master_ready,
 	ih_ready,
 
+  ih_reset,
+
 	in_command,
 	in_address,
 	in_data_count,
@@ -32,7 +34,11 @@ module ft_host_interface (
 	ftdi_rd_n,
 	ftdi_oe_n,
 	ftdi_siwu,
-	ftdi_suspend_n
+	ftdi_suspend_n,
+
+
+  //debug
+  debug
 
 );
 
@@ -43,34 +49,37 @@ input				clk;
 
 input				master_ready;
 output reg			ih_ready;
+output reg      ih_reset;
 
 output reg	[31:0]	in_command;
 output reg	[27:0]	in_data_count;
 output reg	[31:0]	in_address;
 output reg	[31:0]	in_data;
 
-output reg			oh_ready;
-input				oh_en;
+output reg			    oh_ready;
+input				        oh_en;
 
-input		[31:0]	out_status;
-input		[31:0]	out_address;
-input		[27:0]	out_data_count;
-input		[31:0]	out_data;
+input		[31:0]	    out_status;
+input		[31:0]	    out_address;
+input		[27:0]	    out_data_count;
+input		[31:0]	    out_data;
 
 
 
 //ftdi
-input				ftdi_clk;
-inout	[7:0]		ftdi_data;
-input				ftdi_txe_n;
-output				ftdi_wr_n;
-input				ftdi_rde_n;
-output 				ftdi_rd_n;
-output 				ftdi_oe_n;
-output 				ftdi_siwu;
-input				ftdi_suspend_n;
+input				        ftdi_clk;
+inout	[7:0]		      ftdi_data;
+input				        ftdi_txe_n;
+output				      ftdi_wr_n;
+input				        ftdi_rde_n;
+output 				      ftdi_rd_n;
+output 				      ftdi_oe_n;
+output 				      ftdi_siwu;
+input				        ftdi_suspend_n;
 
 
+//debug
+output  reg [7:0]   debug;
 
 //fifo interface
 wire				fifo_rst;
@@ -90,6 +99,7 @@ reg		[7:0]		process_state;
 reg		[7:0]		next_write_state;
 
 reg		[31:0]		temp_data;
+wire          sof;
 
 //instantiate the ft245_sync core
 ft245_sync_fifo sync_fifo(
@@ -100,6 +110,7 @@ ft245_sync_fifo sync_fifo(
 	.in_fifo_rd(in_fifo_rd),
 	.in_fifo_empty(in_fifo_empty),
 	.in_fifo_data(in_fifo_data),
+  .sof(sof),
 
 	.out_fifo_wr(out_fifo_wr),
 	.out_fifo_full(out_fifo_full),
@@ -166,6 +177,7 @@ always @ (posedge clk) begin
 		in_data_count	  <= 	32'h0;
 	
 		ih_ready		    <=	0;
+    ih_reset        <=  0;
 		read_count		  <=	0;
 		read_state		  <=	IDLE;
 		in_fifo_rd		  <= 	0;
@@ -177,12 +189,16 @@ always @ (posedge clk) begin
 
 		process_state	  <= IDLE;
 		temp_data		    <= 0;
+
+    //debug data
+    debug           <= 8'h00;
 	end
 	else begin
 		//read should only be pulsed
 		prev_rd			    <=	in_fifo_rd;
 		in_fifo_rd		  <=	0;
 		ih_ready		    <=	0;
+    ih_reset        <=  0;
 		in_fifo_rst		  <=	0;
 
 		case (read_state)
@@ -215,6 +231,11 @@ always @ (posedge clk) begin
 
 			READ_DW: begin
 				$display ("Reading: %h", in_fifo_data);
+        if (sof) begin 
+          //start of a packet of data
+          debug[0] <= ~debug[0];
+        end
+
 				temp_data	<= {temp_data[23:0], in_fifo_data};	
 				if (read_byte_count == 3) begin
 					//go to a process state
@@ -276,6 +297,14 @@ always @ (posedge clk) begin
 					process_state	    <= PROCESS_ADDRESS;
 					read_state	      <= READ_DW_WAIT_2;
 				end
+        else if (temp_data[27:24] == 3) begin
+          $display ("RESET");
+          ih_reset          <=  1;
+          in_fifo_rst       <=  1;
+          in_data_count     <=  32'h0000;
+          local_data_count  <=  24'h000;
+          read_state        <=  IDLE;
+        end
 				else begin
 					$display ("ILLEGAL COMMAND: %h", temp_data[27:23]);
 					read_state	      <= READ_D4;

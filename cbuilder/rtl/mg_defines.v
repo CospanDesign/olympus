@@ -23,6 +23,9 @@ SOFTWARE.
 */
 
 /*
+  06/24/2012
+    -Added the Reset command that will reset the state machine from
+    the host interface
 	11/12/2011
 		-Added NACK support
 			commands
@@ -49,6 +52,7 @@ SOFTWARE.
 `define COMMAND_PING 		32'h00000000
 `define COMMAND_WRITE 		32'h00000001
 `define COMMAND_READ		32'h00000002
+`define COMMAND_RESET   32'h00000003
 `define COMMAND_RW_FLAGS	32'h00000007
 `define COMMAND_WR_INT_EN	32'h00000008
 `define COMMAND_RD_INT_EN	32'h00000009

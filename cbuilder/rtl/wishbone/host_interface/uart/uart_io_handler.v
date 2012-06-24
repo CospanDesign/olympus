@@ -23,6 +23,8 @@ SOFTWARE.
 */
 
 /*
+  06/24/2012
+    -Added host interface reset to reset the state machine
   12/16/2011
     -fixed a bug in the data output count where it was sending
     5 bits instead of 4
@@ -39,6 +41,7 @@ module uart_io_handler (
   //input handler
   master_ready,
   ih_ready,
+  ih_reset,
   
   //incomming data
   in_command,
@@ -62,31 +65,32 @@ module uart_io_handler (
 );
 
 //input/output signals
-input       clk;
-input       rst;
+input               clk;
+input               rst;
 
 //input handler
-output reg      ih_ready;
-input       master_ready;
+output reg          ih_ready;
+output              ih_reset;
+input               master_ready;
 
-output reg [31:0] in_command;
-output reg [31:0] in_address;
-output reg [31:0] in_data;
-output reg [27:0] in_data_count;
+output reg [31:0]   in_command;
+output reg [31:0]   in_address;
+output reg [31:0]   in_data;
+output reg [27:0]   in_data_count;
 
 
 //output handler
-output  reg     oh_ready;
-input       oh_en;
+output  reg         oh_ready;
+input               oh_en;
 
-input [31:0]    out_status;
-input [31:0]    out_address;
-input [31:0]    out_data;
-input [27:0]    out_data_count;
+input [31:0]        out_status;
+input [31:0]        out_address;
+input [31:0]        out_data;
+input [27:0]        out_data_count;
 
 //these are the only thing that are different between xxx_io_handler
-input       phy_uart_in;
-output        phy_uart_out;
+input               phy_uart_in;
+output              phy_uart_out;
 
 //wires
 reg [7:0]     out_byte;
@@ -146,6 +150,8 @@ wire    [15:0]  user_command;
 wire    is_writing;
 assign    user_command = in_command[15:0];
 assign    is_writing = (user_command == `COMMAND_WRITE);
+
+assign  ih_reset  = 0;
 
 //REAL UART use this when actually implementing on a board
 uart uart_dev (

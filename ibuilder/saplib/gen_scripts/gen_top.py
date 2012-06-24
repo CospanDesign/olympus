@@ -135,6 +135,8 @@ class GenTop(Gen):
     self.wires.append("in_data_count")
     wr_buf = wr_buf + "\twire\t\t\tih_ready;\n\n"
     self.wires.append("ih_ready")
+    wr_buf = wr_buf + "\twire\t\t\tih_reset;\n\n"
+    self.wires.append("ih_reset")
 
     wr_buf = wr_buf + "\t//output handler signals\n"
     wr_buf = wr_buf + "\twire\t[31:0]\tout_status;\n"
@@ -377,6 +379,7 @@ class GenTop(Gen):
 
     wm_buf = wm_buf + "\t\t//input handler signals\n"
     wm_buf = wm_buf + "\t\t.in_ready(ih_ready),\n"
+    wm_buf = wm_buf + "\t\t.ih_reset(ih_reset),\n"
     wm_buf = wm_buf + "\t\t.in_command(in_command),\n"
     wm_buf = wm_buf + "\t\t.in_address(in_address),\n"
     wm_buf = wm_buf + "\t\t.in_data(in_data),\n"

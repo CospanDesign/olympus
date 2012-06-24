@@ -23,6 +23,9 @@ SOFTWARE.
 */
 
 /*
+  06/24/2012
+    -added the ih_reset port to indicate that the input handler is resetting
+    the incomming data state machine
   02/02/2012
     -changed the read state machine to use local_data_count instead of out_data_count
   11/12/2011
@@ -56,6 +59,7 @@ module wishbone_master (
 
   //input handler interface
   in_ready,
+  ih_reset,
   in_command,
   in_address,
   in_data,
@@ -103,6 +107,7 @@ module wishbone_master (
 
   output reg      master_ready;
   input         in_ready;
+  input         ih_reset;
   input [31:0]    in_command;
   input [31:0]    in_address;
   input [31:0]    in_data;
@@ -199,7 +204,7 @@ always @ (posedge clk) begin
 //clock cycle, but in the future this should be used to regulate data comming in so that the master can send data to the slaves without overflowing any buffers
   //master_ready  <= 1;
 
-  if (rst) begin
+  if (rst || ih_reset) begin
     out_status    <= 32'h0;
     out_address   <= 32'h0;
     out_data    <= 32'h0;
@@ -247,6 +252,7 @@ always @ (posedge clk) begin
   end
 
   else begin 
+    
     //check for timeout conditions
     if (nack_count == 0) begin
       if (state != IDLE && enable_nack) begin
@@ -263,6 +269,8 @@ always @ (posedge clk) begin
     else begin
       nack_count <= nack_count - 1;
     end
+
+    //check if the input handler reset us
     case (state)
 
       READ: begin
