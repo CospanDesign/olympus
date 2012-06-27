@@ -502,7 +502,7 @@ def test_all_memory (syc = None):
       data_out = Array('B')
       num = 0
       try:
-        for i in range (0, 4 * 64):
+        for i in range (0, 4 * 110):
           num = (i + rand) % 255
           if (i / 256) % 2 == 1:
             data_out.append( 255 - (num))
@@ -525,9 +525,13 @@ def test_all_memory (syc = None):
 #      column_count = 10
 #      data_out = Array('B', [n1, n2, n3, n4])
       print "Writing %d DWORDS of data" % (len(data_out))
-      syc.write(dev_index, 0, data_out, mem_bus)
+      result = syc.write(dev_index, 0, data_out, mem_bus)
+      if result:
+        print "Write Successful!"
+      else:
+        print "Write Failed!"
 
-#      time.sleep(1)
+      #time.sleep(1)
 
       print "Reading %d DWORDS of data" % (len(data_out))
       data_in = Array('B')
@@ -554,6 +558,34 @@ def test_all_memory (syc = None):
         print "Data length of data_in and data_out do not match"
       else:
         print "Failed: %d mismatches" % fail_count
+
+
+      data_in = Array('B')
+      data_in = syc.read(len(data_out) / 4, dev_index, 0,  mem_bus)
+
+      print "Comparing values"
+      fail = False
+      fail_count = 0
+      if len(data_out) != len(data_in):
+        print "data_in length not equal to data_out length:"
+        print "\tdata_in: %d, data_out: %d" % (len(data_in), len(data_out))
+        fail = True
+
+      else:
+        for i in range (0, len(data_out)):
+          if data_in[i] != data_out[i]:
+            fail = True
+            print "Mismatch at %d: READ DATA 0x%X != WRITE DATA 0x%X" % (i, data_in[i], data_out[i])
+            fail_count += 1
+ 
+      if not fail:
+        print "Memory test passed!"
+      elif (fail_count == 0):
+        print "Data length of data_in and data_out do not match"
+      else:
+        print "Failed: %d mismatches" % fail_count
+
+
 
 #      for b in range (0, bank_count):
 #        for r in range (0, row_count):
@@ -594,9 +626,14 @@ def test_memory(syc = None):
 
       data_out  = Array('B', [0xAA, 0xBB, 0xCC, 0xDD, 0x55, 0x66, 0x77, 0x88])
       #data_out  = Array('B', [0x11, 0x22, 0x33, 0x44])
-      syc.write(dev_index, 0, data_out, mem_bus)
+      result = syc.write(dev_index, 0, data_out, mem_bus)
+      if result:
+        print "Write Successful!"
+      else:
+        print "Write Failed!"
+
       print "Read:"
-      time.sleep(1)
+      #time.sleep(1)
 
       mem_data = syc.read(1, dev_index, 0, mem_bus)
       print "mem data: " + str(mem_data);
@@ -605,7 +642,7 @@ def test_memory(syc = None):
         print str(hex(mem_data[i])) + ", ",
 
       print " "
-      time.sleep(1)
+      #time.sleep(1)
 
       #mem_data = syc.read(1, dev_index, 0, mem_bus)
       mem_data = syc.read(2, dev_index, 0, mem_bus)
@@ -615,7 +652,7 @@ def test_memory(syc = None):
         print str(hex(mem_data[i])) + ", ",
 
       print " "
-      time.sleep(1)
+      #time.sleep(1)
 
       #mem_data = syc.read(1, dev_index, 0, mem_bus)
       mem_data = syc.read(1, dev_index, 8, mem_bus)
@@ -625,7 +662,7 @@ def test_memory(syc = None):
         print str(hex(mem_data[i])) + ", ",
 
       print " "
-      time.sleep(1)
+      #time.sleep(1)
 
       mem_data = syc.read(1, dev_index, 0, mem_bus)
       print "mem data: " + str(mem_data);

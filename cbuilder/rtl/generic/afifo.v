@@ -93,9 +93,9 @@ module afifo
     //'status' latch logic:
     always @ (set_status, rst_status, rst) //D Latch w/ Asynchronous Clear & Preset.
         if (rst_status | rst)
-            status = 0;  //Going 'Empty'.
+            status <= 0;  //Going 'Empty'.
         else if (set_status)
-            status = 1;  //Going 'Full'.
+            status <= 1;  //Going 'Full'.
             
     //'full' logic for the writing port:
     assign preset_full = status & equal_addresses;  //'Full' Fifo.

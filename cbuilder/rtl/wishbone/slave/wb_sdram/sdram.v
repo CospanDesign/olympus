@@ -115,7 +115,6 @@ always @(posedge clk) begin
   end
 end
 
-reg           refresh_ack;
 reg           refresh;
 
 //Write path
@@ -173,6 +172,7 @@ sdram_write write_path (
   .idle(write_idle),
   .enable(app_write_enable),
   .auto_refresh(refresh),
+  .wait_for_refresh(wwfr),
   
   //Application address
   .app_address(app_address),
@@ -187,25 +187,24 @@ sdram_write write_path (
 //Read path
 wire  [2:0]   read_command;
 wire          read_idle;
-reg           read_fifo_reset;
 wire  [11:0]  read_address;
 wire  [1:0]   read_bank;
 wire  [31:0]  read_path_data;
-//reg           read_enable;
 
 wire  [15:0]  data_in;
 assign        data_in = data;
-
-wire          reading;
-assign        reading = ~read_idle;
+wire          read_fifo_reset;
+wire          read_enable;
+assign        read_enable = app_read_enable & write_idle & write_fifo_empty;
 
 //instantiate the read fifo (32 bits)
 afifo 
-	#(		.DATA_WIDTH(32),
+	#(		
+      .DATA_WIDTH(32),
 			.ADDRESS_WIDTH(8)
 	)
 fifo_rd (
-	.rst(~app_read_enable),
+	.rst(read_fifo_reset),
 
   //Clocks
 	.din_clk(sdram_clk),
@@ -236,14 +235,16 @@ sdram_read read_path (
   .data_in(data_in),
 
   //Control
-  .enable(app_read_enable),
+  .enable(read_enable),
   .idle(read_idle),
   .auto_refresh(refresh),
+  .wait_for_refresh(rwfr),
 
   //application address
   .app_address(app_address),
 
   //Data In Path
+  .fifo_reset(read_fifo_reset),
   .fifo_data(read_path_data),
   .fifo_write(read_path_write_pulse),
   .fifo_full(read_fifo_full)
@@ -258,11 +259,12 @@ wire  [2:0]   command;
 
 //Combine all the ras/cas/we
 assign command  = ~write_idle ? write_command : ~read_idle ? read_command : init_command;
+assign bank =     ~write_idle ? write_bank    : ~read_idle ? read_bank    : init_bank;
+assign address  = ~write_idle ? write_address : ~read_idle ? read_address : init_address;
+
 assign ras  = command[2];
 assign cas  = command[1];
 assign we   = command[0];
-assign bank = ~write_idle ? write_bank : ~read_idle ? read_bank : init_bank;
-assign address  = ~write_idle ? write_address : ~read_idle ? read_address : init_address;
 
 //XXX: Disable Data mask for testing
 assign data_mask = ~write_idle ? write_data_mask : 2'b00; 
@@ -278,11 +280,13 @@ parameter     AUTO_REFRESH1       = 4'h2;
 parameter     AUTO_REFRESH2       = 4'h3;
 parameter     LOAD_MODE_REGISTER  = 4'h4;
 parameter     IDLE                = 4'h5;
-parameter     READING             = 4'h6;
-parameter     WRITING             = 4'h7;
-parameter     AUTO_REFRESH_PRE    = 4'h8;
-parameter     AUTO_REFRESH        = 4'h9;
+//parameter     AUTO_REFRESH_PRE    = 4'h6;
+parameter     AUTO_REFRESH        = 4'h7;
+parameter     AUTO_REFRESH_FIN    = 4'h8;
 
+
+//auto refresh master timeout
+reg   [31:0]  auto_refresh_count;
 
 
 //General Registers
@@ -291,8 +295,6 @@ reg   [15:0]  delay;
 
 always @(posedge sdram_clk) begin
 
-  read_fifo_reset           <=  0;
-  refresh_ack               <=  0;
   init_bank                 <=  2'b00;
 
   if (rst || ~cke) begin
@@ -304,9 +306,9 @@ always @(posedge sdram_clk) begin
     init_bank               <=  2'b00;
     init_address            <=  12'h000;
     sdram_ready             <=  0;
-//    read_enable             <=  0;
-//    write_enable            <=  0;
-    read_fifo_reset         <=  1;
+    auto_refresh_count      <=  `T_AR_TIMEOUT;
+    refresh                 <=  0;
+
   end
   else begin
     
@@ -352,84 +354,44 @@ always @(posedge sdram_clk) begin
         end
         IDLE: begin
           sdram_ready       <=  1;
-          //the write/read path are disabled until the app calls write/read in this state
-//          write_enable      <=  0;
-//          read_enable       <=  0;
-          read_fifo_reset   <=  1;
+          init_command            <=  `SDRAM_CMD_NOP;
           //waiting for user to initiate a command
-          if (refresh) begin
+          if (refresh && rwfr && wwfr) begin
             //$display ("SDRAM_INIT: Auto Refresh");
-            //init_bank       <=  2'b11;
-            state           <=  AUTO_REFRESH_PRE;
-          end
-          //if the user starts a write enable the write path
-          if (app_write_enable || ~write_fifo_empty) begin
-            //$display ("SDRAM_INIT: write initiated");
-            state           <=  WRITING;
-//            write_enable    <=  1;
-          end
-          //if the user starts a read enable the read path
-          if (app_read_enable & write_idle) begin
-            //$display ("SDRAM_INIT: read initiated");
-            state           <=  READING;
-            //get rid of any data that is in the read FIFO
-//            read_enable     <=  1;
-            read_fifo_reset <=  0;
+            //state           <=  AUTO_REFRESH_PRE;
+            state         <=  AUTO_REFRESH;
           end
         end
-        READING: begin
-          if (read_idle && ~app_read_enable) begin
-            state <=  IDLE;
-          end
-        end
-        WRITING: begin
-          //if (write_idle && ~app_write_enable) begin
-          if (write_idle && write_fifo_empty) begin
-            state <=  IDLE;
-          end
-        end
-        AUTO_REFRESH_PRE: begin
-          init_command    <= `SDRAM_CMD_PRE;
-          init_address[10]<=  1;
-          state           <= AUTO_REFRESH;
-          delay           <= `T_RP; 
-        end
+//        AUTO_REFRESH_PRE: begin
+//          init_command    <= `SDRAM_CMD_PRE;
+//          init_address[10]<=  1;
+//          state           <= AUTO_REFRESH;
+//          delay           <= `T_RP; 
+//        end
         AUTO_REFRESH: begin
           init_command    <= `SDRAM_CMD_AR;
-          state           <=  IDLE;
-          delay           <=  `T_RFC;
-          refresh_ack     <=  1;
-
+          delay           <=  `T_RFC - 1;
+          state           <=  AUTO_REFRESH_FIN;
         end
-
+        AUTO_REFRESH_FIN: begin
+          init_command            <=  `SDRAM_CMD_NOP;
+          state           <=  IDLE;
+          refresh         <=  0;
+          auto_refresh_count      <=  `T_AR_TIMEOUT;
+        end
         default: begin
           //$display ("Shouldn't be here");
           state <=  START;
         end
       endcase
     end
-  end
-end
 
-
-//auto refresh master timeout
-reg   [31:0]  auto_refresh_count;
-
-always @(posedge sdram_clk) begin
-  if (rst || ~sdram_ready) begin
-    auto_refresh_count  <=  `T_AR_TIMEOUT;
-    refresh <=  0;
-  end
-  else begin
-    if (refresh_ack || ~sdram_ready) begin
-      refresh <= 0;
-    end
+    //refresh
     if (auto_refresh_count > 0) begin
       auto_refresh_count  <= auto_refresh_count - 1;
     end
-    else begin
-      auto_refresh_count  <= `T_AR_TIMEOUT;
-      refresh             <= 1;
+    else if (refresh == 0) begin
+      refresh             <=  1;
     end
   end
 end

@@ -504,7 +504,6 @@ always @ (posedge clk) begin
         state <= TB_IDLE;
       end //somethine wrong here
     endcase //state machine
-    /*
     if (out_en) begin
       $display ("TB: read: S:A:D = %h:%h:%h", out_status, out_address, out_data);
       if (out_data_count == 0) begin
@@ -521,7 +520,6 @@ always @ (posedge clk) begin
         timeout_count <= `TIMEOUT_COUNT;
       end
     end
-    */
     if (out_en && out_status == `PERIPH_INTERRUPT) begin
       $display("TB: Output Handler Recieved interrupt");
       $display("TB:\tcommand: %h", out_status);

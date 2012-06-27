@@ -13,23 +13,6 @@
 `define SYS_CLK_FREQUENCY   50000     // in kHz
 
 //Sequential
-`define SDRAM_INIT_LMR	12'b000000100001
-//A[11:10]	RESERVED: 0, 0
-//A[9]		Write Burst Mode
-//				0: 	Programed burst length
-//				1:	Single Location Address
-//A[8:7]	Operation Mode
-//				00: Standard Operation Mode
-//A[6:4]	CAS Latency
-//				010: 2
-//				011: 3
-//A[3]		Burst Type
-//				0:	Sequential
-//				1:	Interleaved
-//A[2:0]	Burst Length
-//				001:	2
-
-//Sequential
 `define SDRAM_INIT_LMR	12'b000000100111
 //A[11:10]	RESERVED: 0, 0
 //A[9]		Write Burst Mode
@@ -61,10 +44,6 @@
 `define SDRAM_CMD_AR    3'b001
 `define SDRAM_CMD_MRS   3'b000
 
-`define ADR_BA_RNG    25:24
-`define ADR_ROW_RNG   23:11
-`define ADR_COL_RNG   10:4
-
 `define T_RCD	2			//ACTIVE -> READ/WRITE 2 clock cycles 7E
 `define T_CAS	2			//READ -> DATA READY 2 clock cycles for CAS latency
 `define T_RP	2			//PRECHARGE -> finished	
@@ -75,5 +54,10 @@
 `define T_WR  2     //Writing to memory
 
 //Auto Refresh Timeout
-`define T_AR_TIMEOUT	1500
+`ifndef SIMULATION
+  `define T_AR_TIMEOUT	1500
+`else
+  `define T_AR_TIMEOUT	50
+`endif
+
 `endif
