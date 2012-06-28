@@ -749,6 +749,7 @@ class SapController:
         if slave_index < s_count - 1:
           self.sgm.move_slave(slave.slave_index, slave_index, SlaveType.MEMORY)
 
+    assert s_count - 1 == slave_index
     uname = self.get_unique_name(name, NodeType.SLAVE, slave_type, slave_index)
     slave = self.sgm.get_node(uname)
 
@@ -767,13 +768,11 @@ class SapController:
           if self.project_tags.has_key("MEMORY"):
             slaves = self.project_tags["MEMORY"]
 
-        if name in slaves.keys():
-          sd = slaves[name]
-          if sd.has_key("PARAMETERS"):
-            pd = sd["PARAMETERS"]
-            for key in pd.keys():
-              if parameters["parameters"].has_key(key):
-                parameters["parameters"][key] = pd[key]
+        if slaves.has_key(name) and slaves[name].has_key("PARAMETERS"):
+          pd = slaves[name]["PARAMETERS"]
+          for key in pd.keys():
+            if parameters["parameters"].has_key(key):
+              parameters["parameters"][key] = pd[key]
 
     return uname
 
