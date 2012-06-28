@@ -603,10 +603,12 @@ class SapController:
         # If the index has no [] (no index) or it is a range.
         if index == -1:
           # bad
-          raise SlaveError("Conflict with the binding %s and the port %s" % (key, port_name))
+          raise SlaveError("Conflict with the binding %s and the port %s" %
+              (key, port_name))
 
         if index >= low and index <= high:
-          raise SlaveError("Conflict with the binding %s and the port %s" % (key, port_name))
+          raise SlaveError("Conflict with the binding %s and the port %s" %
+              (key, port_name))
 
       if key_index == index:
         raise SlaveError("Conflict with the binding %s and the port %s" % (key, port_name))
@@ -761,7 +763,6 @@ class SapController:
         if slave_index < s_count - 1:
           self.sgm.move_slave(slave.slave_index, slave_index, SlaveType.MEMORY)
 
-    assert s_count - 1 == slave_index
     uname = self.get_unique_name(name, NodeType.SLAVE, slave_type, slave_index)
     slave = self.sgm.get_node(uname)
 
