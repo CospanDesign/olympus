@@ -731,8 +731,6 @@ class SapController:
     s_count = self.sgm.get_number_of_slaves(slave_type)
     self.sgm.add_node(name, NodeType.SLAVE, slave_type)
 
-    slave = None
-
     if slave_index == -1:
       slave_index = s_count
     else: # Add the slave wherever.
@@ -743,7 +741,7 @@ class SapController:
         uname = self.get_unique_name(name, NodeType.SLAVE, slave_type, s_count - 1)
         slave = self.sgm.get_node(uname)
         if slave_index < s_count - 1:
-          self.sgm.move_peripheral_slave(  slave.slave_index, slave_index)
+          self.sgm.move_peripheral_slave(slave.slave_index, slave_index)
       elif slave_type == SlaveType.MEMORY:
         s_count = self.sgm.get_number_of_memory_slaves()
         uname = self.get_unique_name(name, NodeType.SLAVE, slave_type, s_count - 1)
@@ -751,15 +749,10 @@ class SapController:
         if slave_index < s_count - 1:
           self.sgm.move_slave(slave.slave_index, slave_index, SlaveType.MEMORY)
 
-#    print "slave index: " + str(slave_index)
-
     uname = self.get_unique_name(name, NodeType.SLAVE, slave_type, slave_index)
-
     slave = self.sgm.get_node(uname)
-#    print "slave unique name: " + uname
 
     if filename is not None:
-#      print "filename: " + filename
       if len(filename) > 0:
         parameters = self.get_module_tags(filename, self.bus_type)
         self.sgm.set_parameters(uname, parameters)
@@ -768,18 +761,18 @@ class SapController:
         # project tags.
         slaves = {}
         if slave_type == SlaveType.PERIPHERAL:
-          if "SLAVES" in self.project_tags.keys():
+          if self.project_tags.has_key("SLAVES"):
             slaves = self.project_tags["SLAVES"]
         else:
-          if "MEMORY" in self.project_tags.keys():
+          if self.project_tags.has_key("MEMORY"):
             slaves = self.project_tags["MEMORY"]
 
         if name in slaves.keys():
           sd = slaves[name]
-          if "PARAMETERS" in sd.keys():
+          if sd.has_key("PARAMETERS"):
             pd = sd["PARAMETERS"]
             for key in pd.keys():
-              if key in parameters["parameters"].keys():
+              if parameters["parameters"].has_key(key):
                 parameters["parameters"][key] = pd[key]
 
     return uname
