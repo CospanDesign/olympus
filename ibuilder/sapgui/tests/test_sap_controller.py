@@ -13,8 +13,7 @@ import sapfile
 import saputils
 import sap_controller as sc
 from gen_scripts.gen import Gen
-from sap_graph_manager import SlaveType
-from sap_graph_manager import NodeType
+from sap_graph_manager import SlaveType, NodeType, SlaveError
 from sap_controller import StateError
 
 class UTest(unittest.TestCase):
@@ -665,7 +664,7 @@ class UTest(unittest.TestCase):
         return_value=num_slaves)
     self.sc.get_unique_name = mock.Mock(return_value='uname')
     self.sc.sgm.get_node = mock.Mock(return_value=mock_slaves[-1])
-    self.sc.sgm.move_memory_slave = mock.Mock(
+    self.sc.sgm.move_slave = mock.Mock(
         side_effect=AssertionError('Should not be called.'))
     mock_params = { 'parameters': { 'p1': '1', 'p2': '2' } }
     self.sc.bus_type = 'bustype'
@@ -684,6 +683,58 @@ class UTest(unittest.TestCase):
     self.sc.get_module_tags.assert_called_once_with(arg_f, 'bustype')
     self.sc.sgm.set_parameters.assert_called_once_with('uname', mock_params)
     self.assertEquals(mock_params, { 'parameters': { 'p1': '1', 'p2': '2' } })
+
+  def test_add_slave_peripheral_0_not_DRT_raises_SlaveError(self):
+    arg_n, arg_f, arg_st, arg_si = 'name', '/tmp/name', SlaveType.PERIPHERAL, 0
+
+    self.sc.sgm = mock.Mock()
+    self.sc.sgm.get_number_of_slaves = mock.Mock(return_value=0)
+    self.sc.sgm.add_node = mock.Mock()
+
+    self.assertRaises(SlaveError, self.sc.add_slave, arg_n, arg_f, arg_st, arg_si)
+    self.sc.sgm.get_number_of_slaves.assert_called_once_with(arg_st)
+    self.sc.sgm.add_node.assert_called_once_with(arg_n, NodeType.SLAVE, arg_st)
+
+  def test_add_slave_peripheral_0_DRT_ok(self):
+    arg_n, arg_f, arg_st, arg_si = 'DRT', '/tmp/name', SlaveType.PERIPHERAL, 0
+
+    mock_slaves = []
+    for i in xrange(1):
+      mock_slaves.append(mock.Mock())
+      mock_slaves[-1].slave_index = i
+    num_slaves = 0
+
+    self.sc.sgm = mock.Mock()
+    self.sc.sgm.get_number_of_slaves = mock.Mock(return_value=num_slaves)
+    self.sc.sgm.add_node = mock.Mock()
+    self.sc.sgm.get_number_of_peripheral_slaves = mock.Mock(
+        return_value=num_slaves)
+    self.sc.get_unique_name = mock.Mock(return_value='uname')
+    self.sc.sgm.get_node = mock.Mock(return_value=mock_slaves[-1])
+    self.sc.sgm.move_peripheral_slave = mock.Mock(
+        side_effect=AssertionError('Should not be called.'))
+    mock_params = { 'parameters': { 'p1': '1', 'p2': '2' } }
+    self.sc.bus_type = 'bustype'
+    self.sc.get_module_tags = mock.Mock(return_value=mock_params)
+    self.sc.sgm.set_parameters = mock.Mock()
+    self.sc.project_tags = { 'SLAVES': { 'parameters': { 'p1': '-1' } } }
+
+    # Run & Test.
+    self.assertEquals(self.sc.add_slave(arg_n, arg_f, arg_st, arg_si), 'uname')
+    self.sc.sgm.get_number_of_slaves.assert_called_once_with(arg_st)
+    self.sc.sgm.add_node.assert_called_once_with(arg_n, NodeType.SLAVE, arg_st)
+    self.sc.sgm.get_number_of_peripheral_slaves.assert_called_once_with()
+    self.sc.get_unique_name.assert_called_with(arg_n, NodeType.SLAVE, arg_st, 0)
+    self.sc.sgm.get_node.assert_called_with('uname')
+    self.sc.get_module_tags.assert_called_once_with(arg_f, 'bustype')
+    self.sc.sgm.set_parameters.assert_called_once_with('uname', mock_params)
+    self.assertEquals(mock_params, { 'parameters': { 'p1': '1', 'p2': '2' } })
+
+  def test_get_unique_name(self):
+    pass
+
+  def test_add_slave(self):
+    pass
 
   def test_remove_slave(self):
     pass
