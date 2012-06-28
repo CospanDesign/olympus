@@ -619,6 +619,101 @@ class UTest(unittest.TestCase):
     self.sc.sgm.add_node.assert_called_once_with('Host Interface',
         NodeType.HOST_INTERFACE)
 
+  def test_rename_slave(self):
+    slave_type, index, new_name = SlaveType.PERIPHERAL, 4, 'name'
+    self.sc.sgm = mock.Mock()
+    self.sc.sgm.rename_slave = mock.Mock()
+    self.sc.rename_slave(slave_type, index, new_name)
+    self.sc.sgm.rename_slave.assert_called_once_with(
+        slave_type, index, new_name)
+
+  def test_rename_slave_raises_idx_TypeError(self):
+    slave_type, index, new_name = SlaveType.PERIPHERAL, 'foo', 'name'
+    self.sc.sgm = mock.Mock()
+    self.sc.sgm.rename_slave = mock.Mock(side_effect=TypeError)
+    self.assertRaises(TypeError, self.sc.rename_slave,
+        slave_type, index, new_name)
+    self.sc.sgm.rename_slave.assert_called_once_with(
+        slave_type, index, new_name)
+
+  def test_rename_slave_raises_none_TypeError(self):
+    slave_type, index, new_name = SlaveType.PERIPHERAL, 2, None
+    self.sc.sgm = mock.Mock()
+    self.sc.sgm.rename_slave = mock.Mock(side_effect=TypeError)
+    self.assertRaises(TypeError, self.sc.rename_slave,
+        slave_type, index, new_name)
+    self.sc.sgm.rename_slave.assert_called_once_with(
+        slave_type, index, new_name)
+
+  def test_rename_slave_raises_str_TypeError(self):
+    slave_type, index, new_name = 'peripheral', 2, None
+    self.sc.sgm = mock.Mock()
+    self.sc.sgm.rename_slave = mock.Mock(side_effect=TypeError)
+    self.assertRaises(TypeError, self.sc.rename_slave,
+        slave_type, index, new_name)
+    self.sc.sgm.rename_slave.assert_called_once_with(
+        slave_type, index, new_name)
+
+  def test_add_slave(self):
+    arg_n, arg_f, arg_st, arg_si = 'name', '/tmp/name', SlaveType.PERIPHERAL, 2
+
+    mock_slaves = []
+    for i in xrange(3):
+      mock_slaves.append(mock.Mock())
+      mock_slaves[-1].slave_index = i
+    num_slaves = len(mock_slaves)
+
+    self.sc.sgm = mock.Mock()
+    self.sc.sgm.get_number_of_slaves = mock.Mock(return_value=num_slaves)
+    self.sc.sgm.add_node = mock.Mock()
+    self.sc.sgm.get_number_of_peripheral_slaves = mock.Mock(
+        return_value=num_slaves)
+    self.sc.get_unique_name = mock.Mock(return_value='uname')
+    self.sc.sgm.get_node = mock.Mock(return_value=mock_slaves[-1])
+    self.sc.sgm.move_peripheral_slave = mock.Mock(
+        side_effect=AssertionError('Should not be called.'))
+    mock_params = { 'parameters': { 'p1': '1', 'p2': '2' } }
+    self.sc.bus_type = 'bustype'
+    self.sc.get_module_tags = mock.Mock(return_value=mock_params)
+    self.sc.sgm.set_parameters = mock.Mock()
+    self.sc.project_tags = { 'SLAVES': { 'parameters': { 'p1': '-1' } } }
+
+    # Run & Test.
+    self.assertEquals(self.sc.add_slave(arg_n, arg_f, arg_st, arg_si), 'uname')
+    self.sc.sgm.get_number_of_slaves.assert_called_once_with(arg_st)
+    self.sc.sgm.add_node.assert_called_once_with(arg_n, NodeType.SLAVE, arg_st)
+    self.sc.sgm.get_number_of_peripheral_slaves.assert_called_once_with()
+    self.sc.get_unique_name.assert_called_with(
+        arg_n, NodeType.SLAVE, arg_st, num_slaves - 1)
+    self.sc.sgm.get_node.assert_called_with('uname')
+    self.sc.get_module_tags.assert_called_once_with(arg_f, 'bustype')
+    self.sc.sgm.set_parameters.assert_called_once_with('uname', mock_params)
+    self.assertEquals(mock_params, { 'parameters': { 'p1': '1', 'p2': '2' } })
+
+  def test_remove_slave(self):
+    pass
+
+  def test_move_slave_in_peripheral_bus(self):
+    pass
+
+  def test_move_slave_in_memory_bus(self):
+    pass
+
+  def test_move_slave_between_bus(self):
+    pass
+
+  def test_arbitration(self):
+    pass
+
+  def test_get_connected_arbitration_slave(self):
+    pass
+
+  def test_remove_arbitration_by_arbitrator(self):
+    pass
+
+  def test_save_config_file(self):
+    pass
+
 
 
 class IntTest(unittest.TestCase):
