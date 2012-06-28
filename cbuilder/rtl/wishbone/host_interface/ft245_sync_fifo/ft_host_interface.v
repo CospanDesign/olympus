@@ -473,7 +473,7 @@ always @ (posedge clk) begin
             wstate            <=  IDLE;
           end
         end
-        SEND_MORE_DATA: begin
+        READ_MORE_DATA: begin
           if (master_count == 0) begin
             wstate            <=  IDLE;
           end
