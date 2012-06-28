@@ -105,7 +105,7 @@ class SapController:
     if debug:
       print "loading %d peripheral slaves" % sp_count
 
-    if "SLAVES" in self.project_tags:
+    if self.project_tags.has_key("SLAVES"):
       for slave_name in self.project_tags["SLAVES"].keys():
 
         file_name = self.project_tags["SLAVES"][slave_name]["filename"]
@@ -371,6 +371,8 @@ class SapController:
     return self.project_tags["BASE_DIR"]
 
   def set_project_name(self, name):
+    if type(name) != str:
+      raise TypeError('str expected for name')
     """Sets the name of the output project."""
     self.project_tags["PROJECT_NAME"] = name
 
@@ -384,13 +386,13 @@ class SapController:
 
   def get_vendor_tools(self):
     '''Gets the loaded vendor tools name.'''
-    return self.board_dict["build_tool"]
+    try:
+      return self.board_dict["build_tool"]
+    except AttributeError:
+      raise StateError('Board Dictionary not yet loaded.')
 
   def set_board_name(self, board_name):
     """Sets the name of the board to use."""
-    if "board" not in self.project_tags.keys():
-      self.project_tags["board"] = ""
-
     self.project_tags["board"] = board_name
     self.board_dict = self.get_board_config(board_name)
 
@@ -404,6 +406,8 @@ class SapController:
     return self.get_constraint_filenames(self.project_tags["board"])
 
   def add_project_constraint_file(self, constraint_file):
+    if type(constraint_file) != str: raise TypeError('constraint_file must be str')
+
     # TODO make constraint files a set
     if constraint_file not in self.project_tags["constraint_files"]:
       self.project_tags["constraint_files"].append(constraint_file)
@@ -415,6 +419,8 @@ class SapController:
 
   def set_project_constraint_files(self, constraint_files):
 #    print "project constraint files: " + str(constraint_files)
+    if type(constraint_files) != list:
+      raise TypeError('list expected for constraint_files')
     self.project_tags["constraint_files"] = constraint_files
 
   def get_project_constraint_files(self):
@@ -422,23 +428,22 @@ class SapController:
     user-constraints exist, returns the default constraint files from the
     board's config file, populates the user constraint files with those
     constraints, and returns the newly-populated user constraint files."""
-    pt = self.project_tags
-    if "constraint_files" in pt.keys():
-      if len(pt["constraint_files"]) == 0:
+    try:
+      pt = self.project_tags
+      if not pt.has_key("constraint_files") or len(pt["constraint_files"]) == 0:
         # User has not specified constraint files so load the default values.
         pt["constraint_files"] = self.board_dict["default_constraint_files"]
-
-    return pt["constraint_files"]
+      return pt["constraint_files"]
+    except AttributeError:
+      raise StateError('Board dictionary not loaded.')
 
   def get_fpga_part_number(self):
-#    import saputils
-#    board_dict = self.get_board_config(self.project_tags["board"])
-#    return board_dict["fpga_part_number"]
-    return self.board_dict["fpga_part_number"]
-
-#    if "CONSTRAINTS" in self.project_tags.keys():
-#      if "device" in self.project_tags["CONSTRAINTS"].keys():
-#        return self.project_tags["CONSTRAINTS"]["device"]
+    '''Gets the FPGA's part number.  Raises StateError of the board
+    configuration hasn't been loaded yet.'''
+    try:
+      return self.board_dict["fpga_part_number"]
+    except AttributeError:
+      raise StateError('Board dictionary not yet loaded.')
 
   def new_design(self):
     """Initialize an empty design."""
@@ -459,8 +464,15 @@ class SapController:
     self.project_tags["bind"] = {}
     self.project_tags["constraint_files"] = []
 
+  VALID_BUS_TYPES = ['Wishbone', 'Axie']
+
   def set_bus_type(self, bus_type):
     """Set the bus type to Wishbone or Axie."""
+    if type(bus_type) != str:
+      raise TypeError('str expected for bus_type')
+    if bus_type not in self.VALID_BUS_TYPES:
+      raise ValueError('Unsupported bus type:%s\n  Choose on of: %s' %
+          (bus_type, self.VALID_BUS_TYPES))
     self.bus_type = bus_type
 
   def get_bus_type(self):

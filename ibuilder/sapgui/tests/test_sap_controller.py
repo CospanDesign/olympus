@@ -188,11 +188,6 @@ class UTest(unittest.TestCase):
     self.sc.set_project_location("p1_location")
     self.assertEqual(self.sc.project_tags['BASE_DIR'], "p1_location")
 
-  def test_set_project_location_nothing_loaded_raises_error(self):
-    '''Tests that calling set_project_location without having loaded a
-    configuration first raises an error.'''
-    self.assertRaises(StateError, self.sc.set_project_location, 'foo')
-
   def test_set_project_location_none(self):
     '''Test None passed to set_project_location.'''
     self.sc.project_tags = self.EXAMPLE_CONFIG
@@ -210,11 +205,6 @@ class UTest(unittest.TestCase):
     self.sc.project_tags = { 'BASE_DIR': 'p1_location' }
     self.assertEqual(self.sc.get_project_location(), "p1_location")
 
-  def test_get_project_location_nothing_loaded_raises_error(self):
-    '''Tests that calling get_project_location without having loaded a
-    configuration first raises an error.'''
-    self.assertRaises(StateError, self.sc.get_project_location)
-
   def test_get_project_location_none(self):
     '''Test None from get_project_location.'''
     self.sc.project_tags = { 'BASE_DIR': None }
@@ -231,15 +221,9 @@ class UTest(unittest.TestCase):
     self.sc.set_project_name("p1_name")
     self.assertEqual(self.sc.project_tags['PROJECT_NAME'], "p1_name")
 
-  def test_set_project_name_nothing_loaded_raises_error(self):
-    '''Tests that calling set_project_name without having loaded a
-    configuration first raises an error.'''
-    self.assertRaises(StateError, self.sc.set_project_name, 'foo')
-
   def test_set_project_name_none_raises_TypeError(self):
     '''Test None passed to set_project_name.'''
     self.sc.project_tags = self.EXAMPLE_CONFIG
-    self.sc.set_project_name(None)
     self.assertRaises(TypeError, self.sc.set_project_name, None)
 
   def test_set_project_name_empty_str(self):
@@ -252,11 +236,6 @@ class UTest(unittest.TestCase):
     '''Test "normal" functionality of get_project_name.'''
     self.sc.project_tags = { 'PROJECT_NAME': 'p1_name' }
     self.assertEqual(self.sc.get_project_name(), "p1_name")
-
-  def test_get_project_name_nothing_loaded_raises_error(self):
-    '''Tests that calling get_project_name without having loaded a
-    configuration first raises an error.'''
-    self.assertRaises(StateError, self.sc.get_project_name)
 
   def test_get_project_name_none(self):
     '''Test None from get_project_name.'''
@@ -296,7 +275,7 @@ class UTest(unittest.TestCase):
     self.sc.board_dict = { 'build_tool': 'toolchain' }
     self.assertEqual(self.sc.get_vendor_tools(), "toolchain")
 
-  def test_get_vendor_tools_nothing_loaded_raises_error(self):
+  def test_get_vendor_tools_nothing_loaded_raises_StateError(self):
     '''Tests that calling get_vendor_tools without having loaded a
     configuration first raises an error.'''
     self.assertRaises(StateError, self.sc.get_vendor_tools)
@@ -319,13 +298,6 @@ class UTest(unittest.TestCase):
     self.assertEqual(self.sc.project_tags['board'], "b1_name")
     self.sc.get_board_config.assert_called_once_with('b1_name')
 
-  def test_set_board_name_nothing_loaded_raises_error(self):
-    '''Tests that calling set_board_name without having loaded a
-    configuration first raises an error.'''
-    self.sc.get_board_config = mock.Mock(
-        side_effect=AssertionError('should not have gotten this far'))
-    self.assertRaises(StateError, self.sc.set_board_name, 'foo')
-
   def test_set_board_name_none_raises_TypeError(self):
     '''Test None passed to set_board_name.'''
     self.sc.project_tags = self.EXAMPLE_CONFIG
@@ -345,10 +317,10 @@ class UTest(unittest.TestCase):
     self.sc.project_tags = { 'board': 'b1_name' }
     self.assertEqual(self.sc.get_board_name(), "b1_name")
 
-  def test_get_board_name_nothing_loaded_raises_error(self):
+  def test_get_board_name_nothing_loaded_returns_sycamore(self):
     '''Tests that calling get_board_name without having loaded a
     configuration first raises an error.'''
-    self.assertRaises(StateError, self.sc.get_board_name)
+    self.assertEquals(self.sc.get_board_name(), 'sycamore1')
 
   def test_get_board_name_none(self):
     '''Test None from get_board_name.'''
@@ -368,9 +340,6 @@ class UTest(unittest.TestCase):
     self.assertEqual(self.sc.get_board_constraint_filenames(),
             self.BOARD_CONSTRAINT_FILES)
     self.sc.get_constraint_filenames.assert_called_once_with(board_name)
-
-  def test_get_board_constraint_filenames_nothing_loaded_raises_StateError(self):
-    self.assertRaises(StateError, self.sc.get_board_constraint_filenames)
 
   def test_get_board_constraint_filenames_empty_okay(self):
     board_name = 'boardnameyoyoyo'
@@ -428,9 +397,6 @@ class UTest(unittest.TestCase):
     self.assertEquals(self.sc.project_tags['constraint_files'],
             ['cons1', 'cons2', 'cons3'])
 
-  def test_remove_project_constraint_file_nothing_loaded_raises_StateError(self):
-    self.assertRaises(StateError, self.sc.remove_project_constraint_file, 'foo')
-
   def test_remove_project_constraint_file_empty(self):
     self.sc.project_tags = { 'constraint_files': [] }
     self.sc.remove_project_constraint_file('cons4')
@@ -441,10 +407,6 @@ class UTest(unittest.TestCase):
     self.sc.set_project_constraint_files(self.BOARD_CONSTRAINT_FILES)
     self.assertEqual(self.BOARD_CONSTRAINT_FILES,
         self.sc.project_tags['constraint_files'])
-
-  def test_set_project_constraint_files_nothing_loaded_raises_StateError(self):
-    self.assertRaises(StateErorr, self.sc.set_project_constraint_files,
-        self.BOARD_CONSTRAINT_FILES)
 
   def test_set_project_constraint_files_overwrite(self):
     self.sc.project_tags = { 'constraint_files': ['foo', 'bar', 'baz'] }
@@ -462,13 +424,10 @@ class UTest(unittest.TestCase):
 
   def test_get_project_constraint_files(self):
     self.sc.project_tags = {
-        'default_constraint_files': self.BOARD_CONSTRAINT_FILES
+        'constraint_files': self.BOARD_CONSTRAINT_FILES
     }
     self.assertEqual(self.sc.get_project_constraint_files(),
         self.BOARD_CONSTRAINT_FILES)
-
-  def test_get_project_constraint_files_nothing_loaded_raises_StateError(self):
-    self.assertRaises(StateError, self.sc.get_project_constraint_files, None)
 
   def test_get_project_constraint_files_pt_empty(self):
     self.sc.project_tags = {}
@@ -480,14 +439,14 @@ class UTest(unittest.TestCase):
 
   def test_get_project_constraint_files_board_config_not_loaded_raises_StateError(self):
     self.sc.project_tags = {}
-    self.assertRaises(StateError, self.sc.get_project_constraint_files, [])
+    self.assertRaises(StateError, self.sc.get_project_constraint_files)
 
   def test_get_fpga_part_number(self):
     self.sc.board_dict = { 'fpga_part_number': 'number' }
     self.assertEqual(self.sc.get_fpga_part_number(), 'number')
 
   def test_get_fpga_part_number_nothing_loaded_raises_StateError(self):
-    self.assertRaises(StateError, self.sc.get_fpga_part_number, 'foo')
+    self.assertRaises(StateError, self.sc.get_fpga_part_number)
 
   def test_new_design(self):
     sgm = mock.Mock()
@@ -500,8 +459,8 @@ class UTest(unittest.TestCase):
     self.assertEqual(self.sc.project_tags, self.NEW_CONFIG)
 
   def test_set_bus_type(self):
-    self.set_bus_type('bus_type')
-    self.assertEqual('bus_type', self.sc.bus_type)
+    self.sc.set_bus_type('Wishbone')
+    self.assertEqual('Wishbone', self.sc.bus_type)
 
   def test_set_bus_type_none_raises_TypeError(self):
     self.assertRaises(TypeError, self.sc.set_bus_type, None)
