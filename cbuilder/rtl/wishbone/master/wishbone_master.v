@@ -280,19 +280,18 @@ always @ (posedge clk) begin
           end
           else if (~mem_stb_o && out_ready) begin
             $display("WBM: local_data_count = %h", local_data_count);
-            if (local_data_count == 0) begin
-              //finished all the reads, put de-assert the cycle
-              mem_cyc_o   <= 0;
-              state       <= IDLE;
-            end
-            else begin
+            if (local_data_count > 0) begin
               //finished the next double word
               nack_count    <= nack_timeout;
               local_data_count  <= local_data_count -1;
               mem_adr_o   <= mem_adr_o + 4;
               mem_stb_o   <= 1;
             end
-          
+            else begin
+              //finished all the reads de-assert the cycle
+              mem_cyc_o   <=  0;
+              state       <=  IDLE;
+            end
             //put the strobe down to say we got that double word
             out_data    <= mem_dat_i;
             //out_data_count  <=  local_data_count;
@@ -301,18 +300,13 @@ always @ (posedge clk) begin
           end
         end
         else begin
+          //Peripheral BUS
           if (wb_ack_i) begin
             wb_stb_o    <= 0;
           end
           else if (~wb_stb_o && out_ready) begin
             $display("WBM: local_data_count = %h", local_data_count);
-            if (local_data_count == 0) begin
-              //finished all the reads, put de-assert the cycle
-              debug_out[6]  <= ~debug_out[6];
-              wb_cyc_o    <= 0;
-              state       <= IDLE;
-            end
-            else begin
+            if (local_data_count > 0) begin
 //the nack count might need to be reset outside of these conditionals becuase
 //at this point we are waiting on the io handler
               nack_count    <= nack_timeout;
@@ -320,7 +314,12 @@ always @ (posedge clk) begin
               wb_adr_o    <= wb_adr_o + 1;
               wb_stb_o    <= 1;
             end
-
+            else begin
+              //finished all the reads, put de-assert the cycle
+              debug_out[6]  <= ~debug_out[6];
+              wb_cyc_o    <= 0;
+              state       <= IDLE;
+            end
             //put the data in the otput
             out_data    <= wb_dat_i;
             //tell the io_handler to send data
@@ -404,7 +403,9 @@ always @ (posedge clk) begin
             `COMMAND_WRITE: begin
               out_status  <= ~in_command;
               debug_out[1]  <= ~debug_out[1];
-              local_data_count  <=  in_data_count;
+//              if (in_data_count > 0) begin
+//                local_data_count  <=  in_data_count - 1;
+//              end
               if (command_flags & `FLAG_MEM_BUS) begin
                 mem_bus_select  <= 1; 
                 mem_adr_o     <= in_address;
@@ -427,7 +428,9 @@ always @ (posedge clk) begin
               state     <= WRITE;
             end
             `COMMAND_READ:  begin
-              local_data_count    <=  in_data_count;
+//              if (in_data_count > 0) begin
+//                local_data_count    <=  in_data_count - 1;
+//              end
               //out_data_count    <= in_data_count;
 //XXX: Don't know if I should be putting in_data_count in the local_data_count
 //this will undermine the hack down at the bottom, but the simulations are not working correctly

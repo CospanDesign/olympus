@@ -12,36 +12,36 @@
 `timescale 1ns/1ps
 
 module afifo
-	#(parameter		DATA_WIDTH    = 8,
-					ADDRESS_WIDTH = 4,
-					FIFO_DEPTH    = (1 << ADDRESS_WIDTH))
-	//Reading port
-	(output reg  [DATA_WIDTH-1:0]        data_out, 
-	
-	output reg                          empty,
-	input wire                          rd_en,
-	input wire                          dout_clk,        
-	//Writing port.	 
-	input wire  [DATA_WIDTH-1:0]        data_in,  
-	output reg                          full,
-	input wire                          wr_en,
-	input wire                          din_clk,
-	input wire                          rst);
-	
-	/////Internal connections & variables//////
-	reg   [DATA_WIDTH-1:0]              mem [FIFO_DEPTH-1:0];
-	wire  [ADDRESS_WIDTH-1:0]           p_next_word_to_write, p_next_word_to_read;
-	wire                                equal_addresses;
-	wire                                NextWriteAddressEn, NextReadAddressEn;
-	wire                                set_status, rst_status;
-	reg                                 status;
-	wire                                preset_full, preset_empty;
+  #(parameter   DATA_WIDTH    = 8,
+                ADDRESS_WIDTH = 4,
+                FIFO_DEPTH    = (1 << ADDRESS_WIDTH))(
+
+  //Reading port
+  output reg  [DATA_WIDTH-1:0]        data_out, 
+  output reg                          empty,
+  input wire                          rd_en,
+  input wire                          dout_clk,        
+  //Writing port.  
+  input wire  [DATA_WIDTH-1:0]        data_in,  
+  output reg                          full,
+  input wire                          wr_en,
+  input wire                          din_clk,
+  input wire                          rst);
+  
+  /////Internal connections & variables//////
+  reg   [DATA_WIDTH-1:0]              mem [FIFO_DEPTH-1:0];
+  wire  [ADDRESS_WIDTH-1:0]           p_next_word_to_write, p_next_word_to_read;
+  wire                                equal_addresses;
+  wire                                NextWriteAddressEn, NextReadAddressEn;
+  wire                                set_status, rst_status;
+  reg                                 status;
+  wire                                preset_full, preset_empty;
     
     //////////////Code///////////////
     //Data ports logic:
     //(Uses a dual-port RAM).
     //'data_out' logic:
-//	assign data_out	= mem[p_next_word_to_read];
+//  assign data_out = mem[p_next_word_to_read];
     always @ (posedge dout_clk)
         if (rd_en & !empty)
             data_out <= mem[p_next_word_to_read];
@@ -58,21 +58,19 @@ module afifo
            
     //Addreses (Gray counters) logic:
     GrayCounter 
-		#(
-			.COUNTER_WIDTH(ADDRESS_WIDTH)
-		)GrayCounter_pWr
+    #(
+      .COUNTER_WIDTH(ADDRESS_WIDTH)
+    )GrayCounter_pWr
        (.gray_count_out(p_next_word_to_write),
-       
         .en(NextWriteAddressEn),
         .rst(rst),
-        
         .clk(din_clk)
        );
        
     GrayCounter 
-		#(
-			.COUNTER_WIDTH(ADDRESS_WIDTH)
-		)GrayCounter_pRd
+    #(
+      .COUNTER_WIDTH(ADDRESS_WIDTH)
+    )GrayCounter_pRd
        (.gray_count_out(p_next_word_to_read),
         .en(NextReadAddressEn),
         .rst(rst),
@@ -93,9 +91,9 @@ module afifo
     //'status' latch logic:
     always @ (set_status, rst_status, rst) //D Latch w/ Asynchronous Clear & Preset.
         if (rst_status | rst)
-            status <= 0;  //Going 'Empty'.
+            status = 0;  //Going 'Empty'.
         else if (set_status)
-            status <= 1;  //Going 'Full'.
+            status = 1;  //Going 'Full'.
             
     //'full' logic for the writing port:
     assign preset_full = status & equal_addresses;  //'Full' Fifo.

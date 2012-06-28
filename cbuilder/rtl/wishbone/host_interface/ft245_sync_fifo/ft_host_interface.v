@@ -44,12 +44,12 @@ module ft_host_interface (
 
 
 //host interface
-input				rst;
-input				clk;
+input				        rst;
+input				        clk;
 
-input				master_ready;
-output reg			ih_ready;
-output reg      ih_reset;
+input				        master_ready;
+output reg			    ih_ready;
+output reg          ih_reset;
 
 output reg	[31:0]	in_command;
 output reg	[27:0]	in_data_count;
@@ -81,10 +81,16 @@ input				        ftdi_suspend_n;
 //debug
 output  reg [7:0]   debug;
 
+
+parameter   PING  = 4'h0;
+parameter   WRITE = 4'h1;
+parameter   READ  = 4'h2;
+parameter   RESET = 4'h3;
+
 //fifo interface
 wire				fifo_rst;
-reg					in_fifo_rst;
-assign	fifo_rst	=	rst | in_fifo_rst;
+reg					in_fifo_rst = 0;
+assign	    fifo_rst	=	rst | in_fifo_rst;
 
 reg					in_fifo_rd;
 wire				in_fifo_empty;
@@ -96,7 +102,7 @@ reg		[7:0]		out_fifo_data;
 
 reg		[7:0]		next_read_state;
 reg		[7:0]		process_state;
-reg		[7:0]		next_write_state;
+reg		[7:0]		next_wstate;
 
 reg		[31:0]		temp_data;
 wire          sof;
@@ -127,394 +133,366 @@ ft245_sync_fifo sync_fifo(
 	.ftdi_suspend_n(ftdi_suspend_n)
 
 );
-parameter	IDLE				    =	8'h0;
-
-
-parameter	READ_WAIT_1			=	8'h1;
-parameter	READ_WAIT_2			=	8'h2;			
-
-parameter	WRITE_ID			  =	8'h1;
-
-parameter	READ_DW_WAIT_1	=	8'h11;
-parameter	READ_DW_WAIT_2	=	8'h12;
-parameter	READ_DW				  =	8'h10;
-parameter	PROCESS_ID			=	8'h13;
-parameter	PROCESS_CMD			=	8'h14;
-parameter	PROCESS_ADDRESS	=	8'h15;
-parameter	PROCESS_DATA		=	8'h16;
-
-parameter	NOTIFY_MASTER		=	8'h17;
-
-parameter	READ_D4				  =	8'hA;
-parameter	RESET_DELAY			=	8'hB;
-parameter	BAD_ID				  =	8'hC;
-
-parameter	WAIT_FIFO			  =	8'hD;
-
-parameter	WRITE_COMMAND		=	8'h3;
-parameter	WRITE_ADDR			=	8'h4;
-parameter	WRITE_DATA			=	8'h5;
-parameter	WAIT_FOR_MASTER	=	8'h6;
 
 
 
-reg [31:0]	          read_count;
-reg [1:0]	            read_byte_count;
-reg			              prev_rd;
-reg	[31:0]	          local_data_count;
 
 
-reg	[7:0]	            read_state	=	IDLE;
-reg	[7:0]	            write_state	=	IDLE;
+//XXX: Possible race condition
+//XXX: Will the assembler hold the data for the HOST - > MASTER read path?
+wire                  read_busy;
+assign                read_busy = (rstate != IDLE);
 
-//input handler
+wire                  write_busy;
+assign                write_busy  = (wstate != IDLE);
+
+//Host -> Master DW Assembler Register
+reg                   reset_read_state;
+reg [31:0]            working_dw;
+reg [1:0]             byte_count;
+reg                   dw_ready;
+reg                   reset_assembler;
+reg [31:0]            read_dw;
+
+reg                   read_ready;
+reg                   read_enable;
+
+
+//Host -> Master DW  assembler
+always @ (posedge clk) begin
+  read_enable           <=  0;
+  if (in_fifo_rd) begin
+    read_enable         <=  1;
+  end
+  dw_ready              <=  0;
+  in_fifo_rd            <=  0;
+
+  if (rst) begin
+    byte_count          <=  4'h0;
+    working_dw          <=  32'h0;
+    read_dw             <=  32'h0;
+    read_enable         <=  0;
+    dw_ready            <=  0;
+  end
+  else begin
+    if (~write_busy && read_ready) begin
+      if (read_enable) begin
+        //reading a new word from the FIFO
+        if (reset_assembler) begin
+          working_dw[7:0]   <=  32'h0000;
+          byte_count        <=  2'b00;
+        end
+        else begin
+          //shift the data in
+          working_dw        <= {working_dw[23:0], in_fifo_data};
+          byte_count        <=  byte_count + 1;
+        end
+        if (byte_count == 2'h3) begin
+          //an entire word is assembled tell the main state machine that things are ready
+          read_dw           <=  {working_dw[23:0], in_fifo_data};
+          dw_ready          <=  1;
+        end
+      end
+      if (~in_fifo_empty) begin
+        in_fifo_rd          <=  1;
+      end
+    end
+  end
+end
+
+parameter	IDLE				      =	4'h0;
+parameter READ_COMMAND      = 4'h1;
+parameter PROCESS_COMMAND   = 4'h2;
+parameter READ_ADDRESS      = 4'h3;
+parameter READ_DATA         = 4'h4;
+parameter	NOTIFY_MASTER		  =	4'h5;
+
+reg	[3:0]	            rstate	=	IDLE;
+reg [23:0]            read_count;
+
+//Host to Master input path
 always @ (posedge clk) begin
 	if (rst) begin
 		$display ("FT_HI: in reset");
-		in_command		  <=	32'h0;
-		in_address		  <=	32'h0;
-		in_data			    <=	32'h0;
-		in_data_count	  <= 	32'h0;
+		in_command		  <=	32'h0000;
+		in_address		  <=	32'h0000;
+		in_data			    <=	32'h0000;
+		in_data_count	  <= 	32'h0000;
+    read_count      <=  24'h000;
 	
 		ih_ready		    <=	0;
     ih_reset        <=  0;
-		read_count		  <=	0;
-		read_state		  <=	IDLE;
-		in_fifo_rd		  <= 	0;
-		in_fifo_rst		  <=	1;
-
-		read_byte_count	<=	0;
-		next_read_state	<= 	IDLE;
-		prev_rd			    <=	0;
-
-		process_state	  <= IDLE;
-		temp_data		    <= 0;
+		rstate		      <=	IDLE;
 
     //debug data
     debug           <= 8'h00;
 	end
 	else begin
 		//read should only be pulsed
-		prev_rd			    <=	in_fifo_rd;
-		in_fifo_rd		  <=	0;
 		ih_ready		    <=	0;
     ih_reset        <=  0;
 		in_fifo_rst		  <=	0;
+    read_ready      <=  1;
 
-		case (read_state)
-			IDLE: begin
-				if (~in_fifo_empty) begin
-					$display ("FT_HI: Found data in the FIFO!");
-					read_state	    <= READ_WAIT_2; 
-					read_byte_count	<= 3;
-
-					in_fifo_rd	    <= 1;
-					process_state	  <= PROCESS_ID; 
-//					read_state	<= READ_DW;
-					read_state	    <= READ_DW_WAIT_2;
-					temp_data	      <= 0;
-				end
-			end
-
-//			READ_DW_WAIT_1: begin
-				//this state is entered when
-				//the in_fifo_empty is lowered
-//				read_state	<= READ_DW_WAIT_2;
-//			end
-			READ_DW_WAIT_2: begin
-				//this state is entered after WAIT_1;
-				if (~in_fifo_empty) begin
-					read_state	    <= READ_DW;
-					in_fifo_rd	    <= 1;
-				end
-			end
-
-			READ_DW: begin
-				$display ("Reading: %h", in_fifo_data);
-        if (sof) begin 
-          //start of a packet of data
-          debug[0] <= ~debug[0];
+    case (rstate)
+      IDLE: begin
+        //if there is new data within the incomming FIFO
+        reset_assembler     <=  1;
+        if (sof) begin
+          if (in_fifo_data == 8'hCD) begin
+            debug[0]        <=  ~debug[0];
+            reset_assembler <=  0;
+            $display("FT_READ: Detected start of transfer with good ID");
+            rstate          <=  READ_COMMAND;
+          end
+          else begin
+            debug[1]        <=  ~debug[1];
+            $display ("FT_READ: Detected bad ID!");
+          end
         end
-
-				temp_data	<= {temp_data[23:0], in_fifo_data};	
-				if (read_byte_count == 3) begin
-					//go to a process state
-					read_state	<= process_state;
-					$display("Done reading... Process!");
-				end
-				else begin
-					if (~in_fifo_empty) begin
-						in_fifo_rd	<= 1;
-					end
-					else begin
-						read_state	<= READ_DW_WAIT_2;	
-					end
-				end
-				read_byte_count <= read_byte_count + 1;
-			end
-
-			PROCESS_ID: begin
-				if (temp_data[7:0] == 8'hCD) begin
-					$display("ID good get the command");
-					process_state	  <= PROCESS_CMD;
-					read_state	    <= READ_DW_WAIT_2;
-				end
-				else begin
-					read_state	    <= BAD_ID;
-				end
-				read_byte_count   <= 0;
-			end
-			PROCESS_CMD: begin
-				in_command[19:16] <= temp_data[31:28];
-				in_command[3:0]	  <=	temp_data[27:24];
-				in_data_count	    <= {8'h0, temp_data[23:0]};
-				local_data_count	<= temp_data[23:0];
-				if (temp_data[23:0] > 0) begin
-//XXX: if we are reading -1 the count... this is a bit hacky :( need to change the write protocol
-					if (temp_data[27:24] == 1) begin
-						in_data_count	    <= {8'h0, temp_data[23:0]} - 1;
-						local_data_count	<= temp_data[23:0] - 1;
-					end
-					else begin
-						in_data_count	    <= {8'h0, temp_data[23:0]};
-						local_data_count	<= temp_data[23:0];
-					end
-				end
-				if (temp_data[27:24] == 0) begin
-			//		$display ("PING");
-					//we're done!
-					read_state	<= NOTIFY_MASTER;
-				end
-				else if (temp_data[27:24] == 1) begin
-					$display ("WRITE");
-					//get the address
-					process_state	    <= PROCESS_ADDRESS;
-					read_state	      <= READ_DW_WAIT_2;
-				end
-				else if (temp_data[27:24] == 2) begin
-					$display ("READ");
-					//get the address
-					process_state	    <= PROCESS_ADDRESS;
-					read_state	      <= READ_DW_WAIT_2;
-				end
-        else if (temp_data[27:24] == 3) begin
-          $display ("RESET");
+      end
+      READ_COMMAND: begin
+        //detected a good ID
+        if (dw_ready) begin
+          rstate            <=  PROCESS_COMMAND;
+          in_command        <=  {12'h000, read_dw[31:28], 12'h000 ,read_dw[27:24]};
+          in_data_count     <=  {8'h00, read_dw[23:0]};
+          read_count        <=  read_dw[23:0];
+        end
+      end
+      PROCESS_COMMAND: begin
+        //Now I have a command in 'in_command' 
+        if (in_command[3:0] == PING) begin
+          //PING command
+          $display("FT_READ: PING Command");
+          rstate            <=  NOTIFY_MASTER;
+        end
+        else if (in_command[3:0] == RESET) begin
+          //RESET the state machine
+          $display("FT_READ: RESET Command");
+          rstate            <=  NOTIFY_MASTER;
           ih_reset          <=  1;
-          in_fifo_rst       <=  1;
-          in_data_count     <=  32'h0000;
-          local_data_count  <=  24'h000;
-          read_state        <=  IDLE;
+          rstate            <=  IDLE;
         end
-				else begin
-					$display ("ILLEGAL COMMAND: %h", temp_data[27:23]);
-					read_state	      <= READ_D4;
-				end
-				read_byte_count     <= 0;
-			end
-			PROCESS_ADDRESS: begin
-				in_address	        <= temp_data;
-				//we only have two choices cause PROCESS_CMD
-				//already weeded out PING and illegals
-				if (in_command[3:0]	==	1) begin
-					//write
-					process_state	    <= PROCESS_DATA;
-					read_state	      <= READ_DW_WAIT_2;
-				end
-				else begin
-					//read
-					read_state	      <= NOTIFY_MASTER;
-				end
-				read_byte_count     <= 0;
-			end
-			PROCESS_DATA: begin
-				in_data	            <= temp_data;
-				read_state	        <= NOTIFY_MASTER;
-				read_byte_count     <= 0;
-			end
-			NOTIFY_MASTER: begin
-				$display("NOTIFY MASTER");
-				if (master_ready) begin
-					ih_ready	        <= 1;
-					if (in_command[3:0] == 0) begin
-						
-						//ping
-						read_state	    <= READ_D4;
-					end
-					else if (in_command[3:0] == 1) begin
-						if (local_data_count == 0) begin
-							//were done!
-							read_state	  <= READ_D4;
-						end
-						else begin
-							local_data_count <= local_data_count - 1;
-							read_state	  <= READ_DW_WAIT_2;
-							process_state	<= PROCESS_DATA;
-						end
-					end
-					else if (in_command[3:0] == 2) begin
-						//read
-						read_state	    <= READ_D4;
-					end
-				end
-			end
-			READ_D4: begin
-				in_fifo_rst	        <= 1;
-				if (ftdi_rde_n) begin
-					read_state		    <=	RESET_DELAY;
-				end	
-			end
-			RESET_DELAY: begin
-				in_fifo_rst	        <= 1;
-				read_state			    <= IDLE;
-			end
-			BAD_ID: begin
-				in_fifo_rst	        <= 1;
-				//need to wait unilt the rde_n goes low
-				$display ("FT_HI: BAD ID, I should send a response to the host that something went wrong here"); 
-				read_state	        <=	READ_D4;
-			end
-			default: begin
-				$display ("FT_HI: How did we get here!?");
-				read_state	        <= IDLE;
-			end
-
-		endcase
-		
-	end
+        else if (in_command[3:0] == READ || in_command[3:0] == WRITE) begin
+          //READ or WRITE
+          $display("FT_READ: READ/WRITE Command");
+          rstate            <=  READ_ADDRESS;
+        end
+        else begin
+          //UNSUPPORTED COMMAND
+          $display ("FT_READ: Unsupported command!");
+          rstate            <=  IDLE;
+        end
+      end
+      READ_ADDRESS: begin
+        if (in_command[3:0] == WRITE) begin
+          //WRITE command
+          if (dw_ready) begin
+            in_address      <=  read_dw;
+            rstate          <=  READ_DATA;
+          end
+        end
+        else begin
+          //READ command
+          if (dw_ready) begin
+            in_address      <=  read_dw;
+            rstate          <=  NOTIFY_MASTER;
+          end
+        end
+      end
+      READ_DATA: begin
+        //read data from the host
+        if (dw_ready) begin
+//XXX: this is a possible point of error because I could wait here for ever!
+//XXX: How can I tell that things are hung? What about a timeout from the master
+//XXX: that will reset this state machine
+          if (read_count > 0) begin
+            read_count      <=  read_count - 1;
+          end
+          in_data           <=  read_dw;
+          rstate            <=  NOTIFY_MASTER;
+        end
+      end
+      NOTIFY_MASTER: begin
+//XXX: can't have the assembler put new data together until the master is ready
+        read_ready          <=  0;
+        if (master_ready) begin
+          ih_ready          <=  1;
+          if (in_command[3:0] == WRITE && read_count > 0) begin
+            rstate          <=  READ_DATA;
+          end
+          else begin
+            rstate          <=  IDLE;
+          end
+        end
+      end
+      default: begin
+        rstate              <=  IDLE;
+      end
+    endcase
+  end
 end
 
 
-//output handler
-reg	[31:0]	write_count;
 
-reg [1:0]	write_byte_count;
 
-reg	[31:0]	local_status;
-reg [31:0]	local_address;
-reg	[31:0]	local_data;
+//MASTER -> HOST
 
+//Master -> Host Dissassembler
+reg [3:0]   dissassembler_count;
+reg [31:0]  output_dw;
+reg         write_id;
+wire        dissassembler_ready;
+assign      dissassembler_ready = (~out_fifo_full && (dissassembler_count == 0));
+reg         new_output_data;
+reg [31:0]  output_data;
 
 always @ (posedge clk) begin
-	if (rst) begin
-		oh_ready			<=	0;
-		write_count			<=	0;
-		write_byte_count	<=	0;
-		out_fifo_wr			<=	0;
-		next_write_state	<=	0;
+  if (rst) begin
+    dissassembler_count     <=  4'h0;
+    out_fifo_wr             <=  0;
+    output_data             <=  32'h0000;
+  end
+  else begin
+    out_fifo_wr             <=  0;
+    if (write_id) begin
+      //the only time where we write just 1 byte at a time
+      out_fifo_data         <=  8'hDC;
+      out_fifo_wr           <=  1;
+    end
+    if (new_output_data) begin
+      dissassembler_count   <=  4'h4;
+      output_data           <=  output_dw;
+    end
+    if (dissassembler_count > 0 && ~out_fifo_full) begin
+      out_fifo_data         <=   output_data[31:24];
+      out_fifo_wr           <=   1;
 
-		local_status		<=	0;
-		local_address		<=	0;
-		local_data			<=	0;
-
-	end
-	else begin
-		out_fifo_wr			<= 	0;
-		case (write_state)
-			IDLE: begin
-				oh_ready	<= 1;
-				if (oh_en) begin
-					oh_ready	<= 0;
-
-					$display ("FT_OH: Send the identification byte");
-					out_fifo_data	<= 8'hDC;
-					write_byte_count <= 0;
-					
-					$display ("FT_OH: Master sending data");
-					$display ("FT_OH: out_status: %h", out_status[7:0]);
-					//tell the master to kick back for a sec
-					write_count	<= out_data_count;
-	//				out_fifo_data	<= {out_status[7:0], out_data_count[23:0]};
-					if (out_status[3:0] == 4'hF) begin
-						local_status	<= {out_status[7:0], 24'h0};
-					end
-					else begin
-						local_status		<= {out_status[7:0], out_data_count[23:0]} + 1;
-					end
-
-					local_address		<= out_address;
-					local_data			<= out_data;
-
-					write_state	<= WRITE_ID;
-
-				end
-			end
-			WRITE_ID: begin
-				if (~out_fifo_full)	begin
-					out_fifo_wr	<= 1;
-					write_state	<= WRITE_COMMAND;
-					write_byte_count	<= 0;
-				end
-			end
-			WRITE_COMMAND: begin
-				if (~out_fifo_full) begin
-					out_fifo_data	<= local_status[31:24];
-					local_status	<= {local_status[23:0], 8'h0};
-					out_fifo_wr 	<= 1;
-					if (write_byte_count == 3) begin
-						if (out_status[3:0] == 4'hF) begin
-							write_state <= IDLE;
-						end
-						else begin
-							write_state <= WRITE_ADDR;
-						end
-					end
-					//the write byte count should roll over to 0
-					write_byte_count <= write_byte_count + 1;
-				end
-			end
-			WRITE_ADDR: begin
-				if (~out_fifo_full) begin
-					out_fifo_data	<= local_address[31:24];
-					local_address	<= {local_address[23:0], 8'h0};
-					out_fifo_wr		<= 1;
-					if (write_byte_count == 3) begin
-						if (out_status[3:0] == 4'hD) begin
-							//write
-							write_state		<= WRITE_DATA;
-						end
-						else begin
-							//read
-							write_state	<= IDLE;
-						end
-					end
-					write_byte_count <=	write_byte_count + 1;
-				end
-			end
-			WRITE_DATA: begin
-				if (~out_fifo_full) begin
-					out_fifo_wr		<= 1;
-					out_fifo_data	<= local_data[31:24];
-					local_data	<= {local_data[23:0], 8'h0};
-					if (write_byte_count == 3) begin
-						oh_ready <= 1;
-						if (write_count > 0) begin
-							write_count <= write_count - 1;
-							write_state <= WAIT_FOR_MASTER;
-						end
-						else begin
-							write_state	<= IDLE;
-						end
-					end
-					write_byte_count <= write_byte_count + 1;
-				end
-			end
-			WAIT_FOR_MASTER: begin
-				oh_ready <= 1;
-				if (oh_en) begin
-					//another 32 bit word to read
-					write_state	<= WRITE_DATA;
-					write_byte_count <= 0;
-					oh_ready <= 0;
-					local_data	<= out_data;
-				end
-				//probably need a timeout
-			end
-			default: begin
-				write_state	<= IDLE;
-			end
-		endcase
-	end
+      output_data           <=  {output_data[23:0], 8'h00};
+      dissassembler_count   <=  dissassembler_count - 1;
+    end
+  end
 end
 
 
+
+parameter SEND_STATUS         = 4'h1;
+parameter SEND_ADDRESS        = 4'h2;
+parameter SEND_DATA           = 4'h3;
+parameter SEND_MORE_DATA      = 4'h4;
+
+reg	[3:0]	            wstate	=	IDLE;
+reg [31:0]            master_status;
+reg [31:0]            master_address;
+reg [31:0]            master_data;
+reg [31:0]            master_count;
+
+//Master -> Host Path
+always @ (posedge clk) begin
+  if (rst) begin
+    wstate                    <=  IDLE;
+    oh_ready                  <=  0;
+    write_id                  <=  0;
+    new_output_data           <=  0;
+
+    master_status             <=  32'h0000;
+    master_address            <=  32'h0000;
+    master_data               <=  32'h0000;
+    master_count              <=  32'h0000;
+  end
+  else begin
+    write_id                  <=  0;
+    oh_ready                  <=  0;
+    new_output_data           <=  0;
+    if (dissassembler_ready) begin
+      case (wstate)
+        IDLE: begin
+//XXX: There is possibly a race condition with the read PATH and write path vying for control
+//XXX: of the output buffer
+          oh_ready            <=  1;
+          if (oh_en) begin
+            write_id          <=  1;
+            oh_ready          <=  0;
+            master_status     <=  out_status;
+            master_address    <=  out_address;
+            master_data       <=  out_data;
+            master_count      <=  out_data_count;
+            wstate            <=  SEND_STATUS;
+          end
+        end
+        SEND_STATUS: begin
+          if (master_status[3:0] == 4'hF) begin //PING
+            //were done!
+            $display ("FT_WRITE: Sending PING Response");
+            output_dw         <=  {master_status[7:0], 24'h0};
+            wstate            <=  IDLE;
+          end
+          else if (master_status[3:0] == 4'hC) begin //RESET
+//XXX: does the master send something on reset?
+            //Were done too!
+            $display ("FT_WRITE: Sending RESET Response %h", master_status[3:0]);
+            output_dw         <=  {master_status[7:0], 24'h0};
+            wstate            <=  IDLE;
+          end
+          else if ((master_status[3:0] == 4'hE) || (master_status[3:0] == 4'hD)) begin
+            $display ("FT_WRITE: Sending READ/WRIE Response");
+            output_dw         <=  {master_status[7:0], master_count}; 
+            wstate            <=  SEND_ADDRESS;
+          end
+          else begin
+            $display ("FT_WRITE: Sending ILLEAGLE COMMAND TO HOST %h", master_status[3:0] & PING);
+//XXX: Should I send illeagle commands to the host?
+            output_dw         <=  {master_status[7:0], 24'h0};
+            wstate            <=  IDLE;
+          end
+          new_output_data     <=  1;
+
+//XXX: This hack is for handling data count, this is going to be fixed so i wont need
+//XXX: the weird conditions
+//          if (master_status[3:0] == 4'hF) begin
+//            output_dw       <=  {master_status[7:0], 24'h0};
+//          end
+//          else begin
+//            output_dw       <=  {master_status[7:0], master_count + 1};
+//          end
+        end
+        SEND_ADDRESS: begin
+          output_dw           <=  master_address;
+          new_output_data     <=  1;
+          wstate              <=  SEND_DATA;
+        end
+        SEND_DATA: begin
+          output_dw           <=  master_data;  
+          new_output_data     <=  1;
+          if ((master_status[3:0] == 4'hD) && (master_count > 0)) begin
+            $display ("\t\tSend more data");
+            wstate            <=  SEND_MORE_DATA;
+          end
+          else begin
+            wstate            <=  IDLE;
+          end
+        end
+        SEND_MORE_DATA: begin
+          if (master_count == 0) begin
+            wstate            <=  IDLE;
+          end
+          else begin
+            oh_ready          <=  1;
+            if (oh_en) begin
+              master_count    <=  master_count - 1;
+              output_dw       <=  out_data;
+              oh_ready        <=  0;
+              new_output_data <=  1;
+            end
+          end
+        end
+        default: begin
+          $display ("FT_WRITE: Unknown state");
+          wstate              <=  IDLE;
+        end
+      endcase
+    end
+  end
+end
 endmodule

@@ -37,7 +37,7 @@ input           rst;
 
 input           in_fifo_rst;
 input           in_fifo_rd;
-output          in_fifo_empty;
+output wire     in_fifo_empty;
 output  [7:0]   in_fifo_data;
 output          sof;
 
@@ -73,12 +73,14 @@ reg             in_command_ready;
 //reg   [7:0]   in_fifo_data_in;
 reg             in_fifo_wr;
 wire            in_fifo_full;
+wire            in_empty;
 
 
 wire            out_fifo_full;
 wire            out_fifo_empty;
 reg             out_fifo_rd;
 wire            out_fifo_wr;
+wire            out_empty;
 
 //data that will be read from the FTDI chip (in)
 afifo #(    
@@ -94,7 +96,7 @@ fifo_in (
   .data_in({start_of_frame, ftdi_data}),
   .data_out({sof, in_fifo_data}),
   .full(in_fifo_full),
-  .empty(in_fifo_empty),
+  .empty(in_empty),
 
   .wr_en(in_fifo_wr),
   .rd_en(in_fifo_rd)
@@ -115,12 +117,34 @@ afifo
   .data_in(out_fifo_data),
   .data_out(data_out),
   .full(out_fifo_full),
-  .empty(out_fifo_empty),
+  .empty(out_empty),
 
   .wr_en(out_fifo_wr),
   .rd_en(out_fifo_rd)
 );
 
+reg   prev_in_empty;
+assign in_fifo_empty = (prev_in_empty || in_empty);
+
+always @ (posedge clk) begin
+  if (rst) begin
+    prev_in_empty  <=  0;
+  end
+  else begin
+    prev_in_empty  <=  in_empty;
+  end
+end
+
+reg prev_out_empty;
+assign  out_fifo_empty  = (prev_out_empty || out_empty);
+always @ (posedge ftdi_clk) begin
+  if (rst) begin
+    prev_out_empty  <=  0;
+  end
+  else begin
+    prev_out_empty  <=  out_empty;
+  end
+end
 
 parameter IDLE      = 4'h0;
 parameter READ_OE   = 4'h1;
@@ -175,7 +199,7 @@ always @ (posedge ftdi_clk) begin
         if (~ftdi_rde_n & ~in_fifo_full) begin
           //new data from the host
 //if the FIFO is not full we can read data into the FIFO, but for this first version don't worry about FIFO
-          //$display ("core: new data available from the FTDI chip");
+          //$display ("FTDI_SYNC: new data available from the FTDI chip");
           state           <=  READ_OE;
           ftdi_oe_n       <= 0;
           read_count      <= 32'h0;
@@ -185,7 +209,7 @@ always @ (posedge ftdi_clk) begin
 //XXX: this might not be the correct choice specificially in case the data from the user is over 512 bytes
         end
         else if (~ftdi_txe_n & ~out_fifo_empty) begin
-          //$display ("core: FTDI chip is ready to be written to");
+          //$display ("FTDI_SYNC: FTDI chip is ready to be written to");
           state    <= DELAY1;
 //          state    <= WRITE;
           out_fifo_rd   <= 1;
@@ -194,7 +218,7 @@ always @ (posedge ftdi_clk) begin
         end
       end
       READ_OE: begin
-        //$display ("core: read oe");
+        //$display ("FTDI_SYNC: read oe");
         //need to allow for one clock cycle between the oe_n goes down and rd_n going down
         ftdi_rd_n   <= 0;
         state    <= READ;
@@ -216,7 +240,7 @@ always @ (posedge ftdi_clk) begin
         else begin
           ftdi_rd_n <=  0;
           
-        //  //$display ("core: Read %02X", ftdi_data);
+        //  //$display ("FTDI_SYNC: Read %02X", ftdi_data);
           //ftdi_data is going to the write buffer
           in_fifo_wr  <= 1;
         end
@@ -231,16 +255,16 @@ always @ (posedge ftdi_clk) begin
       end
       WRITE: begin
         //hang out till the FTDI chip is free
-        $display ("Sending data: %h", ftdi_data);
+        $display ("FTDI_SYNC: Sending data: %h", ftdi_data);
         if (~ftdi_txe_n) begin
           if (~out_fifo_empty) begin
-            $display ("core: continue reading");  
+            $display ("FTDI_SYNC: continue reading");  
             state  <= WRITE;
             ftdi_wr_n <=  0;
             out_fifo_rd <=  1;
           end
           else begin
-            $display ("core: out fifo is empty"); 
+            $display ("FTDI_SYNC: out fifo is empty"); 
             state  <= IDLE;
           end
         end

@@ -48,6 +48,25 @@ class Dionysus (object):
     print "Sending reset..."
     self.dev.purge_buffers()
     self.dev.write_data(data)
+
+    timeout = time.time() + self.read_timeout
+
+    while time.time() < timeout:
+      response = self.dev.read_data(4)
+      print ".",
+      rsp = Array('B')
+      rsp.fromstring(response)
+      if 0xDC in rsp:
+        print "Got a response"  
+        print "Response: %s" % str(rsp)
+        break
+      else:
+        print "No response from reset"
+        print "Response: %s" % str(rsp)
+        break
+
+
+
     return True
  
 
@@ -63,13 +82,14 @@ class Dionysus (object):
     timeout = time.time() + self.read_timeout
 
     while time.time() < timeout:
-      response = self.dev.read_data(3)
+      response = self.dev.read_data(4)
       print ".",
       rsp = Array('B')
       rsp.fromstring(response)
       temp.extend(rsp)
       if 0xDC in rsp:
         print "Got a response"  
+        print "Response: %s" % str(temp)
         break
 
     if not 0xDC in rsp:
@@ -203,7 +223,6 @@ class Dionysus (object):
     rsp = Array('B')
     rsp.fromstring(response)
 
-    #I need to watch out for hte modem status bytes
     if self.dbg:
       print "response length: " + str(length * 4 + 8)
       print "response: " + str(rsp)
@@ -502,7 +521,7 @@ def test_all_memory (syc = None):
       data_out = Array('B')
       num = 0
       try:
-        for i in range (0, 4 * 110):
+        for i in range (0, 4 * 64):
           num = (i + rand) % 255
           if (i / 256) % 2 == 1:
             data_out.append( 255 - (num))
