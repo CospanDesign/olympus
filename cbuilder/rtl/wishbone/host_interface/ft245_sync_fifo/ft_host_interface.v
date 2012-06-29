@@ -104,7 +104,7 @@ reg		[7:0]		next_read_state;
 reg		[7:0]		process_state;
 reg		[7:0]		next_wstate;
 
-reg		[31:0]		temp_data;
+reg		[31:0]  temp_data;
 wire          sof;
 
 //instantiate the ft245_sync core
@@ -134,10 +134,6 @@ ft245_sync_fifo sync_fifo(
 
 );
 
-
-
-
-
 //XXX: Possible race condition
 //XXX: Will the assembler hold the data for the HOST - > MASTER read path?
 wire                  read_busy;
@@ -154,8 +150,9 @@ reg                   dw_ready;
 reg                   reset_assembler;
 reg [31:0]            read_dw;
 
-reg                   read_ready;
+//reg                   //read_ready;
 reg                   read_enable;
+reg                   read_ack;
 
 
 //Host -> Master DW  assembler
@@ -172,28 +169,34 @@ always @ (posedge clk) begin
     working_dw          <=  32'h0;
     read_dw             <=  32'h0;
     read_enable         <=  0;
-    dw_ready            <=  0;
   end
   else begin
-    if (~write_busy && read_ready) begin
+    if (~write_busy /*&& read_ready*/) begin
       if (read_enable) begin
         //reading a new word from the FIFO
         if (reset_assembler) begin
           working_dw[7:0]   <=  32'h0000;
           byte_count        <=  2'b00;
+          dw_ready          <=  0;
         end
         else begin
           //shift the data in
           working_dw        <= {working_dw[23:0], in_fifo_data};
           byte_count        <=  byte_count + 1;
-        end
-        if (byte_count == 2'h3) begin
-          //an entire word is assembled tell the main state machine that things are ready
-          read_dw           <=  {working_dw[23:0], in_fifo_data};
-          dw_ready          <=  1;
+          if (~dw_ready) begin
+            if (byte_count == 2'h3) begin
+              read_dw         <=  {working_dw[23:0], in_fifo_data};
+              dw_ready        <=  1;
+              working_dw      <=  32'h0000;
+            end
+          end
+          if (read_ack) begin
+            dw_ready          <=  0;
+            read_dw           <=  32'h0;
+          end
         end
       end
-      if (~in_fifo_empty) begin
+      if (!in_fifo_empty && (byte_count != 4'h3) && ~dw_ready) begin
         in_fifo_rd          <=  1;
       end
     end
@@ -223,6 +226,7 @@ always @ (posedge clk) begin
 		ih_ready		    <=	0;
     ih_reset        <=  0;
 		rstate		      <=	IDLE;
+    read_ack        <=  0;
 
     //debug data
     debug           <= 8'h00;
@@ -232,11 +236,13 @@ always @ (posedge clk) begin
 		ih_ready		    <=	0;
     ih_reset        <=  0;
 		in_fifo_rst		  <=	0;
-    read_ready      <=  1;
+    //read_ready      <=  0;
+    read_ack        <=  0;
 
     case (rstate)
       IDLE: begin
         //if there is new data within the incomming FIFO
+        //read_ready          <=  1;
         reset_assembler     <=  1;
         if (sof) begin
           if (in_fifo_data == 8'hCD) begin
@@ -252,8 +258,11 @@ always @ (posedge clk) begin
         end
       end
       READ_COMMAND: begin
+        //read_ready          <=  1;
         //detected a good ID
         if (dw_ready) begin
+          //read_ready        <=  0;
+          read_ack          <=  1;
           rstate            <=  PROCESS_COMMAND;
           in_command        <=  {12'h000, read_dw[31:28], 12'h000 ,read_dw[27:24]};
           in_data_count     <=  {8'h00, read_dw[23:0]};
@@ -270,7 +279,7 @@ always @ (posedge clk) begin
         else if (in_command[3:0] == RESET) begin
           //RESET the state machine
           $display("FT_READ: RESET Command");
-          rstate            <=  NOTIFY_MASTER;
+          reset_assembler   <=  1;
           ih_reset          <=  1;
           rstate            <=  IDLE;
         end
@@ -286,24 +295,32 @@ always @ (posedge clk) begin
         end
       end
       READ_ADDRESS: begin
-        if (in_command[3:0] == WRITE) begin
-          //WRITE command
-          if (dw_ready) begin
-            in_address      <=  read_dw;
-            rstate          <=  READ_DATA;
+        //read_ready            <=  1;
+        if (dw_ready) begin
+          read_ack              <=  1;
+          //read_ready          <=  0;
+          if (in_command[3:0] == WRITE) begin
+            //WRITE command
+            if (dw_ready) begin
+              in_address      <=  read_dw;
+              rstate          <=  READ_DATA;
+            end
           end
-        end
-        else begin
-          //READ command
-          if (dw_ready) begin
-            in_address      <=  read_dw;
-            rstate          <=  NOTIFY_MASTER;
+          else begin
+            //READ command
+            if (dw_ready) begin
+              in_address      <=  read_dw;
+              rstate          <=  NOTIFY_MASTER;
+            end
           end
         end
       end
       READ_DATA: begin
         //read data from the host
+        //read_ready            <=  1;
         if (dw_ready) begin
+          //read_ready          <=  0;
+          read_ack          <=  1;
 //XXX: this is a possible point of error because I could wait here for ever!
 //XXX: How can I tell that things are hung? What about a timeout from the master
 //XXX: that will reset this state machine
@@ -316,11 +333,12 @@ always @ (posedge clk) begin
       end
       NOTIFY_MASTER: begin
 //XXX: can't have the assembler put new data together until the master is ready
-        read_ready          <=  0;
+        //read_ready          <=  0;
         if (master_ready) begin
           ih_ready          <=  1;
           if (in_command[3:0] == WRITE && read_count > 0) begin
             rstate          <=  READ_DATA;
+            //read_ready      <=  1;
           end
           else begin
             rstate          <=  IDLE;
@@ -386,7 +404,7 @@ reg	[3:0]	            wstate	=	IDLE;
 reg [31:0]            master_status;
 reg [31:0]            master_address;
 reg [31:0]            master_data;
-reg [31:0]            master_count;
+//reg [31:0]            master_count;
 
 //Master -> Host Path
 always @ (posedge clk) begin
@@ -399,13 +417,13 @@ always @ (posedge clk) begin
     master_status             <=  32'h0000;
     master_address            <=  32'h0000;
     master_data               <=  32'h0000;
-    master_count              <=  32'h0000;
+//    master_count              <=  32'h0000;
   end
   else begin
     write_id                  <=  0;
     oh_ready                  <=  0;
     new_output_data           <=  0;
-    if (dissassembler_ready) begin
+    if (dissassembler_ready && ~new_output_data && ~read_busy) begin
       case (wstate)
         IDLE: begin
 //XXX: There is possibly a race condition with the read PATH and write path vying for control
@@ -417,7 +435,7 @@ always @ (posedge clk) begin
             master_status     <=  out_status;
             master_address    <=  out_address;
             master_data       <=  out_data;
-            master_count      <=  out_data_count;
+//            master_count      <=  out_data_count;
             wstate            <=  SEND_STATUS;
           end
         end
@@ -437,7 +455,7 @@ always @ (posedge clk) begin
           end
           else if ((master_status[3:0] == 4'hE) || (master_status[3:0] == 4'hD)) begin
             $display ("FT_WRITE: Sending READ/WRIE Response");
-            output_dw         <=  {master_status[7:0], master_count}; 
+            output_dw         <=  {master_status[7:0], out_data_count[23:0]}; 
             wstate            <=  SEND_ADDRESS;
           end
           else begin
@@ -465,7 +483,7 @@ always @ (posedge clk) begin
         SEND_DATA: begin
           output_dw           <=  master_data;  
           new_output_data     <=  1;
-          if ((master_status[3:0] == 4'hD) && (master_count > 0)) begin
+          if ((master_status[3:0] == 4'hD) && (out_data_count > 0)) begin
             $display ("\t\tSend more data");
             wstate            <=  SEND_MORE_DATA;
           end
@@ -473,17 +491,15 @@ always @ (posedge clk) begin
             wstate            <=  IDLE;
           end
         end
-        READ_MORE_DATA: begin
-          if (master_count == 0) begin
-            wstate            <=  IDLE;
-          end
-          else begin
-            oh_ready          <=  1;
-            if (oh_en) begin
-              master_count    <=  master_count - 1;
-              output_dw       <=  out_data;
-              oh_ready        <=  0;
-              new_output_data <=  1;
+        SEND_MORE_DATA: begin
+          oh_ready          <=  1;
+          if (oh_en) begin
+//            master_count    <= master_count - 1;
+            output_dw       <=  out_data;
+            oh_ready        <=  0;
+            new_output_data <=  1;
+            if (out_data_count == 0) begin
+              wstate        <=  IDLE;
             end
           end
         end

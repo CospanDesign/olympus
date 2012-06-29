@@ -53,7 +53,7 @@ reg   [31:0]  syc_address;
 //data register
 reg   [31:0]  syc_data;
 wire  [24:0]  syc_data_count;
-assign        syc_data_count = syc_command[24:0];
+assign        syc_data_count = syc_command[23:0];
 
 reg   [31:0]  read_data;
 
@@ -248,7 +248,7 @@ reg   ftdi_ready_to_read;
 
 
 //make the ftdi clock 3X faster than the regular clock
-always #2   ftdi_clk  = ~ftdi_clk;
+always #4   ftdi_clk  = ~ftdi_clk;
 
 always #5   clk     = ~clk;
 
@@ -269,6 +269,13 @@ parameter FTDI_TX_READING_FULL    = 4'h5;
 parameter FTDI_TX_READING_FINISHED  = 4'h6;
 
 
+reg [31:0]  cmd;
+reg [31:0]  addr;
+reg [31:0]  dat;
+reg [31:0]  dat_out;
+reg [23:0]  data_count;
+reg [23:0]  temp_count;
+
 initial begin
 
   ch    = 0;
@@ -284,8 +291,12 @@ initial begin
 
   syc_command       <= 32'h0;
   syc_address       <= 32'h0;
-  syc_data        <= 32'h0;
+  syc_data          <= 32'h0;
 
+  cmd               <=  32'h0000;
+  addr              <=  32'h0000;
+  dat               <=  32'h0000;
+  data_count        <= 24'h000;
 
   #20
   rst           <= 0;
@@ -300,6 +311,10 @@ initial begin
     while (!$feof(fd_in)) begin
       read_count = $fscanf (fd_in, "%h:%h:%h\n", syc_command, syc_address, syc_data);
       $display ("tb: data from file: %h:%h:%h", syc_command, syc_address, syc_data);
+      cmd <=  syc_command;
+      addr <= syc_address;
+      dat <=  syc_data;
+      data_count <= syc_command[23:0];
 
       //$display ("tb: sending data down to core");
       ftdi_ready_to_read    <= 1;
@@ -309,7 +324,7 @@ initial begin
         temp_state  <= ftdi_state;
       end
       ftdi_ready_to_read    <= 0;
-      #500
+      #1000
       temp_state    <= ftdi_state;
 
     end
@@ -338,7 +353,9 @@ always @ (negedge ftdi_clk) begin
     ftdi_read_count   <=  0;
     write_count     <=  0;
     ftdi_in_data    <=  0;
+    temp_count      <=  0;
 
+ 
   end
   else begin
     //not in reset
@@ -358,7 +375,7 @@ always @ (negedge ftdi_clk) begin
           ftdi_state  <=  FTDI_RX_ENABLE_OUTPUT;
           //count is given in 32 bits, so need to multiply it by 4 to send all bytes
           //add eight for the address and control data
-          ftdi_write_size <= (syc_data_count  << 2) + 8;
+          ftdi_write_size <= (data_count  * 4) + 8;
           write_count   <= 0;
         end
 
@@ -381,8 +398,10 @@ always @ (negedge ftdi_clk) begin
       end
       FTDI_RX_WRITING: begin
         if (rd_n || oe_n) begin
-          ftdi_state  <= FTDI_RX_STOP;
-          rde_n   <= 1;
+          if (write_count >= ftdi_write_size) begin
+            ftdi_state  <= FTDI_RX_STOP;
+            rde_n   <= 1;
+          end
         end
         else if (write_count < ftdi_write_size) begin
           //hacky way of sending all the data down
@@ -392,18 +411,34 @@ always @ (negedge ftdi_clk) begin
             ftdi_in_data  <= syc_command[31:24];
             syc_command <= {syc_command[23:0], 8'h0};
           end
-          if (write_count > 3 && write_count <= 7) begin 
+          else if (write_count > 3 && write_count <= 7) begin 
 //            //$display ("tb: sending %h", syc_address[31:24]);
             ftdi_in_data <= syc_address[31:24];
             syc_address <= {syc_address[23:0], 8'h0};
           end
-          if (write_count > 7) begin
+          else if (write_count > 7 && write_count < 4'hC) begin
+            //larger than 7
+            
+          //else if (write_count > 7) begin
 //could possible read data from a file if we need to send multiple 32 bits
 //            //$display ("tb: sending %h", syc_data[31:24]);
             ftdi_in_data <= syc_data[31:24];
             syc_data <= {syc_data[23:0], 8'h0};
+            if (write_count == 4'hB && data_count > 1 && cmd[31:24] == 1) begin
+              $display ("tb: BURST WRITING!");
+              read_count = $fscanf (fd_in, "%h\n", dat);
+              $display ("tb: burst write =  %h, write_count = %h", dat, write_count); 
+              syc_data  <=  dat;
 
+            end
           end
+          else begin
+            ftdi_in_data <= syc_data[31:24];
+            syc_data <= {syc_data[23:0], 8'h0};
+            temp_count  <=  write_count % 4'h4;
+ 
+          end
+
           write_count <= write_count + 1;
         end
         //can't wait an entire clock cycle to see if we have reached the max count
@@ -439,6 +474,7 @@ always @ (posedge ftdi_clk) begin
     data_read_count <=  0;
     new_data    <=  0;
     read_data   <=  0;
+    dat_out     <=  0;
 
   end
   else begin
@@ -458,6 +494,7 @@ always @ (posedge ftdi_clk) begin
         data_read_count <= 0;
       end
       $display ("\tTB READ : %h", read_data);
+      dat_out   <=  read_data;
       read_data <= 0;
       new_data  <= 0;
 

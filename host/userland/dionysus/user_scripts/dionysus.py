@@ -44,29 +44,10 @@ class Dionysus (object):
 
   def reset(self):
     data = Array('B')
-    data.extend([0XCD, 0x03, 0x00, 0x00]);
+    data.extend([0XCD, 0x03, 0x00, 0x00, 0x00]);
     print "Sending reset..."
     self.dev.purge_buffers()
     self.dev.write_data(data)
-
-    timeout = time.time() + self.read_timeout
-
-    while time.time() < timeout:
-      response = self.dev.read_data(4)
-      print ".",
-      rsp = Array('B')
-      rsp.fromstring(response)
-      if 0xDC in rsp:
-        print "Got a response"  
-        print "Response: %s" % str(rsp)
-        break
-      else:
-        print "No response from reset"
-        print "Response: %s" % str(rsp)
-        break
-
-
-
     return True
  
 
@@ -93,7 +74,7 @@ class Dionysus (object):
         break
 
     if not 0xDC in rsp:
-      print "Response not found"  
+      print "ID byte not found in response"  
       print "temp: " + str(temp)
       return rsp
 
@@ -521,7 +502,7 @@ def test_all_memory (syc = None):
       data_out = Array('B')
       num = 0
       try:
-        for i in range (0, 4 * 64):
+        for i in range (0, 4 * 400):
           num = (i + rand) % 255
           if (i / 256) % 2 == 1:
             data_out.append( 255 - (num))
@@ -561,7 +542,7 @@ def test_all_memory (syc = None):
       fail_count = 0
       if len(data_out) != len(data_in):
         print "data_in length not equal to data_out length:"
-        print "\tdata_in: %d, data_out: %d" % (len(data_in), len(data_out))
+        print "\totugoing: %d incomming: %d" % (len(data_out), len(data_in))
         fail = True
 
       else:
@@ -587,7 +568,7 @@ def test_all_memory (syc = None):
       fail_count = 0
       if len(data_out) != len(data_in):
         print "data_in length not equal to data_out length:"
-        print "\tdata_in: %d, data_out: %d" % (len(data_in), len(data_out))
+        print "\totugoing: %d incomming: %d" % (len(data_out), len(data_in))
         fail = True
 
       else:
@@ -690,6 +671,30 @@ def test_memory(syc = None):
         print str(hex(mem_data[i])) + ", ",
 
       print " "
+
+      data_out  = Array('B', [0xAA, 0xBB, 0xCC, 0xDD])
+      result = syc.write(dev_index, 1, data_out, mem_bus)
+      if result:
+        print "Write Successful!"
+      else:
+        print "Write Failed!"
+
+      data_out  = Array('B', [0x11, 0x22, 0x33, 0x44])
+      result = syc.write(dev_index, 1, data_out, mem_bus)
+      if result:
+        print "Write Successful!"
+      else:
+        print "Write Failed!"
+
+
+      mem_data = syc.read(1, dev_index, 0, mem_bus)
+      print "mem data: " + str(mem_data);
+      print "hex: "
+      for i in range (0, len(mem_data)):
+        print str(hex(mem_data[i])) + ", ",
+
+      print " "
+
 
 
 

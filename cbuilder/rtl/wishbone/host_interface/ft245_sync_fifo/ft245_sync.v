@@ -35,6 +35,7 @@ module ft245_sync_fifo (
 input           clk;
 input           rst;
 
+//in fifo
 input           in_fifo_rst;
 input           in_fifo_rd;
 output wire     in_fifo_empty;
@@ -50,42 +51,35 @@ input   [7:0]   out_fifo_data;
 input           ftdi_clk;
 inout   [7:0]   ftdi_data;
 input           ftdi_txe_n;
-output reg      ftdi_wr_n;
+output wire     ftdi_wr_n;
 input           ftdi_rde_n;
-output reg      ftdi_rd_n;
-output reg      ftdi_oe_n;
-output reg      ftdi_siwu;
+output wire     ftdi_rd_n;
+output wire     ftdi_oe_n;
+output wire     ftdi_siwu;
 input           ftdi_suspend_n;
 
 wire    [7:0]   data_out;
+wire    [7:0]   data_in;
 
-assign          ftdi_data  = (ftdi_oe_n) ? data_out:8'hZ;
-
-wire  [7:0]     ft_data_out;
+assign          ftdi_data  = (ftdi_oe_n) ? (out_cache_available) ? out_cache_data : data_out:8'hZ;
+assign          data_in = (in_cache_available) ? in_cache_data : ftdi_data;
 
 
 //wires
 
 reg             start_of_frame;
-
-reg             in_command_ready;
-
-//reg   [7:0]   in_fifo_data_in;
 reg             in_fifo_wr;
 wire            in_fifo_full;
-wire            in_empty;
-
 
 wire            out_fifo_full;
 wire            out_fifo_empty;
 reg             out_fifo_rd;
 wire            out_fifo_wr;
-wire            out_empty;
 
 //data that will be read from the FTDI chip (in)
 afifo #(    
    .DATA_WIDTH(9),
-   .ADDRESS_WIDTH(9)
+   .ADDRESS_WIDTH(8)
   )
 fifo_in (
   .rst(in_fifo_rst),
@@ -93,10 +87,10 @@ fifo_in (
   .din_clk(ftdi_clk),
   .dout_clk(clk),
 
-  .data_in({start_of_frame, ftdi_data}),
+  .data_in({start_of_frame, data_in}),
   .data_out({sof, in_fifo_data}),
   .full(in_fifo_full),
-  .empty(in_empty),
+  .empty(in_fifo_empty),
 
   .wr_en(in_fifo_wr),
   .rd_en(in_fifo_rd)
@@ -106,7 +100,7 @@ fifo_in (
 afifo 
   #(    
     .DATA_WIDTH(8),
-    .ADDRESS_WIDTH(9)
+    .ADDRESS_WIDTH(8)
   )
   fifo_out (
   .rst(rst),
@@ -117,169 +111,163 @@ afifo
   .data_in(out_fifo_data),
   .data_out(data_out),
   .full(out_fifo_full),
-  .empty(out_empty),
+  .empty(out_fifo_empty),
 
   .wr_en(out_fifo_wr),
   .rd_en(out_fifo_rd)
 );
 
-reg   prev_in_empty;
-assign in_fifo_empty = (prev_in_empty || in_empty);
+parameter                   IDLE            = 4'h0;
+parameter                   EMPTY_IN_CACHE  = 4'h1;
+parameter                   ENABLE_READING  = 4'h2;
+parameter                   READ            = 4'h3;
+parameter                   GET_FIFO_DATA   = 4'h4;
+parameter                   WRITE           = 4'h5;
 
-always @ (posedge clk) begin
-  if (rst) begin
-    prev_in_empty  <=  0;
-  end
-  else begin
-    prev_in_empty  <=  in_empty;
-  end
-end
+reg [3:0]                   state; 
 
-reg prev_out_empty;
-assign  out_fifo_empty  = (prev_out_empty || out_empty);
-always @ (posedge ftdi_clk) begin
-  if (rst) begin
-    prev_out_empty  <=  0;
-  end
-  else begin
-    prev_out_empty  <=  out_empty;
-  end
-end
+wire                        recieve_available;
+wire                        transmit_ready;
+reg                         output_enable;
+reg                         read_enable;
+reg                         write_enable;
+reg                         send_immediately;
 
-parameter IDLE      = 4'h0;
-parameter READ_OE   = 4'h1;
-parameter READ      = 4'h2;
-parameter DELAY1    = 4'h3;
-parameter WRITE     = 4'h4;
-parameter WAIT_RD   = 4'h5;
+reg   [7:0]                 out_cache_data;
+reg                         out_cache_available;
 
-reg [3:0]             state; 
+reg   [7:0]                 in_cache_data;
+reg                         in_cache_available;
 
-reg [31:0]            read_count;
-reg                   prev_rd;
+assign  ftdi_oe_n         = ~output_enable;
+assign  ftdi_rd_n         = ~read_enable;
+assign  ftdi_wr_n         = ~write_enable;
+assign  receive_available = ~ftdi_rde_n;
+assign  transmit_ready    = ~ftdi_txe_n;
+assign  ftdi_siwu         = ~send_immediately;
+
 
 always @ (posedge ftdi_clk) begin
   
   if (rst) begin
-    ftdi_wr_n         <=  1;
-    ftdi_rd_n         <=  1;
-    ftdi_oe_n         <=  1;
-    state             <=  IDLE;
-    ftdi_siwu         <=  1;
+    output_enable         <=  0;
+    read_enable           <=  0;
+    write_enable          <=  0;
+    send_immediately      <=  0;
+    out_cache_available   <=  0;
+    out_cache_data        <=  8'h0;
+    in_cache_available    <=  0;
+    in_cache_data         <=  8'h0;
+    state                 <=  IDLE;
 
-    read_count        <=  0;
-    start_of_frame    <=  0;
+    start_of_frame        <=  0;
 
-    //in_fifo_data_in <=  8'h0;
-    in_fifo_wr        <=  0;
-    out_fifo_rd       <=  0;
-    prev_rd           <=  0;
-
-
+    in_fifo_wr            <=  0;
+    out_fifo_rd           <=  0;
     
   end
   else begin
     //pulses 
-    prev_rd           <= out_fifo_rd;
-    in_fifo_wr        <= 0;
-    out_fifo_rd       <= 0;
-    ftdi_wr_n         <= 1;
-    ftdi_rd_n         <= 1;
+    in_fifo_wr            <= 0;
+    out_fifo_rd           <= 0;
 
-//check if the txe_n or rxe_n unexpectedy went high, if so we need to gracefully return to IDLE
     case (state)
       IDLE: begin
-        ftdi_oe_n     <=  1;
-        ftdi_wr_n     <=  1;
-        ftdi_rd_n     <=  1;
-        read_count    <=  0;
-        start_of_frame<=  0;
-        //in_fifo_data_in <= 8'h0;
+        output_enable     <=  0;
+        write_enable      <=  0;
+        read_enable       <=  0;
+        send_immediately  <=  0;
 
-        if (~ftdi_rde_n & ~in_fifo_full) begin
-          //new data from the host
-//if the FIFO is not full we can read data into the FIFO, but for this first version don't worry about FIFO
-          //$display ("FTDI_SYNC: new data available from the FTDI chip");
-          state           <=  READ_OE;
-          ftdi_oe_n       <= 0;
-          read_count      <= 32'h0;
-          start_of_frame  <= 1;
+        start_of_frame    <=  0;
 
-          //reset the incomming fifo to get rid of possible erronious data
-//XXX: this might not be the correct choice specificially in case the data from the user is over 512 bytes
+        if (in_cache_available && !in_fifo_full) begin
+          //empty out data that is in the cache
+          state           <=  EMPTY_IN_CACHE; 
+          in_fifo_wr      <=  1;
         end
-        else if (~ftdi_txe_n & ~out_fifo_empty) begin
-          //$display ("FTDI_SYNC: FTDI chip is ready to be written to");
-          state    <= DELAY1;
-//          state    <= WRITE;
-          out_fifo_rd   <= 1;
-//          ftdi_wr_n   <= 0;
-
+        else if (receive_available && !in_fifo_full) begin
+          //Reading from the host
+          output_enable   <=  1;
+          start_of_frame  <=  1;
+          state           <=  ENABLE_READING;
         end
-      end
-      READ_OE: begin
-        //$display ("FTDI_SYNC: read oe");
-        //need to allow for one clock cycle between the oe_n goes down and rd_n going down
-        ftdi_rd_n   <= 0;
-        state    <= READ;
-        in_fifo_wr    <= 1;
-      end
-      READ: begin
-        //the start of frame only goes high when the host starts a new transaction
-        //this will help the code on the next layer to determine if there is
-        //  a new packet
-        //  a continuation of data split between two packets
-        //  an error
-        start_of_frame  <=  0;
-        if (ftdi_rde_n | in_fifo_full) begin
-          //were done
-          state  <=  IDLE;
-          ftdi_oe_n <=  1;
-          ftdi_rd_n <=  1;
-        end
-        else begin
-          ftdi_rd_n <=  0;
-          
-        //  //$display ("FTDI_SYNC: Read %02X", ftdi_data);
-          //ftdi_data is going to the write buffer
-          in_fifo_wr  <= 1;
-        end
-//all packets should be 4 byte aligned (or 32 bits aligned)
-      end
-      DELAY1: begin
-        state <= WRITE;
-        if (~out_fifo_empty) begin
-          out_fifo_rd <= 1; 
-        end
-        ftdi_wr_n <=  0;
-      end
-      WRITE: begin
-        //hang out till the FTDI chip is free
-        $display ("FTDI_SYNC: Sending data: %h", ftdi_data);
-        if (~ftdi_txe_n) begin
-          if (~out_fifo_empty) begin
-            $display ("FTDI_SYNC: continue reading");  
-            state  <= WRITE;
-            ftdi_wr_n <=  0;
-            out_fifo_rd <=  1;
+        else if (transmit_ready  && ~out_fifo_empty) begin
+          //Writing to the host
+          out_fifo_rd     <=  1;
+          if (out_cache_available) begin
+            //left over data from a previous write
+            state         <=  WRITE;
           end
           else begin
-            $display ("FTDI_SYNC: out fifo is empty"); 
-            state  <= IDLE;
+            state         <=  GET_FIFO_DATA;
           end
+          //it takes 1 clock cycle to start reading from the FIFO
         end
       end
-      WAIT_RD: begin
-        //drain the incomming buffer
-        //ftdi_rd_n <= 0;
-        ftdi_rd_n   <= 0;
-        ftdi_oe_n   <= 0;
-        if (ftdi_rde_n) begin
-          state  <= IDLE;
+      EMPTY_IN_CACHE: begin
+        in_cache_available  <=  0;
+        state               <=  IDLE;
+      end
+      ENABLE_READING: begin
+//XXX: Should I start writing here?
+        in_fifo_wr        <=  1;
+        read_enable       <=  1;
+        state             <=  READ;
+      end
+      READ: begin
+        start_of_frame    <=  0;
+        if (!receive_available || in_fifo_full) begin
+          if (in_fifo_full) begin
+            //this data won't be written to the in fifo until
+            //the in fifo is not full
+            in_cache_data     <=  data_in;
+            in_cache_available<=  1;
+          end
+          //finished
+          output_enable   <=  0;
+          read_enable     <=  0;
+          state           <=  IDLE;
+        end
+        else begin
+          //continue reading
+          read_enable     <=  1;
+          in_fifo_wr      <=  1;
+        end
+      end
+      GET_FIFO_DATA: begin
+        //need to wait a clock cyle to get the data
+        if (!out_fifo_empty) begin
+          out_fifo_rd   <=  1;
+        end
+        write_enable    <=  1;
+        state           <=  WRITE;
+      end
+      WRITE: begin
+        if (transmit_ready) begin
+          write_enable            <=  1;
+          //the writing of cache or regular data is handled above by an assign
+          out_cache_available     <=  0;
+          if (~out_fifo_empty) begin
+            //continue reading from the output buffer
+            out_fifo_rd           <=  1;
+          end
+          else begin
+            //empty out whats in the FTDI buffer
+            //send_immediately      <=  1;
+            state                 <=  IDLE;
+          end
+        end
+        else begin
+          //still have data to send out from the last time
+          //need to store that somewhere
+          out_cache_data          <=  data_out;
+          out_cache_available     <=  1;
+          write_enable            <=  0;
+          state                   <=  IDLE;
         end
       end
       default: begin
-        state  <= IDLE;
+        state <=  IDLE;
       end
     endcase
   end

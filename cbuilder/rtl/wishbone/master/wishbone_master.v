@@ -286,17 +286,17 @@ always @ (posedge clk) begin
               local_data_count  <= local_data_count -1;
               mem_adr_o   <= mem_adr_o + 4;
               mem_stb_o   <= 1;
+              //put the strobe down to say we got that double word
+              out_data    <= mem_dat_i;
+              //out_data_count  <=  local_data_count;
+              //initiate an output transfer
+              out_en      <= 1; 
             end
             else begin
               //finished all the reads de-assert the cycle
               mem_cyc_o   <=  0;
               state       <=  IDLE;
             end
-            //put the strobe down to say we got that double word
-            out_data    <= mem_dat_i;
-            //out_data_count  <=  local_data_count;
-            //initiate an output transfer
-            out_en      <= 1; 
           end
         end
         else begin
@@ -313,6 +313,10 @@ always @ (posedge clk) begin
               local_data_count  <= local_data_count - 1;
               wb_adr_o    <= wb_adr_o + 1;
               wb_stb_o    <= 1;
+              //put the data in the otput
+              out_data    <= wb_dat_i;
+              //tell the io_handler to send data
+              out_en    <= 1; 
             end
             else begin
               //finished all the reads, put de-assert the cycle
@@ -320,10 +324,6 @@ always @ (posedge clk) begin
               wb_cyc_o    <= 0;
               state       <= IDLE;
             end
-            //put the data in the otput
-            out_data    <= wb_dat_i;
-            //tell the io_handler to send data
-            out_en    <= 1; 
           end
         end
       end
@@ -331,7 +331,7 @@ always @ (posedge clk) begin
         if (mem_bus_select) begin
           if (mem_ack_i) begin
             mem_stb_o    <= 0;
-            if (local_data_count == 0) begin
+            if (local_data_count <= 1) begin
               //finished all writes 
               $display ("WBM: in_data_count == 0");
               mem_cyc_o <= 0;
@@ -342,7 +342,7 @@ always @ (posedge clk) begin
             //tell the IO handler were ready for the next one
             master_ready  <=  1;
           end
-          else if ((local_data_count > 0) && in_ready && (mem_stb_o == 0)) begin
+          else if ((local_data_count > 1) && in_ready && (mem_stb_o == 0)) begin
             local_data_count  <= local_data_count - 1;
             $display ("WBM: (burst mode) writing another double word");
             master_ready  <=  0;
@@ -355,7 +355,7 @@ always @ (posedge clk) begin
         else begin //peripheral bus
           if (wb_ack_i) begin
             wb_stb_o    <= 0;
-            if (local_data_count == 0) begin
+            if (local_data_count <= 1) begin
               $display ("WBM: in_data_count == 0");
               wb_cyc_o  <= 0;
               state   <= IDLE;
@@ -365,7 +365,7 @@ always @ (posedge clk) begin
             //tell the IO handler were ready for the next one
             master_ready  <= 1;
           end
-          else if ((local_data_count > 0) && in_ready && (wb_stb_o == 0)) begin 
+          else if ((local_data_count > 1) && in_ready && (wb_stb_o == 0)) begin 
             local_data_count <= local_data_count - 1;
             debug_out[5]  <= ~debug_out[5];
             $display ("WBM: (burst mode) writing another double word");
@@ -403,9 +403,7 @@ always @ (posedge clk) begin
             `COMMAND_WRITE: begin
               out_status  <= ~in_command;
               debug_out[1]  <= ~debug_out[1];
-//              if (in_data_count > 0) begin
-//                local_data_count  <=  in_data_count - 1;
-//              end
+              local_data_count    <=  in_data_count;
               if (command_flags & `FLAG_MEM_BUS) begin
                 mem_bus_select  <= 1; 
                 mem_adr_o     <= in_address;
@@ -428,18 +426,7 @@ always @ (posedge clk) begin
               state     <= WRITE;
             end
             `COMMAND_READ:  begin
-//              if (in_data_count > 0) begin
-//                local_data_count    <=  in_data_count - 1;
-//              end
-              //out_data_count    <= in_data_count;
-//XXX: Don't know if I should be putting in_data_count in the local_data_count
-//this will undermine the hack down at the bottom, but the simulations are not working correctly
-/*
-              local_data_count  <= in_data_count;
-              if (in_data_count > 0) begin
-                local_data_count  <=  in_data_count - 1;
-              end
-*/
+              local_data_count  <=  in_data_count;
               debug_out[2]  <= ~debug_out[2];
               if (command_flags & `FLAG_MEM_BUS) begin
                 mem_bus_select  <= 1; 
@@ -507,7 +494,7 @@ always @ (posedge clk) begin
         //not handling an input, if there is an interrupt send it to the user
         else if (wb_ack_i == 0 & wb_stb_o == 0 & wb_cyc_o == 0) begin
           //hack for getting the in_data_count before the io_handler decrements it
-          local_data_count  <= in_data_count;
+            //local_data_count  <= in_data_count;
             //work around to add a delay
             wb_adr_o <= local_address;
             //handle input
