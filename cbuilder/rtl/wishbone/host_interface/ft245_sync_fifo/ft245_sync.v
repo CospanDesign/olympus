@@ -59,10 +59,9 @@ output wire     ftdi_siwu;
 input           ftdi_suspend_n;
 
 wire    [7:0]   data_out;
-wire    [7:0]   data_in;
 
 assign          ftdi_data  = (ftdi_oe_n) ? (out_cache_available) ? out_cache_data : data_out:8'hZ;
-assign          data_in = (in_cache_available) ? in_cache_data : ftdi_data;
+//assign          data_in = (in_cache_available) ? in_cache_data : ftdi_data;
 
 
 //wires
@@ -76,6 +75,10 @@ wire            out_fifo_empty;
 reg             out_fifo_rd;
 wire            out_fifo_wr;
 
+reg     [7:0]   data_in;
+reg     [7:0]   cache_data;
+reg             local_sof;
+
 //data that will be read from the FTDI chip (in)
 afifo #(    
    .DATA_WIDTH(9),
@@ -87,7 +90,7 @@ fifo_in (
   .din_clk(ftdi_clk),
   .dout_clk(clk),
 
-  .data_in({start_of_frame, data_in}),
+  .data_in({local_sof, data_in}),
   .data_out({sof, in_fifo_data}),
   .full(in_fifo_full),
   .empty(in_fifo_empty),
@@ -121,8 +124,9 @@ parameter                   IDLE            = 4'h0;
 parameter                   EMPTY_IN_CACHE  = 4'h1;
 parameter                   ENABLE_READING  = 4'h2;
 parameter                   READ            = 4'h3;
-parameter                   GET_FIFO_DATA   = 4'h4;
+parameter                   FIFO_WAIT       = 4'h4;
 parameter                   WRITE           = 4'h5;
+
 
 reg [3:0]                   state; 
 
@@ -132,12 +136,11 @@ reg                         output_enable;
 reg                         read_enable;
 reg                         write_enable;
 reg                         send_immediately;
+reg                         prev_receive_available;
 
 reg   [7:0]                 out_cache_data;
 reg                         out_cache_available;
 
-reg   [7:0]                 in_cache_data;
-reg                         in_cache_available;
 
 assign  ftdi_oe_n         = ~output_enable;
 assign  ftdi_rd_n         = ~read_enable;
@@ -156,20 +159,21 @@ always @ (posedge ftdi_clk) begin
     send_immediately      <=  0;
     out_cache_available   <=  0;
     out_cache_data        <=  8'h0;
-    in_cache_available    <=  0;
-    in_cache_data         <=  8'h0;
     state                 <=  IDLE;
 
     start_of_frame        <=  0;
 
     in_fifo_wr            <=  0;
     out_fifo_rd           <=  0;
+    data_in               <=  0;
+    local_sof             <=  0;
+    cache_data            <=  8'h00;
     
   end
   else begin
     //pulses 
-    in_fifo_wr            <= 0;
-    out_fifo_rd           <= 0;
+    in_fifo_wr            <=  0;
+    out_fifo_rd           <=  0;
 
     case (state)
       IDLE: begin
@@ -180,67 +184,64 @@ always @ (posedge ftdi_clk) begin
 
         start_of_frame    <=  0;
 
-        if (in_cache_available && !in_fifo_full) begin
-          //empty out data that is in the cache
-          state           <=  EMPTY_IN_CACHE; 
-          in_fifo_wr      <=  1;
-        end
-        else if (receive_available && !in_fifo_full) begin
+       if (receive_available && !in_fifo_full) begin
           //Reading from the host
           output_enable   <=  1;
-          start_of_frame  <=  1;
+          if (!prev_receive_available) begin
+            //the start of frame is the beginning of a transition
+            start_of_frame  <=  1;
+          end
           state           <=  ENABLE_READING;
         end
         else if (transmit_ready  && ~out_fifo_empty) begin
           //Writing to the host
           out_fifo_rd     <=  1;
-          if (out_cache_available) begin
-            //left over data from a previous write
-            state         <=  WRITE;
-          end
-          else begin
-            state         <=  GET_FIFO_DATA;
-          end
+          state           <= WRITE;
           //it takes 1 clock cycle to start reading from the FIFO
         end
       end
-      EMPTY_IN_CACHE: begin
-        in_cache_available  <=  0;
-        state               <=  IDLE;
-      end
       ENABLE_READING: begin
-//XXX: Should I start writing here?
-        in_fifo_wr        <=  1;
         read_enable       <=  1;
         state             <=  READ;
       end
       READ: begin
+        cache_data        <=  data_in;
+        data_in           <=  ftdi_data;
+//XXX:  There can be a nicer way to do this
+        local_sof         <=  start_of_frame;
+
         start_of_frame    <=  0;
-        if (!receive_available || in_fifo_full) begin
-          if (in_fifo_full) begin
-            //this data won't be written to the in fifo until
-            //the in fifo is not full
-            in_cache_data     <=  data_in;
-            in_cache_available<=  1;
-          end
-          //finished
-          output_enable   <=  0;
+        if (in_fifo_full) begin
+          //just put down read_enable until the fifo is ready again
+          state           <=  FIFO_WAIT;
           read_enable     <=  0;
-          state           <=  IDLE;
+
         end
         else begin
-          //continue reading
-          read_enable     <=  1;
-          in_fifo_wr      <=  1;
+          in_fifo_wr        <=  1;
+          if (!receive_available) begin
+            //finished
+            output_enable   <=  0;
+            state           <=  IDLE;
+          end
+          else begin
+            //continue reading
+            read_enable     <=  1;
+          end
         end
       end
-      GET_FIFO_DATA: begin
-        //need to wait a clock cyle to get the data
-        if (!out_fifo_empty) begin
-          out_fifo_rd   <=  1;
+      FIFO_WAIT: begin
+        if (!in_fifo_full) begin
+          in_fifo_wr        <=  1;
+          data_in           <=  cache_data;
+          if (receive_available) begin
+            //read_enable     <=  1;
+            state           <=  READ;
+          end
+          else begin
+            state           <=  IDLE;
+          end
         end
-        write_enable    <=  1;
-        state           <=  WRITE;
       end
       WRITE: begin
         if (transmit_ready) begin
@@ -254,6 +255,7 @@ always @ (posedge ftdi_clk) begin
           else begin
             //empty out whats in the FTDI buffer
             //send_immediately      <=  1;
+            write_enable          <=  0;
             state                 <=  IDLE;
           end
         end
@@ -271,6 +273,7 @@ always @ (posedge ftdi_clk) begin
       end
     endcase
   end
+  prev_receive_available   <=  receive_available;
 end
 
 endmodule

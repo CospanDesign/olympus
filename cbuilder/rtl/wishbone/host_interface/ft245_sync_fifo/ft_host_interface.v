@@ -150,55 +150,92 @@ reg                   dw_ready;
 reg                   reset_assembler;
 reg [31:0]            read_dw;
 
-//reg                   //read_ready;
-reg                   read_enable;
 reg                   read_ack;
 
+parameter             READ_FIFO = 4'h1;
+parameter             ACK_WAIT  = 4'h2;
+
+reg [3:0]             astate  = IDLE;
+reg                   empty_flag;
 
 //Host -> Master DW  assembler
 always @ (posedge clk) begin
-  read_enable           <=  0;
-  if (in_fifo_rd) begin
-    read_enable         <=  1;
-  end
   dw_ready              <=  0;
-  in_fifo_rd            <=  0;
 
   if (rst) begin
     byte_count          <=  4'h0;
     working_dw          <=  32'h0;
     read_dw             <=  32'h0;
-    read_enable         <=  0;
+    in_fifo_rd          <=  0;
+    astate              <=  IDLE;
+    empty_flag          <=  1;
   end
   else begin
-    if (~write_busy /*&& read_ready*/) begin
-      if (read_enable) begin
-        //reading a new word from the FIFO
-        if (reset_assembler) begin
-          working_dw[7:0]   <=  32'h0000;
-          byte_count        <=  2'b00;
-          dw_ready          <=  0;
+    in_fifo_rd          <=  0;
+    if (!write_busy) begin
+      case (astate)
+        IDLE: begin
+          if (empty_flag && !in_fifo_empty) begin
+            //flush out the data that should have been flushed out by the FIFO
+            in_fifo_rd        <=  1;
+            empty_flag        <=  0;
+          end
+          else if (!in_fifo_empty) begin
+            in_fifo_rd      <=  1;
+            astate          <=  READ_FIFO;
+          end
         end
-        else begin
-          //shift the data in
-          working_dw        <= {working_dw[23:0], in_fifo_data};
-          byte_count        <=  byte_count + 1;
-          if (~dw_ready) begin
+        READ_FIFO: begin
+          if (reset_assembler) begin
+            working_dw        <=  32'h0000;
+            byte_count        <=  2'b00;
+            dw_ready          <=  0;
+            if (!in_fifo_empty) begin
+              in_fifo_rd      <=  1;
+            end
+            else begin
+              astate          <=  IDLE;
+            end
+          end
+          else begin
+            working_dw        <= {working_dw[23:0], in_fifo_data};
+            byte_count        <=  byte_count + 1;
             if (byte_count == 2'h3) begin
               read_dw         <=  {working_dw[23:0], in_fifo_data};
               dw_ready        <=  1;
               working_dw      <=  32'h0000;
+              astate          <=  ACK_WAIT;
+              if (in_fifo_empty) begin
+                //this is a work around for the FIFOs
+                //a strange state happens if the fifo is empty on the last byte
+                empty_flag    <=  1;
+              end
             end
+            else begin
+              if (!in_fifo_empty) begin
+                in_fifo_rd    <=  1;
+              end
+              else begin
+                astate          <=  IDLE;
+              end
+            end
+          end
+        end
+        ACK_WAIT: begin
+          if (empty_flag && !in_fifo_empty) begin
+            //flush out the data that should have been flushed out by the FIFO
+            in_fifo_rd        <=  1;
+            empty_flag        <=  0;
           end
           if (read_ack) begin
             dw_ready          <=  0;
-            read_dw           <=  32'h0;
+            astate            <=  IDLE;
           end
         end
-      end
-      if (!in_fifo_empty && (byte_count != 4'h3) && ~dw_ready) begin
-        in_fifo_rd          <=  1;
-      end
+        default: begin
+          astate <=  IDLE;
+        end
+      endcase
     end
   end
 end

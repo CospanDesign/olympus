@@ -502,7 +502,7 @@ def test_all_memory (syc = None):
       data_out = Array('B')
       num = 0
       try:
-        for i in range (0, 4 * 400):
+        for i in range (0, 4 * 140):
           num = (i + rand) % 255
           if (i / 256) % 2 == 1:
             data_out.append( 255 - (num))
@@ -756,7 +756,7 @@ if __name__ == '__main__':
           long_mem_test = True
 
 
-    syc.reset()
+    #syc.reset()
 
     if (syc.ping()):
       print "Ping responded successfully"
