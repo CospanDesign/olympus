@@ -11,7 +11,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 's
 import sapfile
 import saputils
 import sap_graph_manager as gm
-from sap_graph_manager import NodeType, SlaveType, SlaveError, NodeError
+from sap_graph_manager import NoSuchNodeError, NodeType, SlaveType, SlaveError, NodeError
 
 class UTest(unittest.TestCase):
   def setUp(self):
@@ -136,7 +136,36 @@ class UTest(unittest.TestCase):
     self.assertRaises(TypeError, self.sgm.add_node, arg_n, arg_nt, arg_st)
 
   def test_bind_port(self):
-    pass
+    arg_n, arg_po, arg_pi = 'name', '1234', 3
+
+    # Build mock node.
+    mock_node = mock.Mock()
+    mock_node.parameters = {
+      'ports' : {
+        arg_po : {
+          'direction' : 'out'
+        }
+      }
+    }
+    mock_node.bindings = {}
+
+    # Set up SGM.
+    self.sgm.get_node = mock.Mock(return_value=mock_node)
+
+    # Run & Test
+    self.sgm.bind_port(arg_n, arg_po, arg_pi)
+    self.assertIn(arg_po, mock_node.bindings)
+    self.assertEquals(arg_pi, mock_node.bindings[arg_po]['pin'])
+    self.assertEquals('out', mock_node.bindings[arg_po]['direction'])
+
+  def test_bind_port_raises_NoSuchNodeError(self):
+    arg_n, arg_po, arg_pi = 'name', '1234', 3
+
+    # Set up SGM.
+    self.sgm.get_node = mock.Mock(return_value=None)
+
+    # Run & Test
+    self.assertRaises(NoSuchNodeError, self.sgm.bind_port, arg_n, arg_po, arg_pi)
 
   def test_clear_graph(self):
     pass

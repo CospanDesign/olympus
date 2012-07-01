@@ -9,6 +9,9 @@ class NodeError(Exception):
   def __str__(self):
     return repr(self.value)
 
+class NoSuchNodeError(Exception):
+  pass
+
 def enum(*sequential, **named):
   enums = dict(zip(sequential, range(len(sequential))), **named)
   return type('Enum', (), enums)
@@ -555,10 +558,11 @@ class SapGraphManager:
       node.bindings[p]["pin"] = bindings[p]["port"]
       node.bindings[p]["direction"] = bindings[p]["direction"]
 
-  def bind_port(self, name, port, pin, debug = False):
+  def bind_port(self, name, port, pin, debug=False):
     node = self.get_node(name)
-    ports = node.parameters["ports"]
-    direction = ports[port]["direction"]
+    if node is None:
+      raise NoSuchNodeError('Could not find %s node' % name)
+    direction = node.parameters["ports"][port]["direction"]
     node.bindings[port] = {}
     node.bindings[port]["pin"] = pin
     node.bindings[port]["direction"] = direction
