@@ -105,7 +105,7 @@ class SapController:
     if debug:
       print "loading %d peripheral slaves" % sp_count
 
-    if self.project_tags.has_key("SLAVES"):
+    if "SLAVES" in self.project_tags:
       for slave_name in self.project_tags["SLAVES"].keys():
 
         file_name = self.project_tags["SLAVES"][slave_name]["filename"]
@@ -430,7 +430,7 @@ class SapController:
     constraints, and returns the newly-populated user constraint files."""
     try:
       pt = self.project_tags
-      if not pt.has_key("constraint_files") or len(pt["constraint_files"]) == 0:
+      if "constraint_files" not in pt or len(pt["constraint_files"]) == 0:
         # User has not specified constraint files so load the default values.
         pt["constraint_files"] = self.board_dict["default_constraint_files"]
       return pt["constraint_files"]
@@ -775,16 +775,16 @@ class SapController:
         # project tags.
         slaves = {}
         if slave_type == SlaveType.PERIPHERAL:
-          if self.project_tags.has_key("SLAVES"):
+          if "SLAVES" in self.project_tags:
             slaves = self.project_tags["SLAVES"]
         else:
-          if self.project_tags.has_key("MEMORY"):
+          if "MEMORY" in self.project_tags:
             slaves = self.project_tags["MEMORY"]
 
-        if slaves.has_key(name) and slaves[name].has_key("PARAMETERS"):
+        if name in slaves and "PARAMETERS" in slaves[name]:
           pd = slaves[name]["PARAMETERS"]
           for key in pd.keys():
-            if parameters["parameters"].has_key(key):
+            if key in parameters["parameters"]:
               parameters["parameters"][key] = pd[key]
 
     return uname

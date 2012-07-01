@@ -13,7 +13,7 @@ import sap_graph_manager as gm
 from sap_graph_manager import SlaveError
 from sap_graph_manager import NodeError
 
-class Test (unittest.TestCase):
+class IntTest(unittest.TestCase):
   """Unit test for gen_drt.py"""
 
   def setUp(self):
@@ -257,8 +257,8 @@ class Test (unittest.TestCase):
     if self.dbg:
       print "dictionary: " + str(graph_dict)
 
-    self.assertIn(uart_name, graph_dict.keys())
-    self.assertIn(master_name, graph_dict.keys())
+    self.assertIn(uart_name, graph_dict)
+    self.assertIn(master_name, graph_dict)
 
 
   def test_get_host_interface(self):
