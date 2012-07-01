@@ -730,9 +730,6 @@ class UTest(unittest.TestCase):
     self.sc.sgm.set_parameters.assert_called_once_with('uname', mock_params)
     self.assertEquals(mock_params, { 'parameters': { 'p1': '1', 'p2': '2' } })
 
-  def test_get_unique_name(self):
-    pass
-
   def test_add_slave(self):
     pass
 
