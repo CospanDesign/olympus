@@ -29,7 +29,7 @@ class GenDRT(Gen):
 		version = 0x0004
 		version_string = "{0:0=4X}"
 		version_string = version_string.format(version)
-		id	= 0x1EAF
+		id	= 0xC594
 		id_string = "{0:0=4X}"
 		id_string = id_string.format(id)
 		#add 1 for the DRT

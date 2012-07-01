@@ -55,7 +55,7 @@ class Dionysus (object):
     data = Array('B')
     data.extend([0XCD, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
     print "Sending ping...",
-    self.dev.purge_buffers()
+    #self.dev.purge_buffers()
     self.dev.write_data(data)
     rsp = Array('B')
     temp = Array('B')
@@ -404,8 +404,10 @@ class Dionysus (object):
     for i in range (0, display_len):
       self.drt_string += "%02X%02X%02X%02X\n"% (self.drt[i * 4], self.drt[(i * 4) + 1], self.drt[i * 4 + 2], self.drt[i * 4 + 3])
 
-    print self.drt_string
+    #print self.drt_string
     self.drt_lines = self.drt_string.splitlines()
+    #self.pretty_print_drt()
+
 
 
   def open_dev(self):
@@ -416,7 +418,6 @@ class Dionysus (object):
     self.dev.purge_buffers()
 
     # Reset
-
     # Enable MPSSE mode
     self.dev.set_bitmode(0x00, Ftdi.BITMODE_SYNCFF)
     # Configure clock
@@ -430,7 +431,85 @@ class Dionysus (object):
 
     self.dev.set_flowctrl('hw')
     self.dev.purge_buffers()
-  
+
+
+  def pretty_print_drt(self):
+    num_of_devices = int(self.drt_lines[1], 16)
+    #the first line is the version of the DRT and the ID
+    print "%s: Version: %s ID Word: %s" % (self.drt_lines[0], self.drt_lines[0][0:4], self.drt_lines[0][4:8])
+    print "%s: Number of Devices: %d" % (self.drt_lines[1], int(self.drt_lines[1], 16))
+    print "%s: String Table Offset (0x0000 == No Table)" % (self.drt_lines[2])
+    print "%s: Reserverd for future use" % (self.drt_lines[3])
+    print "%s: Reserverd for future use" % (self.drt_lines[4])
+    print "%s: Reserverd for future use" % (self.drt_lines[5])
+    print "%s: Reserverd for future use" % (self.drt_lines[6])
+    print "%s: Reserverd for future use" % (self.drt_lines[7])
+
+    print "Devices:"
+    for i in range (0, num_of_devices):
+      memory_device = False 
+      f = int (self.drt_lines[((i + 1) * 8 + 1)], 16) 
+      if ((f & 0x00010000) > 0):
+        memory_device = True
+      print ""
+      print "Device %d" % i
+      print "%s: Device Type: %s" % (self.drt_lines[(i + 1) * 8], self.get_device_type(i)) 
+      print "%s: Device Flags:" % (self.drt_lines[((i + 1) * 8) + 1])
+      flags = self.get_device_flags(i)
+      for j in flags:
+        print "\t%s" % j
+
+      if memory_device:
+        print "%s: Offset of Memory Device:      0x%08X" % (self.drt_lines[((i + 1) * 8) + 2], int(self.drt_lines[((i + 1) * 8) + 2], 16))
+        print "%s: Size of Memory device:        0x%08X" % (self.drt_lines[((i + 1) * 8) + 3], int (self.drt_lines[((i + 1) * 8) + 3], 16))
+
+
+      else:
+        print "%s: Offset of Peripheral Device:  0x%08X" % (self.drt_lines[((i + 1) * 8) + 2], int(self.drt_lines[((i + 1) * 8) + 2], 16))
+        print "%s: Number of Registers :         0x%08X" % (self.drt_lines[((i + 1) * 8) + 3], int(self.drt_lines[((i + 1) * 8) + 3], 16))
+
+      print "%s: Reserved for future use" % (self.drt_lines[((i + 1) * 8) + 4])
+      print "%s: Reserved for future use" % (self.drt_lines[((i + 1) * 8) + 5])
+      print "%s: Reserved for future use" % (self.drt_lines[((i + 1) * 8) + 6])
+      print "%s: Reserved for future use" % (self.drt_lines[((i + 1) * 8) + 7])
+
+      
+  def get_device_type(self, index):
+    t = int(self.drt_lines[(index + 1) * 8], 16)
+ #XXX: This should really be referenced from a file
+    if t == 1:
+      return "GPIO"
+    elif t == 2:
+      return "UART"
+    elif t == 3:
+      return "I2C"
+    elif t == 4:
+      return "SPI"
+    elif t == 5:
+      return "Memory Device"
+    elif t == 6:
+      return "Console"
+    elif t == 7:
+      return "FSMC"
+    elif t == 8:
+      return "LED"
+    elif t == 9:
+      return "Unknown"
+    elif t == 10:
+      return "Frame Buffer"
+    
+    return "Unknown"
+
+  def get_device_flags(self, index):
+    flag_strings = []
+    flags = int(self.drt_lines[((index + 1) * 8) + 1], 16)
+    if ((flags & 0x00000001) > 0):
+      flag_strings.append("0x00000001: Standard Device")
+    if ((flags & 0x00010000) > 0):
+      flag_strings.append("0x00010000: Memory Device")
+    return flag_strings
+
+    
 
 def test_leds(syc, dev_index):
   print "Found GPIO"
@@ -502,7 +581,7 @@ def test_all_memory (syc = None):
       data_out = Array('B')
       num = 0
       try:
-        for i in range (0, 4 * 140):
+        for i in range (0, 4 * 120):
           num = (i + rand) % 255
           if (i / 256) % 2 == 1:
             data_out.append( 255 - (num))
@@ -532,7 +611,7 @@ def test_all_memory (syc = None):
         print "Write Failed!"
 
       #time.sleep(1)
-
+"""
       print "Reading %d DWORDS of data" % (len(data_out))
       data_in = Array('B')
       data_in = syc.read(len(data_out) / 4, dev_index, 0,  mem_bus)
@@ -584,7 +663,7 @@ def test_all_memory (syc = None):
         print "Data length of data_in and data_out do not match"
       else:
         print "Failed: %d mismatches" % fail_count
-
+"""
 
 
 #      for b in range (0, bank_count):
@@ -727,6 +806,7 @@ def usage():
   print "-d\t--debug\t\t\t: runs the debug analysis"
   print "-m\t--memory\t\t\t: test only memory"
   print "-l\t--long\t\t\t\t: long memory test"
+  print "-t\t--test\t\t\t\t: test"
   print ""
   
 
@@ -735,12 +815,13 @@ if __name__ == '__main__':
   argv = sys.argv[1:]
   mem_only = False
   long_mem_test = False
+  test = False
 
   try:
     syc = Dionysus(0x0403, 0x8530)
     if (len(argv) > 0):
       opts = None
-      opts, args = getopt.getopt(argv, "hdml", ["help", "debug", "memory", "long"])
+      opts, args = getopt.getopt(argv, "hdmlt", ["help", "debug", "memory", "long", "test"])
       for opt, arg in opts:
         if opt in ("-h", "--help"):
           usage()
@@ -751,30 +832,44 @@ if __name__ == '__main__':
           syc.debug()
         elif opt in ("-m", "--memory"):
           mem_only = True
-
         elif opt in ("-l", "--long"):
           long_mem_test = True
+        elif opt in ("-t", "--test"):
+          test = True
 
 
     #syc.reset()
 
-    if (syc.ping()):
-      print "Ping responded successfully"
-      print "Retrieving DRT"
+    if test:
+      print "Performing Ping Test:"
+      syc.ping()
       syc.read_drt()
-      if (syc.dbg):
-        print "testing if device is attached..." + str(syc.is_device_attached(1))
-        print "testing get_device_index..." + str(syc.get_device_index(1) == 0)
-        print "testing get_address_from_index..." + str(syc.get_address_from_dev_index(0) == 0x01000000)
+      print ""
+      print "Printing DRT:"
+      syc.pretty_print_drt()
+      print "Writing a long packet to memory"
+      sys.exit()
 
-      if long_mem_test:
-        test_all_memory(syc) 
-
-      elif mem_only:
-        test_memory(syc)
-
-      else:
-        dionysus_unit_test(syc)
+    else:
+      if (syc.ping()):
+        print "Ping responded successfully"
+        print "Retrieving DRT"
+        syc.read_drt()
+        print "Printing DRT:"
+        syc.pretty_print_drt()
+        if (syc.dbg):
+          print "testing if device is attached..." + str(syc.is_device_attached(1))
+          print "testing get_device_index..." + str(syc.get_device_index(1) == 0)
+          print "testing get_address_from_index..." + str(syc.get_address_from_dev_index(0) == 0x01000000)
+ 
+        if long_mem_test:
+          test_all_memory(syc) 
+ 
+        elif mem_only:
+          test_memory(syc)
+ 
+        else:
+          dionysus_unit_test(syc)
 
       
 
