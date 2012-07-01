@@ -2,6 +2,7 @@ import unittest
 import os
 import sys
 import json
+import mock
 
 sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir))
 sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
@@ -10,8 +11,224 @@ sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 's
 import sapfile
 import saputils
 import sap_graph_manager as gm
-from sap_graph_manager import SlaveError
-from sap_graph_manager import NodeError
+from sap_graph_manager import NodeType, SlaveType, SlaveError, NodeError
+
+class UTest(unittest.TestCase):
+  def setUp(self):
+    # Data found in saplib/example_project/gpio_example.json
+    self.project_tags = {
+      "BASE_DIR": "~/projects/sycamore_projects",
+      "board": "xilinx-s3esk",
+      "PROJECT_NAME": "example_project",
+      "TEMPLATE": "wishbone_template.json",
+      "INTERFACE": {
+        "filename": "uart_io_handler.v",
+        "bind": {
+          "phy_uart_in": {
+            "port": "RX",
+            "direction": "input"
+          },
+          "phy_uart_out": {
+            "port": "TX",
+            "direction": "output"
+          }
+        }
+      },
+      "SLAVES": {
+        "gpio1": {
+          "filename":"wb_gpio.v",
+          "bind": {
+            "gpio_out[7:0]": {
+              "port":"led[7:0]",
+              "direction":"output"
+            },
+            "gpio_in[3:0]": {
+              "port":"switch[3:0]",
+              "direction":"input"
+            }
+          }
+        }
+      },
+      "bind": {},
+      "constraint_files": []
+    }
+    self.sgm = gm.SapGraphManager()
+    self.sgm.graph = mock.Mock()
+
+  def test_add_node_master_memory(self):
+    arg_n, arg_nt, arg_st = 'name', NodeType.MASTER, SlaveType.MEMORY
+
+    self.sgm.get_number_of_memory_slaves = mock.Mock(return_value=0)
+    self.sgm.get_number_of_peripheral_slaves = mock.Mock(
+        side_effect=AssertionError('get_number_of_peripheral_slaves called'))
+    self.sgm.get_unique_name = mock.Mock(return_value='uname')
+
+    class Helper:
+      name = None
+    def mock_add_node(x):
+      if Helper.name != None:
+        self.fail('add_node called 2x')
+      Helper.name = x
+    self.sgm.graph.add_node = mock_add_node
+    self.sgm.graph.node = {}
+
+    # Run & Test
+    self.assertEqual('uname', self.sgm.add_node(arg_n, arg_nt, arg_st))
+    self.assertIn('uname', self.sgm.graph.node)
+    self.assertEqual(self.sgm.graph.node['uname'].name, arg_n)
+    self.assertEqual(self.sgm.graph.node['uname'].node_type, arg_nt)
+    self.assertEqual(self.sgm.graph.node['uname'].slave_type, arg_st)
+    self.assertEqual(self.sgm.graph.node['uname'].slave_index, 0)
+    self.assertEqual(self.sgm.graph.node['uname'].unique_name, 'uname')
+
+  def test_add_node_master_peripheral(self):
+    arg_n, arg_nt, arg_st = 'name', NodeType.MASTER, SlaveType.PERIPHERAL
+
+    self.sgm.get_number_of_peripheral_slaves = mock.Mock(return_value=0)
+    self.sgm.get_number_of_memory_slaves = mock.Mock(
+        side_effect=AssertionError('get_number_of_memory_slaves called'))
+    self.sgm.get_unique_name = mock.Mock(return_value='uname')
+
+    class Helper:
+      name = None
+    def mock_add_node(x):
+      if Helper.name != None:
+        self.fail('add_node called 2x')
+      Helper.name = x
+    self.sgm.graph.add_node = mock_add_node
+    self.sgm.graph.node = {}
+
+    # Run & Test
+    self.assertEqual('uname', self.sgm.add_node(arg_n, arg_nt, arg_st))
+    self.assertIn('uname', self.sgm.graph.node)
+    self.assertEqual(self.sgm.graph.node['uname'].name, arg_n)
+    self.assertEqual(self.sgm.graph.node['uname'].node_type, arg_nt)
+    self.assertEqual(self.sgm.graph.node['uname'].slave_type, arg_st)
+    self.assertEqual(self.sgm.graph.node['uname'].slave_index, 0)
+    self.assertEqual(self.sgm.graph.node['uname'].unique_name, 'uname')
+
+  def test_add_node_bad_SlaveType_raises_TypeError(self):
+    arg_n, arg_nt, arg_st = 'name', NodeType.MASTER, 'foo'
+
+    self.sgm.get_number_of_peripheral_slaves = mock.Mock(
+        side_effect=AssertionError('get_number_of_peripheral_slaves called'))
+    self.sgm.get_number_of_memory_slaves = mock.Mock(
+        side_effect=AssertionError('get_number_of_memory_slaves called'))
+    self.sgm.get_unique_name = mock.Mock(
+        side_effect=AssertionError('get_unique_name called'))
+    self.sgm.graph.add_node = mock.Mock(
+        side_effect=AssertionError('graph.add_node called'))
+
+    self.assertRaises(TypeError, self.sgm.add_node, arg_n, arg_nt, arg_st)
+
+  def test_add_node_bad_NodeType_raises_TypeError(self):
+    arg_n, arg_nt, arg_st = 'name', 'flah g-nah nah', SlaveType.MEMORY
+
+    self.sgm.get_number_of_peripheral_slaves = mock.Mock(
+        side_effect=AssertionError('get_number_of_peripheral_slaves called'))
+    self.sgm.get_number_of_memory_slaves = mock.Mock(
+        side_effect=AssertionError('get_number_of_memory_slaves called'))
+    self.sgm.get_unique_name = mock.Mock(
+        side_effect=AssertionError('get_unique_name called'))
+    self.sgm.graph.add_node = mock.Mock(
+        side_effect=AssertionError('graph.add_node called'))
+
+    self.assertRaises(TypeError, self.sgm.add_node, arg_n, arg_nt, arg_st)
+
+  def test_bind_port(self):
+    pass
+
+  def test_clear_graph(self):
+    pass
+
+  def test_connect_nodes(self):
+    pass
+
+  def test_disconnect_nodes(self):
+    pass
+
+  def test_fix_slave_indexes(self):
+    pass
+
+  def test_get_connected_slaves(self):
+    pass
+
+  def test_get_edge_name(self):
+    pass
+
+  def test_get_host_interface_node(self):
+    pass
+
+  def test_get_node(self):
+    pass
+
+  def test_get_node_bindings(self):
+    pass
+
+  def test_get_node_names(self):
+    pass
+
+  def test_get_nodes_dict(self):
+    pass
+
+  def test_get_number_of_connections(self):
+    pass
+
+  def test_get_number_of_memory_slaves(self):
+    pass
+
+  def test_get_number_of_peripheral_slaves(self):
+    pass
+
+  def test_get_number_of_slaves(self):
+    pass
+
+  def test_get_parameters(self):
+    pass
+
+  def test_get_size(self):
+    pass
+
+  def test_get_slave_at(self):
+    pass
+
+  def test_get_slave_name_at(self):
+    pass
+
+  def test_is_slave_connected_to_slave(self):
+    pass
+
+  def test_move_memory_slave(self):
+    pass
+
+  def test_move_peripheral_slave(self):
+    pass
+
+  def test_move_slave(self):
+    pass
+
+  def test_remove_node(self):
+    pass
+
+  def test_remove_slave(self):
+    pass
+
+  def test_rename_slave(self):
+    pass
+
+  def test_set_config_bindings(self):
+    pass
+
+  def test_set_edge_name(self):
+    pass
+
+  def test_set_parameters(self):
+    pass
+
+  def test_unbind_port(self):
+    pass
+
+
 
 class IntTest(unittest.TestCase):
   """Unit test for gen_drt.py"""

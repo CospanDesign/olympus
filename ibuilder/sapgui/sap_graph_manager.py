@@ -19,8 +19,17 @@ NodeType = enum('HOST_INTERFACE',
                 'PERIPHERAL_INTERCONNECT',
                 'SLAVE')
 
+def isNodeType(nt):
+  return nt == NodeType.HOST_INTERFACE or \
+         nt == NodeType.MASTER or \
+         nt == NodeType.MEMORY_INTERCONNECT or \
+         nt == NodeType.PERIPHERAL_INTERCONNECT or \
+         nt == NodeType.SLAVE
+
 SlaveType = enum('MEMORY', 'PERIPHERAL')
 
+def isSlaveType(st):
+  return st == SlaveType.MEMORY or st == SlaveType.PERIPHERAL
 
 def get_unique_name(name, node_type,
     slave_type = SlaveType.PERIPHERAL, slave_index = 0):
@@ -65,30 +74,43 @@ class SapGraphManager:
     """Initialize the controller."""
     self.graph = nx.Graph()
 
+    # Additions for DI.
+    self.get_unique_name = get_unique_name
+
   def clear_graph(self):
     """Resets the graph."""
     self.graph = nx.Graph()
 
-  def add_node(self, name, node_type,
-               slave_type = SlaveType.PERIPHERAL, debug = False):
+  def add_node(self, name, node_type, slave_type=SlaveType.PERIPHERAL,
+      debug=False):
     '''Adds a node to this graph.'''
+
+    # Check node_type validity
+    if not isNodeType(node_type):
+      raise TypeError('Expected node_type to be NodeType, got' + node_type)
+
+    # Set index to last in peripheral/memory and check SlaveType validity.
+    if slave_type == SlaveType.PERIPHERAL:
+      s_count = self.get_number_of_peripheral_slaves()
+    elif slave_type == SlaveType.MEMORY:
+      s_count = self.get_number_of_memory_slaves()
+    else:
+      raise TypeError("Expected SlaveType.{MEMORY|PERIPHERAL}, got " +
+          slave_type)
+
+    # Create & populate node.
     node = SapNode()
     node.name = name
     node.node_type = node_type
     node.slave_type = slave_type
-#    print "add node bind id: " + str(id(node))
-
-    if slave_type == SlaveType.PERIPHERAL:
-      s_count = self.get_number_of_peripheral_slaves()
-    else:
-      s_count = self.get_number_of_memory_slaves()
-
     node.slave_index = s_count
-    node.unique_name = get_unique_name(name, node_type, slave_type, node.slave_index)
+    node.unique_name = self.get_unique_name(
+        name, node_type, slave_type, node.slave_index)
 
     if debug:
       print "unique_name: " + node.unique_name
 
+    # Add node to graph.
     self.graph.add_node(str(node.unique_name))
     self.graph.node[node.unique_name] = node
 
@@ -120,7 +142,8 @@ class SapGraphManager:
     current_name = self.get_slave_name_at(slave_index, slave_type)
     node = self.get_node(current_name)
 
-    unique_name = get_unique_name(new_name, NodeType.SLAVE, slave_type, slave_index)
+    unique_name = self.get_unique_name(
+        new_name, NodeType.SLAVE, slave_type, slave_index)
 
     node.name = new_name
     node.unique_name = unique_name
@@ -253,10 +276,10 @@ class SapGraphManager:
           (to_node.name, to_node.slave_index, to_node.unique_name)
 
     from_node.slave_index = to_index
-    from_unique = get_unique_name(from_node.name,
-                                  from_node.node_type,
-                                  from_node.slave_type,
-                                  from_node.slave_index)
+    from_unique = self.get_unique_name(from_node.name,
+                                       from_node.node_type,
+                                       from_node.slave_type,
+                                       from_node.slave_index)
 
     mapping = {from_node.unique_name : from_unique}
 
@@ -275,10 +298,10 @@ class SapGraphManager:
     from_node.unique_name = from_unique
 
     to_node.slave_index = from_index
-    to_unique = get_unique_name(to_node.name,
-                                to_node.node_type,
-                                to_node.slave_type,
-                                to_node.slave_index)
+    to_unique = self.get_unique_name(to_node.name,
+                                     to_node.node_type,
+                                     to_node.slave_type,
+                                     to_node.slave_index)
     self.graph = nx.relabel_nodes (self.graph, {to_node.unique_name:to_unique})
     to_node = self.get_node(to_unique)
 
@@ -342,10 +365,10 @@ class SapGraphManager:
           (to_node.name, to_node.slave_index, to_node.unique_name)
 
     from_node.slave_index = to_index
-    from_unique = get_unique_name(from_node.name,
-                                  from_node.node_type,
-                                  from_node.slave_type,
-                                  from_node.slave_index)
+    from_unique = self.get_unique_name(from_node.name,
+                                       from_node.node_type,
+                                       from_node.slave_type,
+                                       from_node.slave_index)
 
     mapping = {from_node.unique_name : from_unique}
 
@@ -364,10 +387,10 @@ class SapGraphManager:
     from_node.unique_name = from_unique
 
     to_node.slave_index = from_index
-    to_unique = get_unique_name(to_node.name,
-                                to_node.node_type,
-                                to_node.slave_type,
-                                to_node.slave_index)
+    to_unique = self.get_unique_name(to_node.name,
+                                     to_node.node_type,
+                                     to_node.slave_type,
+                                     to_node.slave_index)
     self.graph = nx.relabel_nodes(self.graph, {to_node.unique_name:to_unique})
 
     to_node = self.get_node(to_unique)
