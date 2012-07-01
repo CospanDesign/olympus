@@ -731,6 +731,7 @@ class UTest(unittest.TestCase):
     self.assertEquals(mock_params, { 'parameters': { 'p1': '1', 'p2': '2' } })
 
   def test_add_slave(self):
+    # TODO: MOAR
     pass
 
   def test_remove_slave(self):
