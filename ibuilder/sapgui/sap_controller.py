@@ -464,13 +464,13 @@ class SapController:
     self.project_tags["bind"] = {}
     self.project_tags["constraint_files"] = []
 
-  VALID_BUS_TYPES = ['Wishbone', 'Axie']
+  VALID_BUS_TYPES = ['wishbone', 'axie']
 
   def set_bus_type(self, bus_type):
     """Set the bus type to Wishbone or Axie."""
     if type(bus_type) != str:
       raise TypeError('str expected for bus_type')
-    if bus_type not in self.VALID_BUS_TYPES:
+    if bus_type.lower() not in self.VALID_BUS_TYPES:
       raise ValueError('Unsupported bus type:%s\n  Choose on of: %s' %
           (bus_type, self.VALID_BUS_TYPES))
     self.bus_type = bus_type

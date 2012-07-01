@@ -458,8 +458,8 @@ class UTest(unittest.TestCase):
     self.assertEqual(self.sc.project_tags, self.NEW_CONFIG)
 
   def test_set_bus_type(self):
-    self.sc.set_bus_type('Wishbone')
-    self.assertEqual('Wishbone', self.sc.bus_type)
+    self.sc.set_bus_type('wishbone')
+    self.assertEqual('wishbone', self.sc.bus_type)
 
   def test_set_bus_type_none_raises_TypeError(self):
     self.assertRaises(TypeError, self.sc.set_bus_type, None)
@@ -468,12 +468,20 @@ class UTest(unittest.TestCase):
     self.assertRaises(ValueError, self.sc.set_bus_type, 'bad')
 
   def test_set_bus_type_wishbone(self):
+    self.sc.set_bus_type('wishbone')
+    self.assertEqual(self.sc.bus_type, 'wishbone')
+
+  def test_set_bus_type_Wishbone_ok(self):
     self.sc.set_bus_type('Wishbone')
     self.assertEqual(self.sc.bus_type, 'Wishbone')
 
   def test_set_bus_type_axie(self):
-    self.sc.set_bus_type('Axie')
-    self.assertEqual(self.sc.bus_type, 'Axie')
+    self.sc.set_bus_type('axie')
+    self.assertEqual(self.sc.bus_type, 'axie')
+
+  def test_set_bus_type_AXIE_ok(self):
+    self.sc.set_bus_type('AXIE')
+    self.assertEqual(self.sc.bus_type, 'AXIE')
 
   def test_set_host_interface(self):
     unique_name = 'uniquename'
