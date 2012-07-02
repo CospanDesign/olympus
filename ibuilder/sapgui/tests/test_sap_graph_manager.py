@@ -167,11 +167,19 @@ class UTest(unittest.TestCase):
     # Run & Test
     self.assertRaises(NoSuchNodeError, self.sgm.bind_port, arg_n, arg_po, arg_pi)
 
+  def test_bind_port_raises_NoSuchPortError(self):
+    # TODO
+    pass
+
   def test_clear_graph(self):
+    # TODO ... really test?
     pass
 
   def test_connect_nodes(self):
-    pass
+    arg1, arg2 = 'name1', 'name2'
+    self.sgm.graph.add_edge = mock.Mock()
+    self.sgm.connect_nodes(arg1, arg2)
+    self.sgm.graph.add_edge.assert_called_once_with(arg1, arg2, name='')
 
   def test_disconnect_nodes(self):
     pass

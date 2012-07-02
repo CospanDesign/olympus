@@ -450,8 +450,7 @@ class SapGraphManager:
 
   def connect_nodes(self, node1, node2):
     """Connects two nodes together."""
-    self.graph.add_edge(node1, node2)
-    self.graph[node1][node2]["name"]=""
+    self.graph.add_edge(node1, node2, name='')
 
   def set_edge_name(self, node1_name, node2_name, edge_name):
     """Find the edge connected to the two given nodes."""
