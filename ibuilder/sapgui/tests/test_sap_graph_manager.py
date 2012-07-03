@@ -11,7 +11,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 's
 import sapfile
 import saputils
 import sap_graph_manager as gm
-from sap_graph_manager import NoSuchNodeError, NodeType, SlaveType, SlaveError, NodeError
+from sap_graph_manager import NodeType, SlaveType, SlaveError, NodeError, PortError
 
 class UTest(unittest.TestCase):
   def setUp(self):
@@ -158,21 +158,27 @@ class UTest(unittest.TestCase):
     self.assertEquals(arg_pi, mock_node.bindings[arg_po]['pin'])
     self.assertEquals('out', mock_node.bindings[arg_po]['direction'])
 
-  def test_bind_port_raises_NoSuchNodeError(self):
+  def test_bind_port_raises_NodeError(self):
     arg_n, arg_po, arg_pi = 'name', '1234', 3
+    self.sgm.get_node = mock.Mock(side_effect=NodeError('No such node!'))
+    self.assertRaises(NodeError, self.sgm.bind_port, arg_n, arg_po, arg_pi)
 
-    # Set up SGM.
-    self.sgm.get_node = mock.Mock(return_value=None)
+  def test_bind_port_raises_TypeError(self):
+    self.assertRaises(TypeError, self.sgm.bind_port, 'name', None, 4)
 
-    # Run & Test
-    self.assertRaises(NoSuchNodeError, self.sgm.bind_port, arg_n, arg_po, arg_pi)
-
-  def test_bind_port_raises_NoSuchPortError(self):
-    # TODO
-    pass
+  def test_bind_port_raises_PortError(self):
+    mock_node = mock.Mock()
+    mock_node.parameters = {
+      'ports' : {
+        '1235' : { 'direction' : 'out' },
+        '1233' : { 'direction' : 'in' }
+      }
+    }
+    self.sgm.get_node = mock.Mock(return_value=mock_node)
+    self.assertRaises(PortError, self.sgm.bind_port, 'name', '1234', 4)
 
   def test_clear_graph(self):
-    # TODO ... really test?
+    # TODO ... really test?  how?
     pass
 
   def test_connect_nodes(self):
@@ -197,7 +203,15 @@ class UTest(unittest.TestCase):
     pass
 
   def test_get_node(self):
-    pass
+    mock_node = mock.Mock()
+    self.sgm.get_nodes_dict = mock.Mock(return_value={'name': mock_node})
+    self.assertEqual(mock_node, self.sgm.get_node('name'))
+    self.sgm.get_nodes_dict.assert_called_once_with()
+
+  def test_get_node_dne_raises_NodeError(self):
+    self.sgm.get_nodes_dict = mock.Mock(return_value={})
+    self.assertRaises(NodeError, self.sgm.get_node, 'name')
+    self.sgm.get_nodes_dict.assert_called_once_with()
 
   def test_get_node_bindings(self):
     pass

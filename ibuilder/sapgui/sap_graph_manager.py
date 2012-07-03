@@ -9,7 +9,7 @@ class NodeError(Exception):
   def __str__(self):
     return repr(self.value)
 
-class NoSuchNodeError(Exception):
+class PortError(Exception):
   pass
 
 def enum(*sequential, **named):
@@ -444,8 +444,8 @@ class SapGraphManager:
   def get_node(self, name):
     """Gets a node by the unique name."""
     g = self.get_nodes_dict()
-    if g is type(None):
-      raise  NodeError("Node with unique name: %s does not exists"% (name))
+    if name not in g:
+      raise NodeError("Node with unique name: %s does not exists" % name)
     return g[name]
 
   def connect_nodes(self, node1, node2):
@@ -558,9 +558,11 @@ class SapGraphManager:
       node.bindings[p]["direction"] = bindings[p]["direction"]
 
   def bind_port(self, name, port, pin, debug=False):
+    if type(port) is not str:
+      raise TypeError('port must be str')
     node = self.get_node(name)
-    if node is None:
-      raise NoSuchNodeError('Could not find %s node' % name)
+    if port not in node.parameters['ports']:
+      raise PortError('Could not find port ' + port)
     direction = node.parameters["ports"][port]["direction"]
     node.bindings[port] = {}
     node.bindings[port]["pin"] = pin
