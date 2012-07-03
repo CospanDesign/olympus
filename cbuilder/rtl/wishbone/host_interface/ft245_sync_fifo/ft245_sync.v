@@ -77,12 +77,13 @@ wire            out_fifo_wr;
 
 reg     [7:0]   data_in;
 reg     [7:0]   cache_data;
+reg             data_valid;
 reg             local_sof;
 
 //data that will be read from the FTDI chip (in)
 afifo #(    
    .DATA_WIDTH(9),
-   .ADDRESS_WIDTH(8)
+   .ADDRESS_WIDTH(2)
   )
 fifo_in (
   .rst(in_fifo_rst),
@@ -168,6 +169,7 @@ always @ (posedge ftdi_clk) begin
     data_in               <=  0;
     local_sof             <=  0;
     cache_data            <=  8'h00;
+    data_valid            <=  0;
     
   end
   else begin
@@ -201,8 +203,13 @@ always @ (posedge ftdi_clk) begin
         end
       end
       ENABLE_READING: begin
-        read_enable       <=  1;
-        state             <=  READ;
+        if (receive_available && !in_fifo_full) begin
+          read_enable       <=  1;
+          state             <=  READ;
+        end
+        else begin
+          state             <=  IDLE;
+        end
       end
       READ: begin
         cache_data        <=  data_in;
@@ -211,29 +218,33 @@ always @ (posedge ftdi_clk) begin
         local_sof         <=  start_of_frame;
 
         start_of_frame    <=  0;
-        if (in_fifo_full) begin
-          //just put down read_enable until the fifo is ready again
-          state           <=  FIFO_WAIT;
-          read_enable     <=  0;
-
+        if (!receive_available) begin
+          data_valid      <=  0;
+          state           <=  IDLE;
+          output_enable   <=  0;
         end
         else begin
-          in_fifo_wr        <=  1;
-          if (!receive_available) begin
-            //finished
-            output_enable   <=  0;
-            state           <=  IDLE;
+          if (in_fifo_full) begin
+            //just put down read_enable until the fifo is ready again
+            data_valid      <=  1;
+            state           <=  FIFO_WAIT;
+            read_enable     <=  0;
           end
           else begin
             //continue reading
+            in_fifo_wr      <=  1;
+            data_valid      <=  0;
             read_enable     <=  1;
           end
         end
       end
       FIFO_WAIT: begin
         if (!in_fifo_full) begin
-          in_fifo_wr        <=  1;
-          data_in           <=  cache_data;
+          if (data_valid) begin
+            in_fifo_wr        <=  1;
+            data_in           <=  cache_data;
+            data_valid        <=  0;
+          end
           if (receive_available) begin
             //read_enable     <=  1;
             state           <=  READ;

@@ -248,25 +248,25 @@ reg   ftdi_ready_to_read;
 
 
 //make the ftdi clock 3X faster than the regular clock
-always #5   ftdi_clk  = ~ftdi_clk;
+always #4   ftdi_clk  = ~ftdi_clk;
 
-always #4   clk     = ~clk;
+always #5   clk     = ~clk;
 
 
 
 //reg [15:0]  number_to_write;
 //virtual FTDI variables
-reg [3:0] ftdi_state;
+reg [3:0] state;
 reg [3:0] temp_state; //weird behavior in the while loops, need something to do in them
 
 
-parameter FTDI_IDLE         = 4'h0;
-parameter FTDI_RX_ENABLE_OUTPUT   = 4'h1;
-parameter FTDI_RX_WRITING     = 4'h2;
-parameter FTDI_RX_STOP        = 4'h3;
-parameter FTDI_TX_READING     = 4'h4;
-parameter FTDI_TX_READING_FULL    = 4'h5;
-parameter FTDI_TX_READING_FINISHED  = 4'h6;
+parameter IDLE         = 4'h0;
+parameter RX_ENABLE_OUTPUT   = 4'h1;
+parameter RX_WRITING     = 4'h2;
+parameter RX_STOP        = 4'h3;
+parameter TX_READING     = 4'h4;
+parameter TX_READING_FULL    = 4'h5;
+parameter TX_READING_FINISHED  = 4'h6;
 
 
 reg [31:0]  cmd;
@@ -274,6 +274,7 @@ reg [31:0]  addr;
 reg [31:0]  dat;
 reg [31:0]  dat_out;
 reg [23:0]  data_count;
+reg [23:0]  count_data;
 reg [23:0]  temp_count;
 
 initial begin
@@ -282,11 +283,12 @@ initial begin
   $dumpfile ("design.vcd");
   $dumpvars (0, ft245_sync_top_tb);
   fd_in = $fopen ("fsync_input_data.txt", "r");
+  ftdi_new_data_available <= 0;
 
   #20
   rst           <= 1;
   ftdi_new_data_available <= 0;
-  ftdi_ready_to_read    <= 0;
+  ftdi_ready_to_read    = 0;
 //  number_to_write     <= 0;
 
   syc_command       <= 32'h0;
@@ -296,7 +298,8 @@ initial begin
   cmd               <=  32'h0000;
   addr              <=  32'h0000;
   dat               <=  32'h0000;
-  data_count        <= 24'h000;
+  data_count        <=  24'h000;
+  count_data        <=  24'h000;
 
   #20
   rst           <= 0;
@@ -317,15 +320,15 @@ initial begin
       data_count <= syc_command[23:0];
 
       //$display ("tb: sending data down to core");
-      ftdi_ready_to_read    <= 1;
+      ftdi_ready_to_read    = 1;
 
-      while (ftdi_state !=  FTDI_RX_STOP) begin
+      while (state !=  RX_STOP) begin
         #10
-        temp_state  <= ftdi_state;
+        temp_state  <= state;
       end
-      ftdi_ready_to_read    <= 0;
+      ftdi_ready_to_read    = 0;
       #1000
-      temp_state    <= ftdi_state;
+      temp_state    <= state;
 
     end
   end
@@ -336,126 +339,157 @@ initial begin
   $finish;
 end
 
-parameter FTDI_BUFFER_SIZE    = 512;
+parameter BUFFER_SIZE    = 512;
 
 reg [24:0]  ftdi_write_size;
 reg [24:0]  ftdi_read_count;
 
 reg [24:0]  write_count;
 
+
+reg         rxe_debug;
+
+initial begin
+  rxe_debug <=  1;
+  #1689;
+  rxe_debug <=  0;
+  #100;
+  rxe_debug <=  1;
+end
 //virtual FTDI chip
 always @ (negedge ftdi_clk) begin
   if (rst) begin
-    txe_n       <=  1;
-    rde_n       <=  1;
-    ftdi_state      <=  FTDI_IDLE;
+    state      <=  IDLE;
     ftdi_write_size   <=  0;
     ftdi_read_count   <=  0;
     write_count     <=  0;
     ftdi_in_data    <=  0;
     temp_count      <=  0;
-
- 
   end
   else begin
     //not in reset
-    case (ftdi_state)
-      FTDI_IDLE: begin
-        //no command from the test bench
-//I should allow the write count not to reset when the user isn't finished reading and prematurely quits a read sequence
-        ftdi_write_size   <= 0;
-        ftdi_read_count   <= 0;
-
-        //check ifthe 'initial' wants to receive
-        rde_n <= ~ftdi_ready_to_read;
-
-        //read always gets priority
-        if (~rde_n & ~oe_n) begin
-          //$display("tb: rde_n and oe_n LOW, wait for rd_n to go LOW");
-          ftdi_state  <=  FTDI_RX_ENABLE_OUTPUT;
-          //count is given in 32 bits, so need to multiply it by 4 to send all bytes
-          //add eight for the address and control data
-          ftdi_write_size <= (data_count  * 4) + 8;
-          write_count   <= 0;
-        end
-
+    rde_n <= ~(ftdi_ready_to_read && rxe_debug);
+    //rde_n <= ~ftdi_ready_to_read;
+    //inject a stop reading command
+    if (rde_n && (rxe_debug == 0)) begin
+      if (state == RX_WRITING) begin
+        $display("Putting the state machine into a safe state");
+        state =  RX_ENABLE_OUTPUT;
       end
-      FTDI_RX_ENABLE_OUTPUT: begin
-        //$display ("tb: total number of bytes to send: %d", ftdi_write_size);
-        //$display ("tb: waiting for rd_n to go low");
-        //enable is high, now wait for the read to go low
-        if (~rd_n) begin
-          //$display("tb: rd_n LOW, start writing data to the core");
-          ftdi_state  <= FTDI_RX_WRITING;         
-  //        //$display ("tb: sending %h", syc_command[31:24]);
-          //ftdi_in_data      <= syc_command[31:24];
-          ftdi_in_data    <= 8'hCD;
-          //syc_command   <= {syc_command[24:0], 8'h0};
-          if (write_count < ftdi_write_size) begin
-            write_count <= write_count;
+    end
+    else begin
+      case (state)
+        IDLE: begin
+          //no command from the test bench
+////I should allow the write count not to reset when the user isn't finished reading and prematurely quits a read sequence
+          ftdi_write_size   <= 0;
+          ftdi_read_count   <= 0;
+ 
+          //check ifthe 'initial' wants to receive
+  ///       rde_n <= ~ftdi_ready_to_read;
+ 
+          //read always gets priority
+          if (~rde_n & ~oe_n) begin
+            //$display("tb: rde_n and oe_n LOW, wait for rd_n to go LOW");
+            state  <=  RX_ENABLE_OUTPUT;
+            //count is given in 32 bits, so need to multiply it by 4 to send all bytes
+            //add eight for the address and control data
+            ftdi_write_size <= (data_count  * 4) + 8;
+            count_data  = 1;
+            write_count   <= 0;
+            ftdi_in_data    <= 8'hCD;
           end
+ 
         end
-      end
-      FTDI_RX_WRITING: begin
-      if (write_count < ftdi_write_size) begin
-        if (!rd_n) begin
-          //hacky way of sending all the data down
-          if (write_count >= 0 && write_count <= 3) begin
-            //already sent the first byte of the command
-    //          //$display ("tb: sending %h", syc_command[31:24]);
-            ftdi_in_data  <= syc_command[31:24];
-            syc_command <= {syc_command[23:0], 8'h0};
-          end
-          else if (write_count > 3 && write_count <= 7) begin 
-    //            //$display ("tb: sending %h", syc_address[31:24]);
-            ftdi_in_data <= syc_address[31:24];
-            syc_address <= {syc_address[23:0], 8'h0};
-          end
-          else if (write_count > 7 && write_count < 4'hC) begin
-            //larger than 7
-            
-            //else if (write_count > 7) begin
-      //could possible read data from a file if we need to send multiple 32 bits
-      //            //$display ("tb: sending %h", syc_data[31:24]);
-            ftdi_in_data <= syc_data[31:24];
-            syc_data <= {syc_data[23:0], 8'h0};
-            if (write_count == 4'hB && data_count > 1 && cmd[31:24] == 1) begin
-              $display ("tb: BURST WRITING!");
-              read_count = $fscanf (fd_in, "%h\n", dat);
-              $display ("tb: burst write =  %h, write_count = %h", dat, write_count); 
-              syc_data  <=  dat;
+        RX_ENABLE_OUTPUT: begin
+          //$display ("tb: total number of bytes to send: %d", ftdi_write_size);
+          //$display ("tb: waiting for rd_n to go low");
+          //enable is high, now wait for the read to go low
+          if (~rd_n) begin
+            //$display("tb: rd_n LOW, start writing data to the core");
+            state  <= RX_WRITING;         
+    //        //$display ("tb: sending %h", syc_command[31:24]);
+            //ftdi_in_data      <= syc_command[31:24];
+            //ftdi_in_data    <= 8'hCD;
+            //syc_command   <= {syc_command[24:0], 8'h0};
+            if (write_count < ftdi_write_size) begin
+              write_count <= write_count;
             end
           end
+        end
+        RX_WRITING: begin
+        if (write_count < ftdi_write_size) begin
+          if (!rd_n) begin
+            //hacky way of sending all the data down
+            if (write_count >= 0 && write_count <= 3) begin
+              //already sent the first byte of the command
+      //          //$display ("tb: sending %h", syc_command[31:24]);
+              ftdi_in_data  <= syc_command[31:24];
+              syc_command <= {syc_command[23:0], 8'h0};
+            end
+            else if (write_count > 3 && write_count <= 7) begin 
+      //            //$display ("tb: sending %h", syc_address[31:24]);
+              ftdi_in_data <= syc_address[31:24];
+              syc_address <= {syc_address[23:0], 8'h0};
+            end
+            else if (write_count > 7 && write_count < 4'hC) begin
+              //larger than 7
+              
+              //else if (write_count > 7) begin
+        //could possible read data from a file if we need to send multiple 32 bits
+        //            //$display ("tb: sending %h", syc_data[31:24]);
+              ftdi_in_data <= syc_data[31:24];
+              syc_data <= {syc_data[23:0], 8'h0};
+              if (write_count == 4'hB && data_count > 1 && cmd[31:24] == 1) begin
+                count_data  = count_data + 1;
+                $display ("tb: BURST WRITING!");
+                read_count = $fscanf (fd_in, "%h\n", dat);
+                $display ("tb: burst write =  %h, write_count = %d", dat, write_count); 
+                syc_data  <=  dat;
+              end
+            end
+            else begin
+              ftdi_in_data <= syc_data[31:24];
+              syc_data <= {syc_data[23:0], 8'h0};
+              temp_count  =  write_count % 4;
+              if (cmd[31:24] == 1 && write_count >= 4'hC && (count_data < data_count)) begin
+                //$display ("\t\tcount_data < data_count: %d < %d", count_data, data_count);
+                //$display ("\t\tWrite Count: %d", write_count);
+                //$display ("\t\tWrite Count: %d\n", temp_count);
+                if (temp_count == 4'h3) begin
+                  read_count = $fscanf (fd_in, "%h\n", dat);
+                  $display ("tb: burst write =  %h, write_count = %d", dat, write_count); 
+                  syc_data  <=  dat;
+                  count_data  = count_data + 1;
+                end
+              end 
+            end
+              write_count <= write_count + 1;
+            end
+          end
+          else if (oe_n) begin
+            state <=  RX_ENABLE_OUTPUT;
+          end
+          //can't wait an entire clock cycle to see if we have reached the max count
           else begin
-            ftdi_in_data <= syc_data[31:24];
-            syc_data <= {syc_data[23:0], 8'h0};
-            temp_count  <=  write_count % 4'h4;
-          end
-            write_count <= write_count + 1;
+            //$display("Sent last byte, telling the core that I've sent all my data");
+            state  <= RX_STOP;
+            rde_n   <= 1;
           end
         end
-        else if (oe_n) begin
-          ftdi_state <=  FTDI_RX_ENABLE_OUTPUT;
+        RX_STOP: begin
+          //$display ("Wating for core to acknowledge my stop");
+          //the core signaled that it is finished transmitting
+          if (oe_n & rd_n & ~ftdi_ready_to_read) begin
+            //$display ("Core acknowledged my empty, going to IDLE");
+            state  <= IDLE;
+          end
         end
-        //can't wait an entire clock cycle to see if we have reached the max count
-        else begin
-          //$display("Sent last byte, telling the core that I've sent all my data");
-          ftdi_state  <= FTDI_RX_STOP;
-          rde_n   <= 1;
+        default:          begin
+          state  <= IDLE;
         end
-      end
-      FTDI_RX_STOP: begin
-        //$display ("Wating for core to acknowledge my stop");
-        //the core signaled that it is finished transmitting
-        if (oe_n & rd_n & ~ftdi_ready_to_read) begin
-          //$display ("Core acknowledged my empty, going to IDLE");
-          ftdi_state  <= FTDI_IDLE;
-        end
-      end
-      default:          begin
-        ftdi_state  <= FTDI_IDLE;
-      end
-    endcase
+      endcase
+    end
   end
 end
 

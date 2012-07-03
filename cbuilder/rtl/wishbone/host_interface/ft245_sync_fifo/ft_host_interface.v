@@ -200,16 +200,19 @@ always @ (posedge clk) begin
           else begin
             working_dw        <= {working_dw[23:0], in_fifo_data};
             byte_count        <=  byte_count + 1;
+            if (in_fifo_empty) begin
+                astate  <=  IDLE;
+                //this is a work around for the FIFOs
+                //a strange state happens if the fifo is empty on the last byte
+                empty_flag    <=  1;
+                //in_fifo_rd    <=  1;
+            end
+
             if (byte_count == 2'h3) begin
               read_dw         <=  {working_dw[23:0], in_fifo_data};
               dw_ready        <=  1;
               working_dw      <=  32'h0000;
               astate          <=  ACK_WAIT;
-              if (in_fifo_empty) begin
-                //this is a work around for the FIFOs
-                //a strange state happens if the fifo is empty on the last byte
-                empty_flag    <=  1;
-              end
             end
             else begin
               if (!in_fifo_empty) begin
@@ -230,6 +233,7 @@ always @ (posedge clk) begin
           if (read_ack) begin
             dw_ready          <=  0;
             astate            <=  IDLE;
+            byte_count        <=  0;
           end
         end
         default: begin
@@ -276,10 +280,11 @@ always @ (posedge clk) begin
     //read_ready      <=  0;
     read_ack        <=  0;
 
+    debug[1]        <=  (rstate != IDLE);
+    //debug[1]        <=  (rstate == READ_COMMAND);
     case (rstate)
       IDLE: begin
         //if there is new data within the incomming FIFO
-        //read_ready          <=  1;
         reset_assembler     <=  1;
         if (sof) begin
           if (in_fifo_data == 8'hCD) begin
@@ -289,16 +294,14 @@ always @ (posedge clk) begin
             rstate          <=  READ_COMMAND;
           end
           else begin
-            debug[1]        <=  ~debug[1];
+            //debug[1]        <=  ~debug[1];
             $display ("FT_READ: Detected bad ID!");
           end
         end
       end
       READ_COMMAND: begin
-        //read_ready          <=  1;
         //detected a good ID
         if (dw_ready) begin
-          //read_ready        <=  0;
           read_ack          <=  1;
           rstate            <=  PROCESS_COMMAND;
           in_command        <=  {12'h000, read_dw[31:28], 12'h000 ,read_dw[27:24]};
@@ -354,9 +357,8 @@ always @ (posedge clk) begin
       end
       READ_DATA: begin
         //read data from the host
-        //read_ready            <=  1;
+        debug[2]                <=  1;
         if (dw_ready) begin
-          //read_ready          <=  0;
           read_ack          <=  1;
 //XXX: this is a possible point of error because I could wait here for ever!
 //XXX: How can I tell that things are hung? What about a timeout from the master
@@ -378,6 +380,7 @@ always @ (posedge clk) begin
             //read_ready      <=  1;
           end
           else begin
+            debug[2]        <=  0;
             rstate          <=  IDLE;
           end
         end

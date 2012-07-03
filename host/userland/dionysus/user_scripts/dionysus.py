@@ -436,15 +436,30 @@ class Dionysus (object):
   def pretty_print_drt(self):
     num_of_devices = int(self.drt_lines[1], 16)
     #the first line is the version of the DRT and the ID
-    print "%s: Version: %s ID Word: %s" % (self.drt_lines[0], self.drt_lines[0][0:4], self.drt_lines[0][4:8])
-    print "%s: Number of Devices: %d" % (self.drt_lines[1], int(self.drt_lines[1], 16))
-    print "%s: String Table Offset (0x0000 == No Table)" % (self.drt_lines[2])
-    print "%s: Reserverd for future use" % (self.drt_lines[3])
-    print "%s: Reserverd for future use" % (self.drt_lines[4])
-    print "%s: Reserverd for future use" % (self.drt_lines[5])
-    print "%s: Reserverd for future use" % (self.drt_lines[6])
-    print "%s: Reserverd for future use" % (self.drt_lines[7])
+    white = '\033[0m'
+    gray = '\033[90m'
+    red   = '\033[91m'
+    green = '\033[92m'
+    yellow = '\033[93m'
+    blue = '\033[94m'
+    purple = '\033[95m'
+    cyan = '\033[96m'
 
+    test = '\033[97m'
+
+    print red,
+    print "DRT:"
+    print ""
+    print "%s%s:%sVersion: %s ID Word: %s" % (blue, self.drt_lines[0], green, self.drt_lines[0][0:4], self.drt_lines[0][4:8])
+    print "%s%s:%sNumber of Devices: %d" % (blue, self.drt_lines[1], green, int(self.drt_lines[1], 16))
+    print "%s%s:%sString Table Offset (0x0000 == No Table)" % (blue, self.drt_lines[2], green)
+    print "%s%s:%sReserverd for future use" % (blue, self.drt_lines[3], green)
+    print "%s%s:%sReserverd for future use" % (blue, self.drt_lines[4], green)
+    print "%s%s:%sReserverd for future use" % (blue, self.drt_lines[5], green)
+    print "%s%s:%sReserverd for future use" % (blue, self.drt_lines[6], green)
+    print "%s%s:%sReserverd for future use" % (blue, self.drt_lines[7], green)
+
+    print red,
     print "Devices:"
     for i in range (0, num_of_devices):
       memory_device = False 
@@ -452,26 +467,30 @@ class Dionysus (object):
       if ((f & 0x00010000) > 0):
         memory_device = True
       print ""
+      print red,
       print "Device %d" % i
-      print "%s: Device Type: %s" % (self.drt_lines[(i + 1) * 8], self.get_device_type(i)) 
-      print "%s: Device Flags:" % (self.drt_lines[((i + 1) * 8) + 1])
+      print "%s%s:%sDevice Type: %s" % (blue, self.drt_lines[(i + 1) * 8], green, self.get_device_type(i)) 
+      print "%s%s:%sDevice Flags:" % (blue, self.drt_lines[((i + 1) * 8) + 1], green)
       flags = self.get_device_flags(i)
       for j in flags:
-        print "\t%s" % j
+        print "\t%s%s" % (purple, j)
 
       if memory_device:
-        print "%s: Offset of Memory Device:      0x%08X" % (self.drt_lines[((i + 1) * 8) + 2], int(self.drt_lines[((i + 1) * 8) + 2], 16))
-        print "%s: Size of Memory device:        0x%08X" % (self.drt_lines[((i + 1) * 8) + 3], int (self.drt_lines[((i + 1) * 8) + 3], 16))
+        print "%s%s:%sOffset of Memory Device:      0x%08X" % (blue, self.drt_lines[((i + 1) * 8) + 2], green, int(self.drt_lines[((i + 1) * 8) + 2], 16))
+        print "%s%s:%sSize of Memory device:        0x%08X" % (blue, self.drt_lines[((i + 1) * 8) + 3], green, int (self.drt_lines[((i + 1) * 8) + 3], 16))
 
 
       else:
-        print "%s: Offset of Peripheral Device:  0x%08X" % (self.drt_lines[((i + 1) * 8) + 2], int(self.drt_lines[((i + 1) * 8) + 2], 16))
-        print "%s: Number of Registers :         0x%08X" % (self.drt_lines[((i + 1) * 8) + 3], int(self.drt_lines[((i + 1) * 8) + 3], 16))
+        print "%s%s:%sOffset of Peripheral Device:  0x%08X" % (blue, self.drt_lines[((i + 1) * 8) + 2], green, int(self.drt_lines[((i + 1) * 8) + 2], 16))
+        print "%s%s:%sNumber of Registers :         0x%08X" % (blue, self.drt_lines[((i + 1) * 8) + 3], green, int(self.drt_lines[((i + 1) * 8) + 3], 16))
 
-      print "%s: Reserved for future use" % (self.drt_lines[((i + 1) * 8) + 4])
-      print "%s: Reserved for future use" % (self.drt_lines[((i + 1) * 8) + 5])
-      print "%s: Reserved for future use" % (self.drt_lines[((i + 1) * 8) + 6])
-      print "%s: Reserved for future use" % (self.drt_lines[((i + 1) * 8) + 7])
+      print "%s%s:%sReserved for future use" % (blue, self.drt_lines[((i + 1) * 8) + 4], green)
+      print "%s%s:%sReserved for future use" % (blue, self.drt_lines[((i + 1) * 8) + 5], green)
+      print "%s%s:%sReserved for future use" % (blue, self.drt_lines[((i + 1) * 8) + 6], green)
+      print "%s%s:%sReserved for future use" % (blue, self.drt_lines[((i + 1) * 8) + 7], green)
+
+
+    print white,
 
       
   def get_device_type(self, index):
@@ -841,13 +860,14 @@ if __name__ == '__main__':
     #syc.reset()
 
     if test:
-      print "Performing Ping Test:"
+      print "Performing Test:"
+      print "Ping"
       syc.ping()
+      print "Read DRT"
       syc.read_drt()
-      print ""
-      print "Printing DRT:"
-      syc.pretty_print_drt()
-      print "Writing a long packet to memory"
+      #print ""
+      #print "Printing DRT:"
+      #syc.pretty_print_drt()
       sys.exit()
 
     else:
