@@ -194,7 +194,8 @@ class UTest(unittest.TestCase):
     self.sgm.graph.remove_edge.assert_called_once_with('n1', 'n2')
 
   def test_disconnect_nodes_dne_raises_NodeError(self):
-    self.sgm.graph.remove_edge = mock.Mock(side_effect=NetworkXError('blargh'))
+    self.sgm.graph.remove_edge = mock.Mock(
+        side_effect=NetworkXError('Should convert me!'))
     self.assertRaises(NodeError, self.sgm.disconnect_nodes, 'n1', 'n2')
     self.sgm.graph.remove_edge.assert_called_once_with('n1', 'n2')
 
@@ -309,15 +310,83 @@ class UTest(unittest.TestCase):
 
   def test_get_connected_slaves_dne_raises_NodeError(self):
     self.sgm.graph.neighbors = mock.Mock(
-        side_effect=NetworkXError('foo'))
+        side_effect=NetworkXError('Should convert me!'))
     self.assertRaises(NodeError, self.sgm.get_connected_slaves, 'name')
     self.sgm.graph.neighbors.assert_called_once_with('name')
 
   def test_get_edge_name(self):
-    pass
+    self.sgm.graph = { 'n1' : { 'n2' : { 'name' : 'edge_name' } } }
+    self.assertEqual('edge_name', self.sgm.get_edge_name('n1', 'n2'))
+
+  def test_get_edge_name_malformat_raises_Exception(self):
+    self.sgm.graph = { 'n1' : { 'n2' : {} } }
+    self.assertRaises(Exception, self.sgm.get_edge_name, 'n1', 'n2')
+
+  def test_get_edge_name_edge_dne_raises_NodeError(self):
+    self.sgm.graph = { 'n1' : {} }
+    self.assertRaises(NodeError, self.sgm.get_edge_name, 'n1', 'n2')
+
+  def test_get_edge_name_node_dne_raises_NodeError(self):
+    self.sgm.graph = {}
+    self.assertRaises(NodeError, self.sgm.get_edge_name, 'n1', 'n2')
 
   def test_get_host_interface_node(self):
-    pass
+    mock_nodes = []
+    def make_mock(nt):
+      mock_nodes.append(mock.Mock())
+      mock_nodes[-1].node_type = nt
+    make_mock(NodeType.HOST_INTERFACE)
+
+    self.sgm.graph = mock_nodes
+    self.assertEqual(mock_nodes[0], self.sgm.get_host_interface_node())
+
+  def test_get_host_interface_node_populous(self):
+    mock_nodes = []
+    def make_mock(nt):
+      mock_nodes.append(mock.Mock())
+      mock_nodes[-1].node_type = nt
+    make_mock(NodeType.SLAVE)
+    make_mock(NodeType.SLAVE)
+    make_mock(NodeType.SLAVE)
+    make_mock(NodeType.MASTER)
+    make_mock(NodeType.HOST_INTERFACE)
+    make_mock(NodeType.PERIPHERAL_INTERCONNECT)
+    make_mock(NodeType.PERIPHERAL_INTERCONNECT)
+
+    self.sgm.graph = mock_nodes
+    self.assertEqual(mock_nodes[4], self.sgm.get_host_interface_node())
+
+  def test_get_host_interface_node_populous_dne_raises_Exception(self):
+    mock_nodes = []
+    def make_mock(nt):
+      mock_nodes.append(mock.Mock())
+      mock_nodes[-1].node_type = nt
+    make_mock(NodeType.SLAVE)
+    make_mock(NodeType.SLAVE)
+    make_mock(NodeType.SLAVE)
+    make_mock(NodeType.MASTER)
+    make_mock(NodeType.PERIPHERAL_INTERCONNECT)
+    make_mock(NodeType.PERIPHERAL_INTERCONNECT)
+
+    self.sgm.graph = mock_nodes
+    self.assertRaises(Exception, self.sgm.get_host_interface_node)
+
+  def test_get_host_interface_node_dne_raises_Exception(self):
+    mock_nodes = []
+    def make_mock(nt):
+      mock_nodes.append(mock.Mock())
+      mock_nodes[-1].node_type = nt
+    make_mock(NodeType.SLAVE)
+    make_mock(NodeType.MASTER)
+
+    self.sgm.graph = mock_nodes
+    self.assertRaises(Exception, self.sgm.get_host_interface_node)
+
+  def test_get_host_interface_node_empty_raises_Exception(self):
+    mock_iter = mock.Mock()
+    mock_iter.next = mock.Mock(side_effect=StopIteration("empty!"))
+    self.sgm.graph.__iter__ = mock.Mock(return_value=mock_iter)
+    self.assertRaises(Exception, self.sgm.get_host_interface_node)
 
   def test_get_node(self):
     mock_node = mock.Mock()
@@ -379,10 +448,38 @@ class UTest(unittest.TestCase):
     self.assertEquals(6, self.sgm.get_number_of_connections())
 
   def test_get_number_of_memory_slaves(self):
-    pass
+    self.sgm.graph = []
+    def add(nt,st):
+      self.sgm.graph.append(mock.Mock())
+      self.sgm.graph[-1].node_type = nt
+      self.sgm.graph[-1].slave_type = st
+    add(NodeType.SLAVE, SlaveType.MEMORY)
+    add(NodeType.SLAVE, SlaveType.MEMORY)
+    add(NodeType.SLAVE, SlaveType.PERIPHERAL)
+    add(NodeType.SLAVE, SlaveType.MEMORY)
+    add(NodeType.SLAVE, SlaveType.PERIPHERAL)
+    add(NodeType.MEMORY_INTERCONNECT, None)
+    add(NodeType.HOST_INTERFACE, None)
+    add(NodeType.PERIPHERAL_INTERCONNECT, None)
+    add(NodeType.MEMORY_INTERCONNECT, None)
+    self.assertEquals(3, self.sgm.get_number_of_memory_slaves())
 
   def test_get_number_of_peripheral_slaves(self):
-    pass
+    self.sgm.graph = []
+    def add(nt,st):
+      self.sgm.graph.append(mock.Mock())
+      self.sgm.graph[-1].node_type = nt
+      self.sgm.graph[-1].slave_type = st
+    add(NodeType.SLAVE, SlaveType.MEMORY)
+    add(NodeType.SLAVE, SlaveType.MEMORY)
+    add(NodeType.SLAVE, SlaveType.PERIPHERAL)
+    add(NodeType.SLAVE, SlaveType.MEMORY)
+    add(NodeType.SLAVE, SlaveType.PERIPHERAL)
+    add(NodeType.MEMORY_INTERCONNECT, None)
+    add(NodeType.HOST_INTERFACE, None)
+    add(NodeType.PERIPHERAL_INTERCONNECT, None)
+    add(NodeType.MEMORY_INTERCONNECT, None)
+    self.assertEquals(2, self.sgm.get_number_of_peripheral_slaves())
 
   def test_get_number_of_slaves(self):
     pass

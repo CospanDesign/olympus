@@ -153,16 +153,17 @@ class SapGraphManager:
     self.graph = nx.relabel_nodes(self.graph, {current_name : unique_name})
 
   def get_host_interface_node(self):
-    graph_dict = self.get_nodes_dict()
-    for name in graph_dict.keys():
-      node = self.get_node(name)
+    '''Gets the unique host interface.  Raises severe Exception if none is in
+    the underlying graph.'''
+    for node in self.graph:
       if node.node_type == NodeType.HOST_INTERFACE:
         return node
+    raise Exception("SEVERE: No host interface defined!")
 
   def fix_slave_indexes(self):
     '''Loops through all the slaves (peripheral and memory) and assigns
     their index ... to ... their index?  This function may need to be
-    deprecated.'''
+    deprecated as I (jam) don't think it does anything.'''
     pcount = self.get_number_of_slaves(SlaveType.PERIPHERAL)
     mcount = self.get_number_of_slaves(SlaveType.MEMORY)
 
@@ -454,7 +455,15 @@ class SapGraphManager:
     self.graph[node1_name][node2_name]["name"]=edge_name
 
   def get_edge_name(self, node1_name, node2_name):
-    return self.graph[node1_name][node2_name]["name"]
+    try:
+      return self.graph[node1_name][node2_name]["name"]
+    except KeyError as ke:
+      if node1_name not in self.graph:
+        raise NodeError('No such node: %s' % node1_name)
+      elif node2_name not in self.graph[node1_name]:
+        raise NodeError('No edge between %s and %s' % (node1_name, node2_name))
+      else:
+        raise Exception('SEVERE: edge has no "name" attribute.')
 
   def is_slave_connected_to_slave(self, slave):
     for nb_name in self.graph.neighbors(slave):
@@ -498,23 +507,13 @@ class SapGraphManager:
 
   def get_number_of_peripheral_slaves(self):
     '''Counts and returns the number of peripheral slaves.'''
-    count = 0
-    gd = self.get_nodes_dict()
-    for name in gd.keys():
-      if   gd[name].node_type == NodeType.SLAVE and \
-        gd[name].slave_type == SlaveType.PERIPHERAL:
-        count += 1
-    return count
+    return sum([1 for node in self.graph if node.node_type == NodeType.SLAVE and
+        node.slave_type == SlaveType.PERIPHERAL])
 
   def get_number_of_memory_slaves(self):
     '''Counts and returns the number of memory slaves.'''
-    count = 0
-    gd = self.get_nodes_dict()
-    for name in gd.keys():
-      if   gd[name].node_type == NodeType.SLAVE and \
-        gd[name].slave_type == SlaveType.MEMORY:
-        count += 1
-    return count
+    return sum([1 for node in self.graph if node.node_type == NodeType.SLAVE and
+        node.slave_type == SlaveType.MEMORY])
 
 
 
