@@ -481,8 +481,22 @@ class UTest(unittest.TestCase):
     add(NodeType.MEMORY_INTERCONNECT, None)
     self.assertEquals(2, self.sgm.get_number_of_peripheral_slaves())
 
-  def test_get_number_of_slaves(self):
-    pass
+  def test_get_number_of_slaves_peripheral(self):
+    self.sgm.get_number_of_peripheral_slaves = mock.Mock(return_value=3)
+    self.sgm.get_number_of_memory_slaves = mock.Mock(
+        side_effect=AssertionError('get_number_of_memory_slaves called'))
+    self.assertEqual(3, self.sgm.get_number_of_slaves(SlaveType.PERIPHERAL))
+    self.sgm.get_number_of_peripheral_slaves.assert_called_once_with()
+
+  def test_get_number_of_slaves_memory(self):
+    self.sgm.get_number_of_memory_slaves = mock.Mock(return_value=4)
+    self.sgm.get_number_of_peripheral_slaves = mock.Mock(
+        side_effect=AssertionError('get_number_of_memory_slaves called'))
+    self.assertEqual(4, self.sgm.get_number_of_slaves(SlaveType.MEMORY))
+    self.sgm.get_number_of_memory_slaves.assert_called_once_with()
+
+  def test_get_number_of_slaves_None_raises_TypeErro(self):
+    self.assertRaises(TypeError, self.sgm.get_number_of_slaves, None)
 
   def test_get_parameters(self):
     pass

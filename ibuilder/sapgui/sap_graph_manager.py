@@ -492,13 +492,14 @@ class SapGraphManager:
       raise NodeError('''"%s" and "%s" aren't connected''' % (n1, n2))
 
   def get_number_of_connections(self):
+    '''Gets the number of connections between nodes.'''
     return self.graph.number_of_edges()
 
   def get_number_of_slaves(self, slave_type):
     '''Gets the number of slaves.  Raises a SaveError if there is no slave type
     or the slave type is SlaveType.PERIPHERAl.'''
     if slave_type is None:
-      raise SaveError("Slave type must be specified")
+      raise TypeError("Slave type must be specified")
 
     if slave_type == SlaveType.PERIPHERAL:
       return self.get_number_of_peripheral_slaves()
