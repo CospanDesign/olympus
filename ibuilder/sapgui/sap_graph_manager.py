@@ -465,11 +465,14 @@ class SapGraphManager:
 
   def get_connected_slaves(self, slave_master_name):
     slaves = {}
-    for nb_name in self.graph.neighbors(slave_master_name):
-      nb = self.get_node(nb_name)
-      if nb.node_type == NodeType.SLAVE:
-        edge_name = self.get_edge_name(slave_master_name, nb_name)
-        slaves[edge_name] = nb.unique_name
+    try:
+      for nb_name in self.graph.neighbors(slave_master_name):
+        nb = self.get_node(nb_name)
+        if nb.node_type == NodeType.SLAVE:
+          edge_name = self.get_edge_name(slave_master_name, nb_name)
+          slaves[edge_name] = nb.unique_name
+    except nx.exception.NetworkXError:
+      raise NodeError("No such node: %s" % slave_master_name)
     return slaves
 
   def disconnect_nodes(self, n1, n2):

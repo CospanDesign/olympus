@@ -271,7 +271,47 @@ class UTest(unittest.TestCase):
       self.assertEqual(mock_mslaves[i].slave_index, i)
 
   def test_get_connected_slaves(self):
-    pass
+    # Make mock data.
+    mock_node_names = []
+    mock_nodes = {}
+    mock_slaves = {}
+    mock_edge_names = {}
+
+    def add_node(name, nt):
+      mock_node_names.append(name)
+      mock_nodes[name] = mock.Mock()
+      mock_nodes[name].unique_name = name
+      mock_nodes[name].node_type = nt
+      if nt == NodeType.SLAVE:
+        edge_name = 'edge-%s' % name
+        mock_edge_names[name] = edge_name
+        mock_slaves[edge_name] = mock_nodes[name].unique_name
+    add_node('n1', NodeType.SLAVE)
+    add_node('n2', NodeType.HOST_INTERFACE)
+    add_node('n3', NodeType.SLAVE)
+    add_node('n4', NodeType.MEMORY_INTERCONNECT)
+    add_node('n5', NodeType.SLAVE)
+    add_node('n6', NodeType.PERIPHERAL_INTERCONNECT)
+    add_node('n7', NodeType.SLAVE)
+
+    # Set up functions.
+    self.sgm.graph.neighbors = mock.Mock(return_value=mock_node_names)
+    self.sgm.get_node = (lambda x:
+        (x in mock_nodes and mock_nodes[x]) or
+        self.fail('Unexpected param: %s' % x))
+    self.sgm.get_edge_name = (lambda x,y:
+      (x == 'mname' and mock_edge_names[y]) or
+      self.fail("Unexpected params: %s,%s" % (x,y)))
+
+    # Test
+    self.assertEqual(mock_slaves, self.sgm.get_connected_slaves('mname'))
+    self.sgm.graph.neighbors.assert_called_once_with('mname')
+
+  def test_get_connected_slaves_dne_raises_NodeError(self):
+    self.sgm.graph.neighbors = mock.Mock(
+        side_effect=NetworkXError('foo'))
+    self.assertRaises(NodeError, self.sgm.get_connected_slaves, 'name')
+    self.sgm.graph.neighbors.assert_called_once_with('name')
 
   def test_get_edge_name(self):
     pass
@@ -303,7 +343,14 @@ class UTest(unittest.TestCase):
     self.assertRaises(NodeError, self.sgm.get_node_bindings, 'name')
 
   def test_get_node_names(self):
-    pass
+    self.sgm.graph.nodes = mock.Mock(return_value=['foo', 'bar', 'baz'])
+    self.assertEqual(['foo', 'bar', 'baz'], self.sgm.get_node_names())
+    self.sgm.graph.nodes.assert_called_once_with(False)
+
+  def test_get_node_names_0(self):
+    self.sgm.graph.nodes = mock.Mock(return_value=[])
+    self.assertEqual([], self.sgm.get_node_names())
+    self.sgm.graph.nodes.assert_called_once_with(False)
 
   def test_get_nodes_dict(self):
     mock_nodes = []
@@ -323,8 +370,13 @@ class UTest(unittest.TestCase):
     self.sgm.graph.nodes = mock.Mock(return_value=[])
     self.assertEqual({}, self.sgm.get_nodes_dict())
 
-  def test_get_number_of_connections(self):
-    pass
+  def test_get_number_of_connections_0(self):
+    self.sgm.graph.number_of_edges = mock.Mock(return_value=0)
+    self.assertEquals(0, self.sgm.get_number_of_connections())
+
+  def test_get_number_of_connections_6(self):
+    self.sgm.graph.number_of_edges = mock.Mock(return_value=6)
+    self.assertEquals(6, self.sgm.get_number_of_connections())
 
   def test_get_number_of_memory_slaves(self):
     pass
