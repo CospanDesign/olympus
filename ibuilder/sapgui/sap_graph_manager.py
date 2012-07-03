@@ -160,6 +160,9 @@ class SapGraphManager:
         return node
 
   def fix_slave_indexes(self):
+    '''Loops through all the slaves (peripheral and memory) and assigns
+    their index ... to ... their index?  This function may need to be
+    deprecated.'''
     pcount = self.get_number_of_slaves(SlaveType.PERIPHERAL)
     mcount = self.get_number_of_slaves(SlaveType.MEMORY)
 
@@ -177,7 +180,7 @@ class SapGraphManager:
     name = self.get_slave_name_at(index, slave_type, debug)
     return self.get_node(name)
 
-  def get_slave_name_at(self, index, slave_type, debug = False):
+  def get_slave_name_at(self, index, slave_type, debug=False):
     if slave_type is None:
       raise SlaveError("Peripheral or Memory must be specified")
 
@@ -185,10 +188,7 @@ class SapGraphManager:
 
     for key in graph_dict.keys():
       node = graph_dict[key]
-      if node.node_type != NodeType.SLAVE:
-        continue
-
-      if node.slave_type != slave_type:
+      if node.node_type != NodeType.SLAVE or node.slave_type != slave_type:
         continue
 
       if debug:
@@ -201,12 +201,10 @@ class SapGraphManager:
           print "success"
         return key
 
-    if slave_type == SlaveType.PERIPHERAL:
-      raise SlaveError("Unable to locate slave %d on peripheral bus" % (index))
-    else:
-      raise SlaveError("Unable to locate slave %d on memory bus" % (index))
+    raise SlaveError("Unable to locate slave %d on %s bus" %
+        (index, slave_type == SlaveType.PERIPHERAL and 'peripheral' or 'memory'))
 
-  def move_slave(self, from_index, to_index, slave_type, debug = False):
+  def move_slave(self, from_index, to_index, slave_type, debug=False):
     if from_index == to_index:
       return
 
@@ -427,6 +425,7 @@ class SapGraphManager:
     self.graph.remove_node(name)
 
   def get_size(self):
+    '''Returns the number of nodes in the graph.'''
     return len(self.graph)
 
   def get_node_names(self):
@@ -435,11 +434,9 @@ class SapGraphManager:
     return self.graph.nodes(False)
 
   def get_nodes_dict(self):
-    graph_dict = {}
-    graph_list = self.graph.nodes(True)
-    for name, item in graph_list:
-      graph_dict[name] = item
-    return graph_dict
+    '''Builds a dictionary from the nodes in the graph, where the key is the
+    name of the node, and the value is the node itself.'''
+    return dict(self.graph.nodes(True))
 
   def get_node(self, name):
     """Gets a node by the unique name."""
@@ -449,7 +446,7 @@ class SapGraphManager:
     return g[name]
 
   def connect_nodes(self, node1, node2):
-    """Connects two nodes together."""
+    """Connects two nodes together.  Creates them if they don't exist."""
     self.graph.add_edge(node1, node2, name='')
 
   def set_edge_name(self, node1_name, node2_name, edge_name):
@@ -475,9 +472,12 @@ class SapGraphManager:
         slaves[edge_name] = nb.unique_name
     return slaves
 
-  def disconnect_nodes(self, node1_name, node2_name):
+  def disconnect_nodes(self, n1, n2):
     """If the two nodes are connected disconnect them."""
-    self.graph.remove_edge(node1_name, node2_name)
+    try:
+      self.graph.remove_edge(n1, n2)
+    except nx.exception.NetworkXError:
+      raise NodeError('''"%s" and "%s" aren't connected''' % (n1, n2))
 
   def get_number_of_connections(self):
     return self.graph.number_of_edges()
@@ -576,6 +576,8 @@ class SapGraphManager:
     del(node.bindings[port])
 
   def get_node_bindings(self, name):
+    '''Gets the bindings of the node with the given name.  Raises NodeError
+    if there is no node with that name.'''
     return self.get_node(name).bindings
 
 #  def bind_pin_to_port(self, name, port, pin, debug = False):

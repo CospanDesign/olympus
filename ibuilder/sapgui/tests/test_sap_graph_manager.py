@@ -3,6 +3,7 @@ import os
 import sys
 import json
 import mock
+from networkx.exception import NetworkXError
 
 sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir))
 sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
@@ -188,10 +189,86 @@ class UTest(unittest.TestCase):
     self.sgm.graph.add_edge.assert_called_once_with(arg1, arg2, name='')
 
   def test_disconnect_nodes(self):
-    pass
+    self.sgm.graph.remove_edge = mock.Mock()
+    self.sgm.disconnect_nodes('n1', 'n2')
+    self.sgm.graph.remove_edge.assert_called_once_with('n1', 'n2')
 
-  def test_fix_slave_indexes(self):
-    pass
+  def test_disconnect_nodes_dne_raises_NodeError(self):
+    self.sgm.graph.remove_edge = mock.Mock(side_effect=NetworkXError('blargh'))
+    self.assertRaises(NodeError, self.sgm.disconnect_nodes, 'n1', 'n2')
+    self.sgm.graph.remove_edge.assert_called_once_with('n1', 'n2')
+
+  def test_fix_slave_indexes_leaves_well_enough_alone(self):
+    pcount, mcount = 6, 3
+
+    # Make fake slaves to re-order.
+    mock_slaves = {}
+    mock_pslaves = []
+    mock_mslaves = []
+    for i in xrange(pcount):
+      mock_pslaves.append(mock.Mock())
+      mock_pslaves[-1].name = 'p%d' % i
+      mock_pslaves[-1].slave_index = i
+      mock_slaves[mock_pslaves[-1].name] = mock_pslaves[-1]
+    for i in xrange(mcount):
+      mock_mslaves.append(mock.Mock())
+      mock_mslaves[-1].name = 'm%d' % i
+      mock_mslaves[-1].slave_index = i
+      mock_slaves[mock_mslaves[-1].name] = mock_mslaves[-1]
+
+    # Overwrite functions.
+    self.sgm.get_number_of_slaves = (lambda x:
+        (x == SlaveType.PERIPHERAL and pcount) or
+        (x == SlaveType.MEMORY and mcount) or
+        self.fail('Unexpected arg: %s' % str(x)))
+    self.sgm.get_slave_name_at = (lambda i,x:
+        (x == SlaveType.PERIPHERAL and mock_pslaves[i].name) or
+        (x == SlaveType.MEMORY and mock_mslaves[i].name) or
+        self.fail("Unexpected args: %d,%s" % (i,x)))
+    self.sgm.get_node = lambda n: mock_slaves[n]
+
+    # Test
+    self.sgm.fix_slave_indexes()
+    for i in xrange(pcount):
+      self.assertEqual(mock_pslaves[i].slave_index, i)
+    for i in xrange(mcount):
+      self.assertEqual(mock_mslaves[i].slave_index, i)
+
+  def test_fix_slave_indexes_reorders_correctly(self):
+    pcount, mcount = 3, 2
+
+    # Make fake slaves to re-order.
+    mock_slaves = {}
+    mock_pslaves = []
+    mock_mslaves = []
+    for i in xrange(pcount):
+      mock_pslaves.append(mock.Mock())
+      mock_pslaves[-1].name = 'p%d' % i
+      mock_pslaves[-1].slave_index = pcount - 1 - i
+      mock_slaves[mock_pslaves[-1].name] = mock_pslaves[-1]
+    for i in xrange(mcount):
+      mock_mslaves.append(mock.Mock())
+      mock_mslaves[-1].name = 'm%d' % i
+      mock_mslaves[-1].slave_index = mcount - 1 - i
+      mock_slaves[mock_mslaves[-1].name] = mock_mslaves[-1]
+
+    # Overwrite functions.
+    self.sgm.get_number_of_slaves = (lambda x:
+        (x == SlaveType.PERIPHERAL and pcount) or
+        (x == SlaveType.MEMORY and mcount) or
+        self.fail('Unexpected arg: %s' % str(x)))
+    self.sgm.get_slave_name_at = (lambda i,x:
+        (x == SlaveType.PERIPHERAL and mock_pslaves[i].name) or
+        (x == SlaveType.MEMORY and mock_mslaves[i].name) or
+        self.fail("Unexpected args: %d,%s" % (i,x)))
+    self.sgm.get_node = lambda n: mock_slaves[n]
+
+    # Test
+    self.sgm.fix_slave_indexes()
+    for i in xrange(pcount):
+      self.assertEqual(mock_pslaves[i].slave_index, i)
+    for i in xrange(mcount):
+      self.assertEqual(mock_mslaves[i].slave_index, i)
 
   def test_get_connected_slaves(self):
     pass
@@ -214,13 +291,37 @@ class UTest(unittest.TestCase):
     self.sgm.get_nodes_dict.assert_called_once_with()
 
   def test_get_node_bindings(self):
-    pass
+    bindings = { 'foo': 1, 'bar': 2, 'baz': 3}
+    mock_node = mock.Mock()
+    mock_node.bindings = bindings
+    self.sgm.get_node = mock.Mock(return_value=mock_node)
+    self.assertEqual(bindings, self.sgm.get_node_bindings('name'))
+    self.sgm.get_node.assert_called_once_with('name')
+
+  def test_get_node_bindings_dne_raises_NodeError(self):
+    self.sgm.get_node = mock.Mock(side_effect=NodeError('msg'))
+    self.assertRaises(NodeError, self.sgm.get_node_bindings, 'name')
 
   def test_get_node_names(self):
     pass
 
   def test_get_nodes_dict(self):
-    pass
+    mock_nodes = []
+    for i in xrange(10):
+      mock_node = mock.Mock()
+      mock_node.name = 'n%d' % i
+      mock_nodes.append((mock_node.name, mock_node))
+    self.sgm.graph.nodes = mock.Mock(return_value=mock_nodes)
+
+    # Run & Test
+    nd = self.sgm.get_nodes_dict()
+    for mock_node in mock_nodes:
+      self.assertIn(mock_node[0], nd)
+      self.assertEqual(mock_node[1], nd[mock_node[0]])
+
+  def test_get_nodes_dict_empty(self):
+    self.sgm.graph.nodes = mock.Mock(return_value=[])
+    self.assertEqual({}, self.sgm.get_nodes_dict())
 
   def test_get_number_of_connections(self):
     pass
