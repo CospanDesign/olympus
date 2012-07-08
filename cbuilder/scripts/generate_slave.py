@@ -10,6 +10,9 @@ import shutil
 import string
 import json
 
+sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir, 'drt'))
+import drt
+
 
 def read_wb_slave_template_file(filename=""):
   template_file_string = ""
@@ -91,36 +94,9 @@ def remove_slave_dir(mg_path = "", slavename = ""):
     except shutil.error, err:
       print "no files in that slave sim directory"
 
-def order_devices(dev_tags):
-  """Take an unorganized dictionary of devices and create an ordered list"""
-  dev_list = []
-  index = 0
-  length = len(dev_tags) 
-
-  for i in range(0, length):
-    for key in dev_tags.keys():
-      #change the hex number into a integer
-      in_str = dev_tags[key]["ID"]
-      index = int(dev_tags[key]["ID"][2:], 16)
-      if index == i:
-        dev_tags[key]["name"] = key
-        dev_list.insert(index, dev_tags[key])
-  return dev_list
-
-def list_devices(mg_path = ""):
+def list_devices():
   """list possible slave devices"""
-  print "mg_path: %s" % mg_path
-  drt_tags = {}
-  try:
-    f = open (mg_path + "/drt/drt.json", "r")
-    buf = f.read()
-    drt_tags = json.loads(buf)
-  except IOError as err:
-    print "Error openning file: %s", str(err)
-  except TypeError as err:
-    print "Error within drt.json file"
-
-  dev_list = order_devices(drt_tags["devices"])
+  dev_list = drt.get_device_list()
 
   print "Supported Devices:"
   for i in range(0, len(dev_list)):
@@ -184,7 +160,7 @@ if __name__=="__main__":
         cl_size_en = True
       elif opt in ("-t", "--types"):
         #list the possible types of devices
-        list_devices(mg_path)
+        list_devices()
         sys.exit()
       elif opt in ("-k", "--kill"):
         print "removing dir"

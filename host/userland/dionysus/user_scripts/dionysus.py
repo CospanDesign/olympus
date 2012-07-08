@@ -1,13 +1,17 @@
 #! /usr/bin/python
-
-
 import time
 import random
 import sys
+import os
 import string
+import json
 from pyftdi.pyftdi.ftdi import Ftdi
 from array import array as Array
 import getopt 
+
+#put olympus in the system path
+sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, os.pardir, os.pardir, "cbuilder/drt"))
+import drt as drt_controller
 
 MEM_SIZE = 124
 
@@ -428,6 +432,7 @@ class Dionysus (object):
 
       
   def get_device_type(self, index):
+    
     t = int(self.drt_lines[(index + 1) * 8], 16)
  #XXX: This should really be referenced from a file
     if t == 1:
@@ -767,6 +772,7 @@ if __name__ == '__main__':
   mem_only = False
   long_mem_test = False
   test = False
+  drt_path = "olympus/cbuilder/drt"
 
   try:
     syc = Dionysus(0x0403, 0x8530)
