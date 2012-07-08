@@ -1,5 +1,6 @@
 //ft_host_interface.v
 
+`timescale 1ns/1ps
 module ft_host_interface (
 	rst,
 	clk,
@@ -39,7 +40,6 @@ module ft_host_interface (
 
   //debug
   debug
-
 );
 
 
@@ -64,8 +64,6 @@ input		[31:0]	    out_address;
 input		[27:0]	    out_data_count;
 input		[31:0]	    out_data;
 
-
-
 //ftdi
 input				        ftdi_clk;
 inout	[7:0]		      ftdi_data;
@@ -77,10 +75,8 @@ output 				      ftdi_oe_n;
 output 				      ftdi_siwu;
 input				        ftdi_suspend_n;
 
-
 //debug
 output  reg [7:0]   debug;
-
 
 parameter   PING  = 4'h0;
 parameter   WRITE = 4'h1;
@@ -94,7 +90,7 @@ assign	    fifo_rst	=	rst | in_fifo_rst;
 
 reg					in_fifo_rd;
 wire				in_fifo_empty;
-wire	[7:0]		in_fifo_data;
+wire	[7:0] in_fifo_data;
 
 reg					out_fifo_wr;
 wire				out_fifo_full;	
@@ -156,7 +152,6 @@ parameter             READ_FIFO = 4'h1;
 parameter             ACK_WAIT  = 4'h2;
 
 reg [3:0]             astate  = IDLE;
-reg                   empty_flag;
 
 //Host -> Master DW  assembler
 always @ (posedge clk) begin
@@ -168,19 +163,13 @@ always @ (posedge clk) begin
     read_dw             <=  32'h0;
     in_fifo_rd          <=  0;
     astate              <=  IDLE;
-    empty_flag          <=  1;
   end
   else begin
     in_fifo_rd          <=  0;
     if (!write_busy) begin
       case (astate)
         IDLE: begin
-          if (empty_flag && !in_fifo_empty) begin
-            //flush out the data that should have been flushed out by the FIFO
-            in_fifo_rd        <=  1;
-            empty_flag        <=  0;
-          end
-          else if (!in_fifo_empty) begin
+          if (!in_fifo_empty) begin
             in_fifo_rd      <=  1;
             astate          <=  READ_FIFO;
           end
@@ -198,38 +187,25 @@ always @ (posedge clk) begin
             end
           end
           else begin
-            working_dw        <= {working_dw[23:0], in_fifo_data};
-            byte_count        <=  byte_count + 1;
-            if (in_fifo_empty) begin
-                astate  <=  IDLE;
-                //this is a work around for the FIFOs
-                //a strange state happens if the fifo is empty on the last byte
-                empty_flag    <=  1;
-                //in_fifo_rd    <=  1;
-            end
-
+            //$display ("ASSEMBLER: %t: in fifo is not empty", $time);
+            working_dw      <= {working_dw[23:0], in_fifo_data};
+            in_fifo_rd      <=  1;
             if (byte_count == 2'h3) begin
-              read_dw         <=  {working_dw[23:0], in_fifo_data};
-              dw_ready        <=  1;
-              working_dw      <=  32'h0000;
-              astate          <=  ACK_WAIT;
+              byte_count    <=  2'h0;
+              read_dw       <=  {working_dw[23:0], in_fifo_data};
+              dw_ready      <=  1;
+              working_dw    <=  32'h0000;
+              astate        <=  ACK_WAIT;
+              in_fifo_rd    <=  0;
             end
-            else begin
-              if (!in_fifo_empty) begin
-                in_fifo_rd    <=  1;
-              end
-              else begin
-                astate          <=  IDLE;
-              end
+            byte_count      <=  byte_count + 1;
+            if (in_fifo_empty) begin
+              astate        <=  IDLE;
+              in_fifo_rd      <=  0;
             end
           end
         end
         ACK_WAIT: begin
-          if (empty_flag && !in_fifo_empty) begin
-            //flush out the data that should have been flushed out by the FIFO
-            in_fifo_rd        <=  1;
-            empty_flag        <=  0;
-          end
           if (read_ack) begin
             dw_ready          <=  0;
             astate            <=  IDLE;
@@ -286,8 +262,8 @@ always @ (posedge clk) begin
       IDLE: begin
         //if there is new data within the incomming FIFO
         reset_assembler     <=  1;
-        if (sof) begin
-          if (in_fifo_data == 8'hCD) begin
+        if (sof && (astate == READ_FIFO)) begin
+          if (!in_fifo_empty && (in_fifo_data == 8'hCD)) begin
             debug[0]        <=  ~debug[0];
             reset_assembler <=  0;
             $display("FT_READ: Detected start of transfer with good ID");
@@ -376,8 +352,7 @@ always @ (posedge clk) begin
         if (master_ready) begin
           ih_ready          <=  1;
           if (in_command[3:0] == WRITE && read_count > 0) begin
-            rstate          <=  READ_DATA;
-            //read_ready      <=  1;
+            rstate          <=  READ_DATA; //read_ready      <=  1;
           end
           else begin
             debug[2]        <=  0;
@@ -524,7 +499,7 @@ always @ (posedge clk) begin
           output_dw           <=  master_data;  
           new_output_data     <=  1;
           if ((master_status[3:0] == 4'hD) && (out_data_count > 0)) begin
-            $display ("\t\tSend more data");
+            $display ("\t\tFT_WRITE: Send more data");
             wstate            <=  SEND_MORE_DATA;
           end
           else begin

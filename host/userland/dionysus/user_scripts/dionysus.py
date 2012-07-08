@@ -9,6 +9,7 @@ from pyftdi.pyftdi.ftdi import Ftdi
 from array import array as Array
 import getopt 
 
+MEM_SIZE = 124
 
 class Dionysus (object):
   
@@ -262,73 +263,6 @@ class Dionysus (object):
 
     print "read data: " + str(read_data)
     
-#
-#   data = Array('B')
-#   data.extend([0XCD, 0x02, 0x00, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00])
-#   print "to device: " + str(data)
-#
-#   self.dev.write_data(data)
-#
-#
-
-#   print "reading"
-
-
-#   time.sleep(.2)
-#   response = self.dev.read_data(64)
-
-#   rsp = Array('B')
-#   rsp.fromstring(response)
-#   print "rsp: " + str(rsp) 
-#   for a in rsp:
-#     print "Data: %02X" % (a)
-#   s1 = self.dev.modem_status()
-#   print "S1: " + str(s1)
-
-
-
-
-#   data = Array('B')
-#   data.extend([0XCD, 0x01, 0x00, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF])
-#
-#   self.dev.write_data(data)
-#   response = self.dev.read_data(32)
-#
-#   data = Array('B')
-#   data.extend([0XCD, 0x02, 0x00, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF])
-#   print "to device: " + str(data)
-#
-#   self.dev.write_data(data)
-#
-#
-#   self.dev.set_dtr_rts(True, True)
-#   s1 = self.dev.modem_status()
-#   print "S1: " + str(s1)
-
-
-#   print "reading"
-
-
-#   response = self.dev.read_data(4)
-
-#   rsp = Array('B')
-#   rsp.fromstring(response)
-#   print "rsp: " + str(rsp)
-#   for a in rsp:
-#     print "Data: %02X" % (a)
-#     print "Data: %02X" % (a)
-#   time.sleep(.1)
-#   response = self.dev.read_data(16)
-
-
-#   rsp = Array('B')
-#   rsp.fromstring(response)
-#   print "rsp: " + str(rsp) 
-#   for a in rsp:
-#     print "Data: %02X" % (a)
-#   s1 = self.dev.modem_status()
-#   print "S1: " + str(s1)
-
   def wait_for_interrupts(self, wait_time = 1):
     timeout = time.time() + wait_time
 
@@ -571,8 +505,8 @@ def test_buttons(syc, dev_index):
        print "gpio read: " + hex(gpio_read)
 
 
-def test_all_memory (syc = None):
- for dev_index in range (0, syc.num_of_devices):
+def test_all_memory (syc = None, mem_size=MEM_SIZE):
+  for dev_index in range (0, syc.num_of_devices):
     device_id = string.atoi(syc.drt_lines[((dev_index + 1) * 8)], 16)
     flags = string.atoi(syc.drt_lines[((dev_index + 1) * 8) + 1], 16)
     address_offset = string.atoi(syc.drt_lines[((dev_index + 1) * 8) + 2], 16)
@@ -600,7 +534,7 @@ def test_all_memory (syc = None):
       data_out = Array('B')
       num = 0
       try:
-        for i in range (0, 4 * 120):
+        for i in range (0, 4 * mem_size):
           num = (i + rand) % 255
           if (i / 256) % 2 == 1:
             data_out.append( 255 - (num))
@@ -630,7 +564,6 @@ def test_all_memory (syc = None):
         print "Write Failed!"
 
       #time.sleep(1)
-"""
       print "Reading %d DWORDS of data" % (len(data_out))
       data_in = Array('B')
       data_in = syc.read(len(data_out) / 4, dev_index, 0,  mem_bus)
@@ -682,7 +615,6 @@ def test_all_memory (syc = None):
         print "Data length of data_in and data_out do not match"
       else:
         print "Failed: %d mismatches" % fail_count
-"""
 
 
 #      for b in range (0, bank_count):
@@ -868,6 +800,8 @@ if __name__ == '__main__':
       #print ""
       #print "Printing DRT:"
       #syc.pretty_print_drt()
+
+      test_all_memory(syc, 126) 
       sys.exit()
 
     else:

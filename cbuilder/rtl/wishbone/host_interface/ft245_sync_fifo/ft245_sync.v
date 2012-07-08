@@ -1,5 +1,6 @@
 //ft245_sync_fifo.v
 
+`timescale 1ns/1ps
 
 module ft245_sync_fifo (
   rst,
@@ -80,46 +81,44 @@ reg     [7:0]   cache_data;
 reg             data_valid;
 reg             local_sof;
 
-//data that will be read from the FTDI chip (in)
-afifo #(    
-   .DATA_WIDTH(9),
-   .ADDRESS_WIDTH(2)
+afifo #(
+  .DATA_WIDTH(9),
+  .ADDRESS_WIDTH(10)
   )
-fifo_in (
-  .rst(in_fifo_rst),
+  fifo_in (
+    .rst(rst || in_fifo_rst),
 
-  .din_clk(ftdi_clk),
-  .dout_clk(clk),
+    .dout_clk(clk),
+    .data_out({sof, in_fifo_data}),
+    .rd_en(in_fifo_rd),
+    .empty(in_fifo_empty),
 
-  .data_in({local_sof, data_in}),
-  .data_out({sof, in_fifo_data}),
-  .full(in_fifo_full),
-  .empty(in_fifo_empty),
 
-  .wr_en(in_fifo_wr),
-  .rd_en(in_fifo_rd)
 
+    .din_clk(ftdi_clk),
+    .data_in({local_sof, data_in}),
+    .wr_en(in_fifo_wr),
+    .full(in_fifo_full)
 );
-//data that will be sent to the FTDI chip (out)
-afifo 
-  #(    
-    .DATA_WIDTH(8),
-    .ADDRESS_WIDTH(8)
+
+afifo #(
+  .DATA_WIDTH(8),
+  .ADDRESS_WIDTH(10)
   )
   fifo_out (
-  .rst(rst),
+    .rst(rst),
 
-  .din_clk(clk),  
-  .dout_clk(ftdi_clk),
+    .dout_clk(ftdi_clk),
+    .data_out(data_out),
+    .rd_en(out_fifo_rd),
+    .empty(out_fifo_empty),
 
-  .data_in(out_fifo_data),
-  .data_out(data_out),
-  .full(out_fifo_full),
-  .empty(out_fifo_empty),
-
-  .wr_en(out_fifo_wr),
-  .rd_en(out_fifo_rd)
+    .din_clk(clk),
+    .data_in(out_fifo_data),
+    .wr_en(out_fifo_wr),
+    .full(out_fifo_full)
 );
+
 
 parameter                   IDLE            = 4'h0;
 parameter                   EMPTY_IN_CACHE  = 4'h1;
@@ -141,7 +140,6 @@ reg                         prev_receive_available;
 
 reg   [7:0]                 out_cache_data;
 reg                         out_cache_available;
-
 
 assign  ftdi_oe_n         = ~output_enable;
 assign  ftdi_rd_n         = ~read_enable;
@@ -195,7 +193,7 @@ always @ (posedge ftdi_clk) begin
           end
           state           <=  ENABLE_READING;
         end
-        else if (transmit_ready  && ~out_fifo_empty) begin
+        else if (transmit_ready  && !out_fifo_empty) begin
           //Writing to the host
           out_fifo_rd     <=  1;
           state           <= WRITE;
@@ -204,11 +202,11 @@ always @ (posedge ftdi_clk) begin
       end
       ENABLE_READING: begin
         if (receive_available && !in_fifo_full) begin
-          read_enable       <=  1;
-          state             <=  READ;
+          read_enable     <=  1;
+          state           <=  READ;
         end
         else begin
-          state             <=  IDLE;
+          state           <=  IDLE;
         end
       end
       READ: begin
@@ -247,37 +245,64 @@ always @ (posedge ftdi_clk) begin
           end
           if (receive_available) begin
             //read_enable     <=  1;
-            state           <=  READ;
+            state             <=  READ;
           end
           else begin
-            state           <=  IDLE;
+            state             <=  IDLE;
           end
         end
       end
       WRITE: begin
         if (transmit_ready) begin
-          write_enable            <=  1;
-          //the writing of cache or regular data is handled above by an assign
-          out_cache_available     <=  0;
-          if (~out_fifo_empty) begin
-            //continue reading from the output buffer
-            out_fifo_rd           <=  1;
+          if (out_fifo_empty) begin
+            out_fifo_rd       <=  0;
+            write_enable      <=  0;
+            state             <=  IDLE;
           end
           else begin
-            //empty out whats in the FTDI buffer
-            //send_immediately      <=  1;
-            write_enable          <=  0;
-            state                 <=  IDLE;
+            out_fifo_rd       <=  1;
+            write_enable      <=  1;
           end
         end
-        else begin
-          //still have data to send out from the last time
-          //need to store that somewhere
-          out_cache_data          <=  data_out;
-          out_cache_available     <=  1;
-          write_enable            <=  0;
-          state                   <=  IDLE;
+        else begin //transmitter is not ready
+          out_fifo_rd         <=  0;
+          out_cache_data      <=  data_out;
+          out_cache_available <=  1;
+          write_enable        <=  0;
+          state               <=  IDLE;
         end
+
+//        if (out_fifo_empty) begin
+//          write_enable      <=  0;
+//          state             <=  IDLE;
+//        end
+//        else begin
+//          state             <=  WRITE;
+//          out_fifo_rd       <=  1;
+//          if (transmit_ready) begin
+//            write_enable            <=  1;
+//          //the writing of cache or regular data is handled above by an assign
+// //          out_cache_available     <=  0;
+// //          if (~out_fifo_empty) begin
+// //            //continue reading from the output buffer
+// //            out_fifo_rd           <=  1;
+// //          end
+// //          else begin
+//            //empty out whats in the FTDI buffer
+//            //send_immediately      <=  1;
+// //            write_enable          <=  0;
+// //            state                 <=  IDLE;
+// //          end
+//          else begin
+//            //still have data to send out from the last time
+//            //need to store that somewhere
+//            out_fifo_rd             <=  0;
+//            out_cache_data          <=  data_out;
+//            out_cache_available     <=  1;
+//            write_enable            <=  0;
+//            state                   <=  IDLE;
+//          end
+//        end
       end
       default: begin
         state <=  IDLE;

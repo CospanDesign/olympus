@@ -135,7 +135,7 @@ assign        writing = ~write_idle;
 //Write FIFO
 afifo 
 	#(		.DATA_WIDTH(36),
-			.ADDRESS_WIDTH(8)
+			.ADDRESS_WIDTH(10)
 	)
 fifo_wr (
 	.rst(rst || ~sdram_ready),
@@ -201,7 +201,7 @@ assign        read_enable = app_read_enable & write_idle & write_fifo_empty;
 afifo 
 	#(		
       .DATA_WIDTH(32),
-			.ADDRESS_WIDTH(8)
+			.ADDRESS_WIDTH(10)
 	)
 fifo_rd (
 	.rst(read_fifo_reset),

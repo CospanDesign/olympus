@@ -2,6 +2,9 @@
 ../../../../rtl/wishbone/host_interface/ft245_sync_fifo/ft_host_interface.v
 ../../../../rtl/generic/afifo.v
 ../../../../rtl/generic/graycounter.v
+../../../../rtl/generic/generic_dpram.v
+../../../../rtl/generic/generic_fifo_dc_gray.v
+../../../../rtl/generic/dc_fifo.v
 ../../interconnect/example_2port_interconnect/wishbone_interconnect.v
 ../../../../rtl/wishbone/slave/wb_gpio/wb_gpio.v
 ../../../../rtl/wishbone/slave/device_rom_table/device_rom_table.v

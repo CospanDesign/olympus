@@ -198,56 +198,56 @@ end
 //blocks
 always @ (posedge clk) begin
     
-  out_en    <= 0;
+  out_en              <= 0;
 
 //master ready should be used as a flow control, for now its being reset every
 //clock cycle, but in the future this should be used to regulate data comming in so that the master can send data to the slaves without overflowing any buffers
   //master_ready  <= 1;
 
   if (rst || ih_reset) begin
-    out_status    <= 32'h0;
-    out_address   <= 32'h0;
-    out_data    <= 32'h0;
+    out_status        <= 32'h0;
+    out_address       <= 32'h0;
+    out_data          <= 32'h0;
     //out_data_count  <= 28'h0;
-    local_command <= 32'h0;
-    local_address <= 32'h0;
-    local_data    <= 32'h0;
-    local_data_count<= 27'h0;
-    master_flags  <= 32'h0;
-    rw_count    <= 0;
-    state     <= IDLE;
-    mem_bus_select  <= 0;
-    prev_int    <= 0;
+    local_command     <= 32'h0;
+    local_address     <= 32'h0;
+    local_data        <= 32'h0;
+    local_data_count  <= 27'h0;
+    master_flags      <= 32'h0;
+    rw_count          <= 0;
+    state             <= IDLE;
+    mem_bus_select    <= 0;
+    prev_int          <= 0;
 
-    wait_for_slave  <= 0;
+    wait_for_slave    <= 0;
 
-    debug_out   <= 32'h00000000;
+    debug_out         <= 32'h00000000;
 
     //wishbone reset
-    wb_adr_o        <= 32'h0;
-    wb_dat_o        <= 32'h0;
-    wb_stb_o        <= 0;
-    wb_cyc_o        <= 0;
-    wb_we_o         <= 0;
-    wb_msk_o        <= 0;
+    wb_adr_o          <= 32'h0;
+    wb_dat_o          <= 32'h0;
+    wb_stb_o          <= 0;
+    wb_cyc_o          <= 0;
+    wb_we_o           <= 0;
+    wb_msk_o          <= 0;
 
     //select is always on
-    wb_sel_o        <= 4'hF;
+    wb_sel_o          <= 4'hF;
 
     //wishbone memory reset
-    mem_adr_o        <= 32'h0;
-    mem_dat_o        <= 32'h0;
-    mem_stb_o        <= 0;
-    mem_cyc_o        <= 0;
-    mem_we_o         <= 0;
-    mem_msk_o        <= 0;
+    mem_adr_o         <= 32'h0;
+    mem_dat_o         <= 32'h0;
+    mem_stb_o         <= 0;
+    mem_cyc_o         <= 0;
+    mem_we_o          <= 0;
+    mem_msk_o         <= 0;
 
     //select is always on
-    mem_sel_o        <= 4'hF;
+    mem_sel_o         <= 4'hF;
 
     //interrupts
-    interrupt_mask  <= 32'h00000000;
-    nack_timeout  <= `DEF_NACK_TIMEOUT;
+    interrupt_mask    <= 32'h00000000;
+    nack_timeout      <= `DEF_NACK_TIMEOUT;
 
   end
 
@@ -259,11 +259,11 @@ always @ (posedge clk) begin
         debug_out[4]  <= ~debug_out[4];
         $display ("WBM: Timed out");
         //timeout occured, send a nack and go back to IDLE
-        state   <= IDLE;
-        out_status  <= `NACK_TIMEOUT;
-        out_address <= 32'h00000000;
-        out_data  <= 32'h00000000;
-        out_en    <= 1;
+        state         <= IDLE;
+        out_status    <= `NACK_TIMEOUT;
+        out_address   <= 32'h00000000;
+        out_data      <= 32'h00000000;
+        out_en        <= 1;
       end
     end
     else begin
@@ -354,13 +354,13 @@ always @ (posedge clk) begin
         end //end working with mem_bus
         else begin //peripheral bus
           if (wb_ack_i) begin
-            wb_stb_o    <= 0;
-            if (local_data_count <= 1) begin
+            wb_stb_o              <= 0;
+            if (local_data_count  <= 1) begin
               $display ("WBM: in_data_count == 0");
-              wb_cyc_o  <= 0;
-              state   <= IDLE;
-              out_en    <= 1;
-              wb_we_o     <= 0;
+              wb_cyc_o            <= 0;
+              state               <= IDLE;
+              out_en              <= 1;
+              wb_we_o             <= 0;
             end
             //tell the IO handler were ready for the next one
             master_ready  <= 1;

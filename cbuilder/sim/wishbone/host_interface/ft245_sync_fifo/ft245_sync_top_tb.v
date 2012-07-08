@@ -323,7 +323,7 @@ initial begin
       ftdi_ready_to_read    = 1;
 
       while (state !=  RX_STOP) begin
-        #10
+        #1
         temp_state  <= state;
       end
       ftdi_ready_to_read    = 0;
@@ -351,10 +351,10 @@ reg         rxe_debug;
 
 initial begin
   rxe_debug <=  1;
-  #1689;
-  rxe_debug <=  0;
-  #100;
-  rxe_debug <=  1;
+//  #1236;
+//  rxe_debug <=  0;
+//  #100;
+//  rxe_debug <=  1;
 end
 //virtual FTDI chip
 always @ (negedge ftdi_clk) begin
@@ -472,7 +472,7 @@ always @ (negedge ftdi_clk) begin
           end
           //can't wait an entire clock cycle to see if we have reached the max count
           else begin
-            //$display("Sent last byte, telling the core that I've sent all my data");
+            $display("%t: Sent last byte, telling the core that I've sent all my data", $time);
             state  <= RX_STOP;
             rde_n   <= 1;
           end
