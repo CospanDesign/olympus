@@ -120,7 +120,7 @@ class Dionysus (object):
     data_out.extend(data)
 
     if (self.dbg):
-      print "data write string: " + str(data_out)
+      print "data write string:\n" + str(data_out)
 
     #avoid the akward stale bug
     self.dev.purge_buffers()
@@ -207,7 +207,7 @@ class Dionysus (object):
 
     if self.dbg:
       print "response length: " + str(length * 4 + 8)
-      print "response: " + str(rsp)
+      print "response:\n" + str(rsp)
     #read_data.fromstring(read_string.decode('hex'))
     return rsp[8:]
     
@@ -801,7 +801,7 @@ if __name__ == '__main__':
       #print "Printing DRT:"
       #syc.pretty_print_drt()
 
-      test_all_memory(syc, 126) 
+      test_all_memory(syc, 127) 
       sys.exit()
 
     else:

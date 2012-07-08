@@ -26,22 +26,22 @@ SOFTWARE.
   06/24/2012
     -Added the Reset command that will reset the state machine from
     the host interface
-	11/12/2011
-		-Added NACK support
-			commands
-				COMMAND_NACK_TO_WR: set the NACK timeout
-				COMMAND_NACK_TO_RD: read the NACK timeout
+  11/12/2011
+    -Added NACK support
+      commands
+        COMMAND_NACK_TO_WR: set the NACK timeout
+        COMMAND_NACK_TO_RD: read the NACK timeout
 
-			status codes
-				NACK_TIMEOUT: a NACK timeout occured
+      status codes
+        NACK_TIMEOUT: a NACK timeout occured
 
-			default values:
-				DEF_NACK_TIMEOUT: currently  set to 20 hex or 32 ticks
-	11/06/2011
-		-Added PERIPH_INTERRUPT to notify users of a peripheral 
-			slave interrupt
-		-Changed COMMAND_INTERRUPT to COMMAND_WR_INT_EN and
-		COMMAND_RD_INT_EN
+      default values:
+        DEF_NACK_TIMEOUT: currently  set to 20 hex or 32 ticks
+  11/06/2011
+    -Added PERIPH_INTERRUPT to notify users of a peripheral 
+      slave interrupt
+    -Changed COMMAND_INTERRUPT to COMMAND_WR_INT_EN and
+    COMMAND_RD_INT_EN
 */
 
 // defines for the miracle grow project
@@ -49,24 +49,24 @@ SOFTWARE.
 `ifndef __MG_DEFINES__
 `define __MG_DEFINES__
 
-`define COMMAND_PING 		32'h00000000
-`define COMMAND_WRITE 		32'h00000001
-`define COMMAND_READ		32'h00000002
-`define COMMAND_RESET   32'h00000003
-`define COMMAND_RW_FLAGS	32'h00000007
-`define COMMAND_WR_INT_EN	32'h00000008
-`define COMMAND_RD_INT_EN	32'h00000009
-`define COMMAND_NACK_TO_WR	32'h0000000A
-`define COMMAND_NACK_TO_RD	32'h0000000B
+`define COMMAND_PING        32'h00000000
+`define COMMAND_WRITE       32'h00000001
+`define COMMAND_READ        32'h00000002
+`define COMMAND_RESET       32'h00000003
+`define COMMAND_RW_FLAGS    32'h00000007
+`define COMMAND_WR_INT_EN   32'h00000008
+`define COMMAND_RD_INT_EN   32'h00000009
+`define COMMAND_NACK_TO_WR  32'h0000000A
+`define COMMAND_NACK_TO_RD  32'h0000000B
 
 //conditions
-`define PERIPH_INTERRUPT	32'h10000000
-`define NACK_TIMEOUT		32'h20000000
+`define PERIPH_INTERRUPT    32'h10000000
+`define NACK_TIMEOUT        32'h20000000
 
 //flags
-`define FLAG_MEM_BUS		16'h0001
+`define FLAG_MEM_BUS        16'h0001
 
 //default variables
-`define DEF_NACK_TIMEOUT	32'h00000020
+`define DEF_NACK_TIMEOUT    32'h00000020
 
 `endif //__MG_DEFINES__

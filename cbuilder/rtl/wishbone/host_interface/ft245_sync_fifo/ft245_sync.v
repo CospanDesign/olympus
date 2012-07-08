@@ -125,7 +125,8 @@ parameter                   EMPTY_IN_CACHE  = 4'h1;
 parameter                   ENABLE_READING  = 4'h2;
 parameter                   READ            = 4'h3;
 parameter                   FIFO_WAIT       = 4'h4;
-parameter                   WRITE           = 4'h5;
+parameter                   WRITE_CACHE_DATA= 4'h5;
+parameter                   WRITE           = 4'h6;
 
 
 reg [3:0]                   state; 
@@ -252,6 +253,13 @@ always @ (posedge ftdi_clk) begin
           end
         end
       end
+      WRITE_CACHE_DATA: begin
+        if (transmit_ready) begin
+          out_cache_available <=  0;
+          write_enable        <=  1;
+          state               <=  WRITE;
+        end
+      end
       WRITE: begin
         if (transmit_ready) begin
           if (out_fifo_empty) begin
@@ -269,7 +277,8 @@ always @ (posedge ftdi_clk) begin
           out_cache_data      <=  data_out;
           out_cache_available <=  1;
           write_enable        <=  0;
-          state               <=  IDLE;
+          state               <=  WRITE_CACHE_DATA;
+//          state               <=  IDLE;
         end
 
 //        if (out_fifo_empty) begin

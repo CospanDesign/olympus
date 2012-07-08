@@ -276,6 +276,7 @@ always @ (posedge clk) begin
       READ: begin
         if (mem_bus_select) begin
           if (mem_ack_i) begin
+            //put the strobe down to say we got that double word
             mem_stb_o <= 0;
           end
           else if (~mem_stb_o && out_ready) begin
@@ -286,9 +287,7 @@ always @ (posedge clk) begin
               local_data_count  <= local_data_count -1;
               mem_adr_o   <= mem_adr_o + 4;
               mem_stb_o   <= 1;
-              //put the strobe down to say we got that double word
               out_data    <= mem_dat_i;
-              //out_data_count  <=  local_data_count;
               //initiate an output transfer
               out_en      <= 1; 
             end

@@ -264,13 +264,13 @@ always @ (posedge clk) begin
         reset_assembler     <=  1;
         if (sof && (astate == READ_FIFO)) begin
           if (!in_fifo_empty && (in_fifo_data == 8'hCD)) begin
-            debug[0]        <=  ~debug[0];
+            debug[0]        <=  !debug[0];
             reset_assembler <=  0;
             $display("FT_READ: Detected start of transfer with good ID");
             rstate          <=  READ_COMMAND;
           end
           else begin
-            //debug[1]        <=  ~debug[1];
+            //debug[1]        <=  !debug[1];
             $display ("FT_READ: Detected bad ID!");
           end
         end
@@ -347,11 +347,11 @@ always @ (posedge clk) begin
         end
       end
       NOTIFY_MASTER: begin
-//XXX: can't have the assembler put new data together until the master is ready
-        //read_ready          <=  0;
         if (master_ready) begin
+          //tell the master that we are ready too
           ih_ready          <=  1;
           if (in_command[3:0] == WRITE && read_count > 0) begin
+            //write is the only type of command that can send more data
             rstate          <=  READ_DATA; //read_ready      <=  1;
           end
           else begin
@@ -377,7 +377,7 @@ reg [3:0]   dissassembler_count;
 reg [31:0]  output_dw;
 reg         write_id;
 wire        dissassembler_ready;
-assign      dissassembler_ready = (~out_fifo_full && (dissassembler_count == 0));
+assign      dissassembler_ready = (!out_fifo_full && (dissassembler_count == 0));
 reg         new_output_data;
 reg [31:0]  output_data;
 
@@ -398,7 +398,7 @@ always @ (posedge clk) begin
       dissassembler_count   <=  4'h4;
       output_data           <=  output_dw;
     end
-    if (dissassembler_count > 0 && ~out_fifo_full) begin
+    if (dissassembler_count > 0 && !out_fifo_full) begin
       out_fifo_data         <=   output_data[31:24];
       out_fifo_wr           <=   1;
 
@@ -438,7 +438,7 @@ always @ (posedge clk) begin
     write_id                  <=  0;
     oh_ready                  <=  0;
     new_output_data           <=  0;
-    if (dissassembler_ready && ~new_output_data && ~read_busy) begin
+    if (dissassembler_ready && !new_output_data && !read_busy) begin
       case (wstate)
         IDLE: begin
 //XXX: There is possibly a race condition with the read PATH and write path vying for control
@@ -480,15 +480,6 @@ always @ (posedge clk) begin
             wstate            <=  IDLE;
           end
           new_output_data     <=  1;
-
-//XXX: This hack is for handling data count, this is going to be fixed so i wont need
-//XXX: the weird conditions
-//          if (master_status[3:0] == 4'hF) begin
-//            output_dw       <=  {master_status[7:0], 24'h0};
-//          end
-//          else begin
-//            output_dw       <=  {master_status[7:0], master_count + 1};
-//          end
         end
         SEND_ADDRESS: begin
           output_dw           <=  master_address;
@@ -499,6 +490,7 @@ always @ (posedge clk) begin
           output_dw           <=  master_data;  
           new_output_data     <=  1;
           if ((master_status[3:0] == 4'hD) && (out_data_count > 0)) begin
+            //the command is writing and the data count > 0
             $display ("\t\tFT_WRITE: Send more data");
             wstate            <=  SEND_MORE_DATA;
           end
@@ -509,7 +501,6 @@ always @ (posedge clk) begin
         SEND_MORE_DATA: begin
           oh_ready          <=  1;
           if (oh_en) begin
-//            master_count    <= master_count - 1;
             output_dw       <=  out_data;
             oh_ready        <=  0;
             new_output_data <=  1;

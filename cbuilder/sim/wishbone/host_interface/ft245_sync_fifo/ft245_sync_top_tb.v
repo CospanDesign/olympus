@@ -348,6 +348,7 @@ reg [24:0]  write_count;
 
 
 reg         rxe_debug;
+reg         txe_debug;
 
 initial begin
   rxe_debug <=  1;
@@ -355,6 +356,14 @@ initial begin
 //  rxe_debug <=  0;
 //  #100;
 //  rxe_debug <=  1;
+end
+
+initial begin
+  txe_debug <=  1;
+  #6208;
+  txe_debug <=  0;
+  #84;
+  txe_debug <=  1;
 end
 //virtual FTDI chip
 always @ (negedge ftdi_clk) begin
@@ -365,10 +374,12 @@ always @ (negedge ftdi_clk) begin
     write_count     <=  0;
     ftdi_in_data    <=  0;
     temp_count      <=  0;
+    txe_n     <=  1;  
   end
   else begin
     //not in reset
     rde_n <= ~(ftdi_ready_to_read && rxe_debug);
+    txe_n <=  ~(txe_debug);
     //rde_n <= ~ftdi_ready_to_read;
     //inject a stop reading command
     if (rde_n && (rxe_debug == 0)) begin
@@ -500,7 +511,6 @@ reg     new_transaction;
 //reading interface
 always @ (posedge ftdi_clk) begin
   if (rst) begin
-    txe_n     <=  1;  
     data_read_count <=  0;
     new_data    <=  0;
     read_data   <=  0;
@@ -509,7 +519,6 @@ always @ (posedge ftdi_clk) begin
   end
   else begin
     //not in reset
-    txe_n     <= 0;
     if (~rd_n) begin
       //this is a good place to see if the core is readinga command
       new_transaction     <= 1;
@@ -529,7 +538,7 @@ always @ (posedge ftdi_clk) begin
       new_data  <= 0;
 
     end
-    if (~wr_n) begin
+    if (~wr_n && ~txe_n) begin
 //      //$display ("tb: incomming byte: %2h", data);
       
       read_data <= {read_data[23:0], data};
