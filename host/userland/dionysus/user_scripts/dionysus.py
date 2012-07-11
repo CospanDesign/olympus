@@ -13,7 +13,7 @@ import getopt
 sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, os.pardir, os.pardir, "cbuilder/drt"))
 import drt as drt_controller
 
-MEM_SIZE = 124
+MEM_SIZE = 250
 
 class Dionysus (object):
   
@@ -124,7 +124,9 @@ class Dionysus (object):
     data_out.extend(data)
 
     if (self.dbg):
-      print "data write string:\n" + str(data_out)
+      print "data write string:\n"
+      print "write command:\n\t" + str(data_out[:9])
+      print "write data:\n" + str(data_out[9:])
 
     #avoid the akward stale bug
     self.dev.purge_buffers()
@@ -211,7 +213,8 @@ class Dionysus (object):
 
     if self.dbg:
       print "response length: " + str(length * 4 + 8)
-      print "response:\n" + str(rsp)
+      print "response status:\n\t" + str(rsp[:8])
+      print "response data:\n" + str(rsp[8:])
     #read_data.fromstring(read_string.decode('hex'))
     return rsp[8:]
     
@@ -528,10 +531,10 @@ def test_all_memory (syc = None, mem_size=MEM_SIZE):
         print "Memory slave is on peripheral bus"
 
       print "Writing to all memory locations"
-      n1 = 0x00
-      n2 = 0x00
-      n3 = 0x00
-      n4 = 0x00
+#      n1 = 0x00
+#      n2 = 0x00
+#      n3 = 0x00
+#      n4 = 0x00
       
       rand = int(random.random() * 256.0)
       
@@ -568,7 +571,8 @@ def test_all_memory (syc = None, mem_size=MEM_SIZE):
       else:
         print "Write Failed!"
 
-      #time.sleep(1)
+      
+#      time.sleep(1)
       print "Reading %d DWORDS of data" % (len(data_out))
       data_in = Array('B')
       data_in = syc.read(len(data_out) / 4, dev_index, 0,  mem_bus)
@@ -585,7 +589,7 @@ def test_all_memory (syc = None, mem_size=MEM_SIZE):
         for i in range (0, len(data_out)):
           if data_in[i] != data_out[i]:
             fail = True
-            print "Mismatch at %d: READ DATA 0x%X != WRITE DATA 0x%X" % (i, data_in[i], data_out[i])
+            print "Mismatch at %d: READ DATA %d != WRITE DATA %d" % (i, data_in[i], data_out[i])
             fail_count += 1
  
       if not fail:
@@ -595,7 +599,7 @@ def test_all_memory (syc = None, mem_size=MEM_SIZE):
       else:
         print "Failed: %d mismatches" % fail_count
 
-
+"""
       data_in = Array('B')
       data_in = syc.read(len(data_out) / 4, dev_index, 0,  mem_bus)
 
@@ -620,7 +624,7 @@ def test_all_memory (syc = None, mem_size=MEM_SIZE):
         print "Data length of data_in and data_out do not match"
       else:
         print "Failed: %d mismatches" % fail_count
-
+"""
 
 #      for b in range (0, bank_count):
 #        for r in range (0, row_count):
@@ -807,7 +811,7 @@ if __name__ == '__main__':
       #print "Printing DRT:"
       #syc.pretty_print_drt()
 
-      test_all_memory(syc, 127) 
+      test_all_memory(syc, 254) 
       sys.exit()
 
     else:
