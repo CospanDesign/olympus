@@ -427,7 +427,7 @@ class UTest(unittest.TestCase):
       mock_node = mock.Mock()
       mock_node.name = 'n%d' % i
       mock_nodes.append((mock_node.name, mock_node))
-    self.sgm.graph.nodes = mock.Mock(return_value=mock_nodes)
+    self.sgm.graph.node = dict(mock_nodes)
 
     # Run & Test
     nd = self.sgm.get_nodes_dict()
@@ -436,7 +436,7 @@ class UTest(unittest.TestCase):
       self.assertEqual(mock_node[1], nd[mock_node[0]])
 
   def test_get_nodes_dict_empty(self):
-    self.sgm.graph.nodes = mock.Mock(return_value=[])
+    self.sgm.graph.node = {}
     self.assertEqual({}, self.sgm.get_nodes_dict())
 
   def test_get_number_of_connections_0(self):
@@ -499,13 +499,38 @@ class UTest(unittest.TestCase):
     self.assertRaises(TypeError, self.sgm.get_number_of_slaves, None)
 
   def test_get_parameters(self):
-    pass
+    mock_node = mock.Mock()
+    mock_node.parameters = { 'param1': 'foo', 'param2': 'bar', 'param3': 'baz' }
+    self.sgm.graph.node = { 'name': mock_node }
+    self.assertEqual(mock_node.parameters, self.sgm.get_parameters('name'))
+
+  def test_get_parameters_dne_raises_NodeError(self):
+    self.sgm.graph.node = {}
+    self.assertRaises(NodeError, self.sgm.get_parameters, 'name')
 
   def test_get_size(self):
-    pass
+    self.sgm.graph.__len__ = mock.Mock(return_value=4)
+    self.assertEqual(4, self.sgm.get_size())
+
+  def test_get_size_0(self):
+    self.sgm.graph.__len__ = mock.Mock(return_value=0)
+    self.assertEqual(0, self.sgm.get_size())
 
   def test_get_slave_at(self):
-    pass
+    arg_i, arg_st = 0, SlaveType.MEMORY
+    mock_slave = mock.Mock()
+    mock_slave.name = 'name'
+    self.sgm.get_slave_name_at = mock.Mock(return_value=mock_slave)
+    self.sgm.get_node = mock.Mock(return_value=mock_slave)
+
+    self.assertEqual(mock_slave, self.sgm.get_slave_at(arg_i, arg_st))
+    self.
+
+  def test_get_slave_at_dne_raises_SlaveError(self):
+
+
+  def test_get_slave_at_bad_st_raises_SlaveError(self):
+
 
   def test_get_slave_name_at(self):
     pass

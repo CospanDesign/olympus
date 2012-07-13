@@ -437,7 +437,7 @@ class SapGraphManager:
   def get_nodes_dict(self):
     '''Builds a dictionary from the nodes in the graph, where the key is the
     name of the node, and the value is the node itself.'''
-    return dict(self.graph.nodes(True))
+    return self.graph.node
 
   def get_node(self, name):
     """Gets a node by the unique name."""
@@ -549,8 +549,10 @@ class SapGraphManager:
     g[name].parameters["ports"] = pdict_out
 
   def get_parameters(self, name):
-    g = self.get_nodes_dict()
-    return g[name].parameters
+    '''Gets the parameters of the node named name.'''
+    if name not in self.graph.node:
+      raise NodeError('No such node: %s' % name)
+    return self.graph.node[name].parameters
 
   def set_config_bindings(self, name, bindings):
     node = self.get_node(name)
