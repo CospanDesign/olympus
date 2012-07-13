@@ -520,17 +520,22 @@ class UTest(unittest.TestCase):
     arg_i, arg_st = 0, SlaveType.MEMORY
     mock_slave = mock.Mock()
     mock_slave.name = 'name'
-    self.sgm.get_slave_name_at = mock.Mock(return_value=mock_slave)
+    self.sgm.get_slave_name_at = mock.Mock(return_value=mock_slave.name)
     self.sgm.get_node = mock.Mock(return_value=mock_slave)
 
     self.assertEqual(mock_slave, self.sgm.get_slave_at(arg_i, arg_st))
-    self.
+    self.sgm.get_slave_name_at.assert_called_once_with(arg_i, arg_st, False)
+    self.sgm.get_node.assert_called_once_with(mock_slave.name)
 
   def test_get_slave_at_dne_raises_SlaveError(self):
+    arg_i, arg_st = 0, SlaveType.MEMORY
+    mock_slave = mock.Mock()
+    mock_slave.name = 'name'
+    self.sgm.get_slave_name_at = mock.Mock(side_effect=SlaveError('foo'))
+    self.sgm.get_node = mock.Mock(side_effect=AssertionError('Called get_node'))
 
-
-  def test_get_slave_at_bad_st_raises_SlaveError(self):
-
+    self.assertRaises(SlaveError, self.sgm.get_slave_at, arg_i, arg_st)
+    self.sgm.get_slave_name_at.assert_called_once_with(arg_i, arg_st, False)
 
   def test_get_slave_name_at(self):
     pass
