@@ -538,7 +538,85 @@ class UTest(unittest.TestCase):
     self.sgm.get_slave_name_at.assert_called_once_with(arg_i, arg_st, False)
 
   def test_get_slave_name_at(self):
-    pass
+    arg_i, arg_st = 0, SlaveType.MEMORY
+
+    mock_node1 = mock.Mock()
+    mock_node1.name = 'node1'
+    mock_node1.node_type = NodeType.SLAVE
+    mock_node1.slave_type = arg_st
+    mock_node1.slave_index = 0
+
+    mock_node2 = mock.Mock()
+    mock_node2.name = 'node2'
+    mock_node2.node_type = NodeType.SLAVE
+    mock_node2.slave_type = arg_st
+    mock_node2.slave_index = 1
+
+    self.sgm.get_nodes_dict = mock.Mock(return_value={
+        mock_node1.name: mock_node1,
+        mock_node2.name: mock_node2
+    })
+
+    self.assertEqual(mock_node1.name, self.sgm.get_slave_name_at(arg_i, arg_st))
+    self.sgm.get_nodes_dict.assert_called_once_with()
+
+  def test_get_slave_name_at_reversed(self):
+    arg_i, arg_st = 0, SlaveType.MEMORY
+
+    mock_node1 = mock.Mock()
+    mock_node1.name = 'node1'
+    mock_node1.node_type = NodeType.SLAVE
+    mock_node1.slave_type = arg_st
+    mock_node1.slave_index = 1
+
+    mock_node2 = mock.Mock()
+    mock_node2.name = 'node2'
+    mock_node2.node_type = NodeType.SLAVE
+    mock_node2.slave_type = arg_st
+    mock_node2.slave_index = 0
+
+    self.sgm.get_nodes_dict = mock.Mock(return_value={
+        mock_node1.name: mock_node1,
+        mock_node2.name: mock_node2
+    })
+
+    self.assertEqual(mock_node2.name, self.sgm.get_slave_name_at(arg_i, arg_st))
+    self.sgm.get_nodes_dict.assert_called_once_with()
+
+  def test_get_slave_name_at_dne_raises_SlaveError(self):
+    arg_i, arg_st = 2, SlaveType.MEMORY
+
+    mock_node1 = mock.Mock()
+    mock_node1.name = 'node1'
+    mock_node1.node_type = NodeType.SLAVE
+    mock_node1.slave_type = arg_st
+    mock_node1.slave_index = 0
+
+    mock_node2 = mock.Mock()
+    mock_node2.name = 'node2'
+    mock_node2.node_type = NodeType.SLAVE
+    mock_node2.slave_type = arg_st
+    mock_node2.slave_index = 1
+
+    self.sgm.get_nodes_dict = mock.Mock(return_value={
+        mock_node1.name: mock_node1,
+        mock_node2.name: mock_node2
+    })
+
+    self.assertRaises(SlaveError, self.sgm.get_slave_name_at, arg_i, arg_st)
+    self.sgm.get_nodes_dict.assert_called_once_with()
+
+  def test_get_slave_name_at_empty_raises_SlaveError(self):
+    arg_i, arg_st = 0, SlaveType.MEMORY
+    self.sgm.get_nodes_dict = mock.Mock(return_value={})
+    self.assertRaises(SlaveError, self.sgm.get_slave_name_at, arg_i, arg_st)
+    self.sgm.get_nodes_dict.assert_called_once_with()
+
+  def test_get_slave_name_at_None_raises_TypeError(self):
+    self.assertRaises(TypeError, self.sgm.get_slave_at, 0, None)
+
+  def test_get_slave_name_at_str_raises_TypeError(self):
+    self.assertRaises(TypeError, self.sgm.get_slave_at, 0, 'foo')
 
   def test_is_slave_connected_to_slave(self):
     pass

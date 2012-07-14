@@ -22,7 +22,7 @@ NodeType = enum('HOST_INTERFACE',
                 'PERIPHERAL_INTERCONNECT',
                 'SLAVE')
 
-def isNodeType(nt):
+def is_node_type(nt):
   return nt == NodeType.HOST_INTERFACE or \
          nt == NodeType.MASTER or \
          nt == NodeType.MEMORY_INTERCONNECT or \
@@ -31,7 +31,7 @@ def isNodeType(nt):
 
 SlaveType = enum('MEMORY', 'PERIPHERAL')
 
-def isSlaveType(st):
+def is_slave_type(st):
   return st == SlaveType.MEMORY or st == SlaveType.PERIPHERAL
 
 def get_unique_name(name, node_type,
@@ -89,7 +89,7 @@ class SapGraphManager:
     '''Adds a node to this graph.'''
 
     # Check node_type validity
-    if not isNodeType(node_type):
+    if not is_node_type(node_type):
       raise TypeError('Expected node_type to be NodeType, got' + node_type)
 
     # Set index to last in peripheral/memory and check SlaveType validity.
@@ -177,13 +177,15 @@ class SapGraphManager:
       node = self.get_node(name)
       node.slave_index = i
 
-  def get_slave_at(self, index, slave_type, debug = False):
+  def get_slave_at(self, index, slave_type, debug=False):
     name = self.get_slave_name_at(index, slave_type, debug)
     return self.get_node(name)
 
   def get_slave_name_at(self, index, slave_type, debug=False):
     if slave_type is None:
-      raise SlaveError("Peripheral or Memory must be specified")
+      raise TypeError("Peripheral or Memory must be specified")
+    elif not is_slave_type(slave_type):
+      raise TypeError("%s is not a slave type." % slave_type)
 
     graph_dict = self.get_nodes_dict()
 
