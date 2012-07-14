@@ -59,12 +59,10 @@ output wire     ftdi_oe_n;
 output wire     ftdi_siwu;
 input           ftdi_suspend_n;
 
-wire            out_cache_available;
 
 wire    [7:0]   data_out;
 
-assign          ftdi_data  = (ftdi_oe_n) ? (out_cache_available) ? out_cache_data : data_out:8'hZ;
-//assign          data_in = (in_cache_available) ? in_cache_data : ftdi_data;
+assign          ftdi_data  = (ftdi_oe_n) ? data_out : 8'hZ;
 
 
 //wires
@@ -83,7 +81,6 @@ reg     [7:0]   cache_data;
 reg             data_valid;
 reg             local_sof;
 
-assign out_cache_available = !out_fifo_rd;
 
 afifo #(
   .DATA_WIDTH(9),
@@ -130,8 +127,7 @@ parameter                   ENABLE_READING  = 4'h2;
 parameter                   READ            = 4'h3;
 parameter                   FIFO_WAIT       = 4'h4;
 parameter                   FT245_WAIT      = 4'h5;
-parameter                   WRITE_CACHE     = 4'h6;
-parameter                   WRITE           = 4'h7;
+parameter                   WRITE           = 4'h6;
 
 
 reg [3:0]                   state; 
@@ -143,9 +139,6 @@ reg                         read_enable;
 reg                         write_enable;
 reg                         send_immediately;
 reg                         prev_receive_available;
-
-reg   [7:0]                 out_cache_data;
-//reg                         out_cache_available;
 
 assign  ftdi_oe_n         = ~output_enable;
 assign  ftdi_rd_n         = ~read_enable;
@@ -162,8 +155,6 @@ always @ (posedge ftdi_clk) begin
     read_enable           <=  0;
     write_enable          <=  0;
     send_immediately      <=  0;
-//    out_cache_available   <=  0;
-    out_cache_data        <=  8'h0;
     state                 <=  IDLE;
 
     start_of_frame        <=  0;
@@ -259,36 +250,12 @@ always @ (posedge ftdi_clk) begin
       end
       FT245_WAIT: begin
         if (transmit_ready) begin
-          //write_enable        <=  1;
-          write_enable        <=  0;
-          state               <=  WRITE_CACHE;
+          write_enable        <=  1;
           //out_fifo_rd         <=  1;
-          out_fifo_rd         <=  0;
-        end
-      end
-      WRITE_CACHE: begin
-        //out_cache_available   <=  0;
-        if (transmit_ready) begin
-          if (out_fifo_empty) begin
-            out_fifo_rd       <=  0;
-            write_enable      <=  0;
-            state             <=  IDLE;
-          end
-          else begin
-            out_fifo_rd       <=  0;
-            write_enable      <=  0;
-            state             <=  WRITE;
-          end
-        end
-        else begin //transmitter is not ready
-          out_fifo_rd         <=  0;
-          write_enable        <=  0;
-          out_fifo_rd         <=  0;
-          state               <=  IDLE;
+          state               <=  WRITE;
         end
       end
       WRITE: begin
-//        out_cache_available   <=  0;
         if (transmit_ready) begin
           if (out_fifo_empty) begin
             out_fifo_rd       <=  0;
@@ -302,10 +269,14 @@ always @ (posedge ftdi_clk) begin
         end
         else begin //transmitter is not ready
           out_fifo_rd         <=  0;
-          out_cache_data      <=  data_out;
-//          out_cache_available <=  1;
-          write_enable        <=  1;
-          state               <=  FT245_WAIT;
+          write_enable        <=  0;
+          if (out_fifo_empty) begin
+            state             <=  IDLE;
+          end
+          else begin
+            state             <=  FT245_WAIT;
+          end
+          
         end
       end
       default: begin

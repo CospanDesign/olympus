@@ -374,12 +374,10 @@ always @ (negedge ftdi_clk) begin
     write_count     <=  0;
     ftdi_in_data    <=  0;
     temp_count      <=  0;
-    txe_n     <=  1;  
   end
   else begin
     //not in reset
     rde_n <= ~(ftdi_ready_to_read && rxe_debug);
-    txe_n <=  ~(txe_debug);
     //rde_n <= ~ftdi_ready_to_read;
     //inject a stop reading command
     if (rde_n && (rxe_debug == 0)) begin
@@ -515,9 +513,11 @@ always @ (posedge ftdi_clk) begin
     new_data    <=  0;
     read_data   <=  0;
     dat_out     <=  0;
+    txe_n     <=  1;  
 
   end
   else begin
+    txe_n <=  ~(txe_debug);
     //not in reset
     if (~rd_n) begin
       //this is a good place to see if the core is readinga command
