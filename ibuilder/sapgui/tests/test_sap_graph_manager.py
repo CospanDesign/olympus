@@ -12,7 +12,9 @@ sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 's
 import sapfile
 import saputils
 import sap_graph_manager as gm
-from sap_graph_manager import NodeType, SlaveType, SlaveError, NodeError, PortError
+from sap_graph_manager import NodeType, SlaveType
+from sap_graph_manager import SlaveError, NodeError, PortError
+from sap_graph_manager import SapNode
 
 class UTest(unittest.TestCase):
   def setUp(self):
@@ -619,7 +621,59 @@ class UTest(unittest.TestCase):
     self.assertRaises(TypeError, self.sgm.get_slave_at, 0, 'foo')
 
   def test_is_slave_connected_to_slave(self):
-    pass
+    mock_names = []
+    mock_nodes = {}
+    def add(name, nt):
+      mock_node = mock.Mock()
+      mock_node.name = name
+      mock_node.node_type = nt
+      mock_nodes[name] = mock_node
+      mock_names.append(name)
+    add('node1', NodeType.HOST_INTERFACE)
+    add('node2', NodeType.MASTER)
+    add('node3', NodeType.SLAVE)
+    add('node4', NodeType.MEMORY_INTERCONNECT)
+    self.sgm.graph.neighbors = mock.Mock(return_value=mock_names)
+    self.sgm.get_node = lambda x: mock_nodes[x]
+
+    arg_s = mock.Mock(spec=SapNode)
+    self.assertTrue(self.sgm.is_slave_connected_to_slave(arg_s))
+    self.sgm.graph.neighbors.assert_called_once_with(arg_s)
+
+  def test_is_slave_connected_to_slave_no_False(self):
+    mock_names = []
+    mock_nodes = {}
+    def add(name, nt):
+      mock_node = mock.Mock()
+      mock_node.name = name
+      mock_node.node_type = nt
+      mock_nodes[name] = mock_node
+      mock_names.append(name)
+    add('node1', NodeType.HOST_INTERFACE)
+    add('node2', NodeType.MASTER)
+    add('node4', NodeType.MEMORY_INTERCONNECT)
+    self.sgm.graph.neighbors = mock.Mock(return_value=mock_names)
+    self.sgm.get_node = lambda x: mock_nodes[x]
+
+    arg_s = mock.Mock(spec=SapNode)
+    self.assertFalse(self.sgm.is_slave_connected_to_slave(arg_s))
+    self.sgm.graph.neighbors.assert_called_once_with(arg_s)
+
+  def test_is_slave_connected_to_slave_empty_False(self):
+    mock_names = []
+    mock_nodes = {}
+    self.sgm.graph.neighbors = mock.Mock(return_value=mock_names)
+    self.sgm.get_node = mock.Mock(side_effect=AssertionError('get_node called'))
+
+    arg_s = mock.Mock(spec=SapNode)
+    self.assertFalse(self.sgm.is_slave_connected_to_slave(arg_s))
+    self.sgm.graph.neighbors.assert_called_once_with(arg_s)
+
+  def test_is_slave_connected_to_slave_dne_raises_SlaveError(self):
+    self.sgm.graph.neighbors = mock.Mock(side_effect=NetworkXError())
+    self.sgm.get_node = mock.Mock(side_effect=AssertionError('get_node called'))
+    self.assertRaises(SlaveError,
+        self.sgm.is_slave_connected_to_slave, mock.Mock(spec=SapNode))
 
   def test_move_memory_slave(self):
     pass

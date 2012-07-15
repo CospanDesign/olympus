@@ -468,11 +468,14 @@ class SapGraphManager:
         raise Exception('SEVERE: edge has no "name" attribute.')
 
   def is_slave_connected_to_slave(self, slave):
-    for nb_name in self.graph.neighbors(slave):
-      nb = self.get_node(nb_name)
-      if nb.node_type == NodeType.SLAVE:
-        return True
-    return False
+    try:
+      for nb_name in self.graph.neighbors(slave):
+        nb = self.get_node(nb_name)
+        if nb.node_type == NodeType.SLAVE:
+          return True
+      return False
+    except nx.NetworkXError:
+      raise SlaveError('Slave "%s" not in graph!' % slave)
 
   def get_connected_slaves(self, slave_master_name):
     slaves = {}
