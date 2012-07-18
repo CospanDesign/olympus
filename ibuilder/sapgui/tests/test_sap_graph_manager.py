@@ -741,7 +741,7 @@ class IntTest(unittest.TestCase):
     if self.dbg:
       print "generating host interface node"
 
-    self.sgm.add_node("uart", gm.NodeType.HOST_INTERFACE)
+    self.sgm.add_node("uart", NodeType.HOST_INTERFACE)
 
     # Get the size of the graph
     size = self.sgm.get_size()
@@ -754,106 +754,67 @@ class IntTest(unittest.TestCase):
   def test_rename_slave(self):
     if self.dbg:
       print "renaming slave"
-    self.sgm.add_node ("name1", gm.NodeType.SLAVE, gm.SlaveType.PERIPHERAL, 0)
-    self.sgm.rename_slave(gm.SlaveType.PERIPHERAL, 0, "name2")
-    name = self.sgm.get_slave_name_at(0, gm.SlaveType.PERIPHERAL)
+    self.sgm.add_node ("name1", NodeType.SLAVE, SlaveType.PERIPHERAL, 0)
+    self.sgm.rename_slave(SlaveType.PERIPHERAL, 0, "name2")
+    name = self.sgm.get_slave_name_at(0, SlaveType.PERIPHERAL)
     node = self.sgm.get_node(name)
     name = node.name
     self.assertEqual(name, "name2")
 
   def test_get_number_of_peripheral_slaves(self):
-    self.sgm.add_node("slave_1",
-                      gm.NodeType.SLAVE,
-                      gm.SlaveType.PERIPHERAL,
-                      debug = self.dbg)
-    self.sgm.add_node("slave_2",
-                      gm.NodeType.SLAVE,
-                      gm.SlaveType.PERIPHERAL,
-                      debug = self.dbg)
-    count = self.sgm.get_number_of_slaves(gm.SlaveType.PERIPHERAL)
+    self.sgm.add_node("slave_1", NodeType.SLAVE, SlaveType.PERIPHERAL, self.dbg)
+    self.sgm.add_node("slave_2", NodeType.SLAVE, SlaveType.PERIPHERAL, self.dbg)
+    count = self.sgm.get_number_of_slaves(SlaveType.PERIPHERAL)
     self.assertEqual(count, 2)
 
   def test_get_number_of_memory_slaves(self):
-    self.sgm.add_node("slave_1",
-                      gm.NodeType.SLAVE,
-                      gm.SlaveType.MEMORY,
-                      debug = self.dbg)
-    self.sgm.add_node("slave_2",
-                      gm.NodeType.SLAVE,
-                      gm.SlaveType.MEMORY,
-                      debug = self.dbg)
-    count = self.sgm.get_number_of_slaves(gm.SlaveType.MEMORY)
+    self.sgm.add_node("slave_1", NodeType.SLAVE, SlaveType.MEMORY, self.dbg)
+    self.sgm.add_node("slave_2", NodeType.SLAVE, SlaveType.MEMORY, self.dbg)
+    count = self.sgm.get_number_of_slaves(SlaveType.MEMORY)
 
     self.assertEqual(True, True)
 
   def test_slave_index(self):
-    self.sgm.add_node("slave_1",
-                      gm.NodeType.SLAVE,
-                      gm.SlaveType.PERIPHERAL,
-                      debug = self.dbg)
-    self.sgm.add_node("slave_2",
-                      gm.NodeType.SLAVE,
-                      gm.SlaveType.PERIPHERAL,
-                      debug = self.dbg)
-    self.sgm.add_node("slave_3",
-                      gm.NodeType.SLAVE,
-                      gm.SlaveType.PERIPHERAL,
-                      debug = self.dbg)
-    self.sgm.add_node("slave_4",
-                      gm.NodeType.SLAVE,
-                      gm.SlaveType.PERIPHERAL,
-                      debug = self.dbg)
-    self.sgm.add_node("slave_5",
-                      gm.NodeType.SLAVE,
-                      gm.SlaveType.PERIPHERAL,
-                      debug = self.dbg)
+    self.sgm.add_node("slave_1", NodeType.SLAVE, SlaveType.PERIPHERAL, self.dbg)
+    self.sgm.add_node("slave_2", NodeType.SLAVE, SlaveType.PERIPHERAL, self.dbg)
+    self.sgm.add_node("slave_3", NodeType.SLAVE, SlaveType.PERIPHERAL, self.dbg)
+    self.sgm.add_node("slave_4", NodeType.SLAVE, SlaveType.PERIPHERAL, self.dbg)
+    self.sgm.add_node("slave_5", NodeType.SLAVE, SlaveType.PERIPHERAL, self.dbg)
 
     # Scramble things up.
-    self.sgm.move_slave(3, 1, gm.SlaveType.PERIPHERAL)
-    self.sgm.move_slave(2, 4, gm.SlaveType.PERIPHERAL)
-    self.sgm.move_slave(2, 3, gm.SlaveType.PERIPHERAL)
-    self.sgm.move_slave(1, 4, gm.SlaveType.PERIPHERAL)
-    self.sgm.move_slave(4, 2, gm.SlaveType.PERIPHERAL)
+    self.sgm.move_slave(3, 1, SlaveType.PERIPHERAL)
+    self.sgm.move_slave(2, 4, SlaveType.PERIPHERAL)
+    self.sgm.move_slave(2, 3, SlaveType.PERIPHERAL)
+    self.sgm.move_slave(1, 4, SlaveType.PERIPHERAL)
+    self.sgm.move_slave(4, 2, SlaveType.PERIPHERAL)
 
-    self.sgm.remove_slave(1, gm.SlaveType.PERIPHERAL)
+    self.sgm.remove_slave(1, SlaveType.PERIPHERAL)
 
-    count = self.sgm.get_number_of_slaves(gm.SlaveType.PERIPHERAL)
+    count = self.sgm.get_number_of_slaves(SlaveType.PERIPHERAL)
 
     for i in xrange(count):
-      slave_name = self.sgm.get_slave_name_at(i, gm.SlaveType.PERIPHERAL)
+      slave_name = self.sgm.get_slave_name_at(i, SlaveType.PERIPHERAL)
       node = self.sgm.get_node(slave_name)
       self.assertEqual(i, node.slave_index)
 
     # Test memory locations.
-    self.sgm.add_node("mem_1",
-                      gm.NodeType.SLAVE,
-                      gm.SlaveType.MEMORY,
-                      debug = self.dbg)
-    self.sgm.add_node("mem_2",
-                      gm.NodeType.SLAVE,
-                      gm.SlaveType.MEMORY,
-                      debug = self.dbg)
-    self.sgm.add_node("mem_3",
-                      gm.NodeType.SLAVE,
-                      gm.SlaveType.MEMORY,
-                      debug = self.dbg)
-    self.sgm.add_node("mem_4",
-                      gm.NodeType.SLAVE,
-                      gm.SlaveType.MEMORY,
-                      debug = self.dbg)
+    self.sgm.add_node("mem_1", NodeType.SLAVE, SlaveType.MEMORY, self.dbg)
+    self.sgm.add_node("mem_2", NodeType.SLAVE, SlaveType.MEMORY, self.dbg)
+    self.sgm.add_node("mem_3", NodeType.SLAVE, SlaveType.MEMORY, self.dbg)
+    self.sgm.add_node("mem_4", NodeType.SLAVE, SlaveType.MEMORY, self.dbg)
 
     # Scramble things up.
-    self.sgm.move_slave(0, 1, gm.SlaveType.MEMORY)
-    self.sgm.move_slave(3, 1, gm.SlaveType.MEMORY)
-    self.sgm.move_slave(2, 0, gm.SlaveType.MEMORY)
-    self.sgm.move_slave(0, 3, gm.SlaveType.MEMORY)
+    self.sgm.move_slave(0, 1, SlaveType.MEMORY)
+    self.sgm.move_slave(3, 1, SlaveType.MEMORY)
+    self.sgm.move_slave(2, 0, SlaveType.MEMORY)
+    self.sgm.move_slave(0, 3, SlaveType.MEMORY)
 
-    self.sgm.remove_slave(2, gm.SlaveType.MEMORY)
+    self.sgm.remove_slave(2, SlaveType.MEMORY)
 
-    count = self.sgm.get_number_of_slaves(gm.SlaveType.MEMORY)
+    count = self.sgm.get_number_of_slaves(SlaveType.MEMORY)
 
     for i in range (0, count):
-      slave_name = self.sgm.get_slave_name_at(i, gm.SlaveType.MEMORY)
+      slave_name = self.sgm.get_slave_name_at(i, SlaveType.MEMORY)
       node = self.sgm.get_node(slave_name)
       self.assertEqual(i, node.slave_index)
 
@@ -861,7 +822,7 @@ class IntTest(unittest.TestCase):
     if self.dbg:
       print "generating host interface node"
 
-    self.sgm.add_node("uart", gm.NodeType.host_interface)
+    self.sgm.add_node("uart", NodeType.HOST_INTERFACE)
     # Get the size of the graph.
     size = self.sgm.get_size()
     if self.dbg:
@@ -876,15 +837,12 @@ class IntTest(unittest.TestCase):
     if self.dbg:
       print "generating host interface node"
 
-    self.sgm.add_node("gpio",
-                      gm.NodeType.SLAVE,
-                      gm.SlaveType.PERIPHERAL,
-                      debug=self.dbg)
+    self.sgm.add_node("gpio", NodeType.SLAVE, SlaveType.PERIPHERAL, self.dbg)
 
     gpio_name = gm.get_unique_name("gpio",
-                                   gm.NodeType.SLAVE,
-                                   gm.SlaveType.PERIPHERAL,
-                                   slave_index = 1)
+                                   NodeType.SLAVE,
+                                   SlaveType.PERIPHERAL,
+                                   slave_index=1)
 
     if self.dbg:
       print "unique name: " + gpio_name
@@ -899,8 +857,8 @@ class IntTest(unittest.TestCase):
   def test_graph_remove_node(self):
     if self.dbg:
       print "adding two nodes"
-    self.sgm.add_node("uart", gm.NodeType.host_interface)
-    self.sgm.add_node("master", gm.NodeType.master)
+    self.sgm.add_node("uart", NodeType.HOST_INTERFACE)
+    self.sgm.add_node("master", NodeType.master)
 
     size = self.sgm.get_size()
     if self.dbg:
@@ -909,7 +867,7 @@ class IntTest(unittest.TestCase):
     self.assertEqual(size, 2)
 
     # Remove the uart node.
-    unique_name = gm.get_unique_name("uart", gm.NodeType.host_interface)
+    unique_name = gm.get_unique_name("uart", NodeType.HOST_INTERFACE)
 
     self.sgm.remove_node(unique_name)
 
@@ -923,14 +881,14 @@ class IntTest(unittest.TestCase):
     if self.dbg:
       print "adding two nodes"
 
-    self.sgm.add_node("uart", gm.NodeType.HOST_INTERFACE)
-    self.sgm.add_node("master", gm.NodeType.MASTER)
+    self.sgm.add_node("uart", NodeType.HOST_INTERFACE)
+    self.sgm.add_node("master", NodeType.MASTER)
 
     names = self.sgm.get_node_names()
 
 
-    uart_name = gm.get_unique_name("uart", gm.NodeType.HOST_INTERFACE)
-    master_name = gm.get_unique_name("master", gm.NodeType.MASTER)
+    uart_name = gm.get_unique_name("uart", NodeType.HOST_INTERFACE)
+    master_name = gm.get_unique_name("master", NodeType.MASTER)
 
     self.assertIn(uart_name, names)
     self.assertIn(master_name, names)
@@ -939,14 +897,14 @@ class IntTest(unittest.TestCase):
     if self.dbg:
       print "adding two nodes"
 
-    self.sgm.add_node("uart", gm.NodeType.HOST_INTERFACE)
-    self.sgm.add_node("master", gm.NodeType.MASTER)
+    self.sgm.add_node("uart", NodeType.HOST_INTERFACE)
+    self.sgm.add_node("master", NodeType.MASTER)
 
     graph_dict = self.sgm.get_nodes_dict()
 
 
-    uart_name = gm.get_unique_name("uart", gm.NodeType.HOST_INTERFACE)
-    master_name = gm.get_unique_name("master", gm.NodeType.MASTER)
+    uart_name = gm.get_unique_name("uart", NodeType.HOST_INTERFACE)
+    master_name = gm.get_unique_name("master", NodeType.MASTER)
 
     if self.dbg:
       print "dictionary: " + str(graph_dict)
@@ -956,8 +914,8 @@ class IntTest(unittest.TestCase):
 
 
   def test_get_host_interface(self):
-    self.sgm.add_node("uart", gm.NodeType.HOST_INTERFACE)
-    self.sgm.add_node("master", gm.NodeType.MASTER)
+    self.sgm.add_node("uart", NodeType.HOST_INTERFACE)
+    self.sgm.add_node("master", NodeType.MASTER)
     node = self.sgm.get_host_interface_node()
     self.assertEqual(node.name, "uart")
 
@@ -966,13 +924,13 @@ class IntTest(unittest.TestCase):
     if self.dbg:
       print "adding two nodes"
 
-    self.sgm.add_node("uart", gm.NodeType.HOST_INTERFACE)
-    self.sgm.add_node("master", gm.NodeType.MASTER)
+    self.sgm.add_node("uart", NodeType.HOST_INTERFACE)
+    self.sgm.add_node("master", NodeType.MASTER)
 
 
 
-    uart_name = gm.get_unique_name("uart", gm.NodeType.HOST_INTERFACE)
-    master_name = gm.get_unique_name("master", gm.NodeType.MASTER)
+    uart_name = gm.get_unique_name("uart", NodeType.HOST_INTERFACE)
+    master_name = gm.get_unique_name("master", NodeType.MASTER)
 
     # Get the number of connections before adding a connection.
     num_of_connections = self.sgm.get_number_of_connections()
@@ -988,11 +946,11 @@ class IntTest(unittest.TestCase):
     if self.dbg:
       print "adding two nodes"
 
-    self.sgm.add_node("uart", gm.NodeType.HOST_INTERFACE)
-    self.sgm.add_node("master", gm.NodeType.MASTER)
+    self.sgm.add_node("uart", NodeType.HOST_INTERFACE)
+    self.sgm.add_node("master", NodeType.MASTER)
 
-    uart_name = gm.get_unique_name("uart", gm.NodeType.HOST_INTERFACE)
-    master_name = gm.get_unique_name("master", gm.NodeType.MASTER)
+    uart_name = gm.get_unique_name("uart", NodeType.HOST_INTERFACE)
+    master_name = gm.get_unique_name("master", NodeType.MASTER)
 
     # Get the number of connections before adding a connection.
     num_of_connections = self.sgm.get_number_of_connections()
@@ -1013,11 +971,11 @@ class IntTest(unittest.TestCase):
       print "adding two nodes, connecting them, setting the name and then \
       reading it"
 
-    self.sgm.add_node("uart", gm.NodeType.HOST_INTERFACE)
-    self.sgm.add_node("master", gm.NodeType.MASTER)
+    self.sgm.add_node("uart", NodeType.HOST_INTERFACE)
+    self.sgm.add_node("master", NodeType.MASTER)
 
-    uart_name = gm.get_unique_name("uart", gm.NodeType.HOST_INTERFACE)
-    master_name = gm.get_unique_name("master", gm.NodeType.MASTER)
+    uart_name = gm.get_unique_name("uart", NodeType.HOST_INTERFACE)
+    master_name = gm.get_unique_name("master", NodeType.MASTER)
 
     self.sgm.connect_nodes(uart_name, master_name)
 
@@ -1032,11 +990,11 @@ class IntTest(unittest.TestCase):
       reading it"
 
     uart_name = self.sgm.add_node("uart",
-                                  gm.NodeType.SLAVE,
-                                  gm.SlaveType.PERIPHERAL)
+                                  NodeType.SLAVE,
+                                  SlaveType.PERIPHERAL)
     master_name = self.sgm.add_node("master",
-                                    gm.NodeType.SLAVE,
-                                    gm.SlaveType.PERIPHERAL)
+                                    NodeType.SLAVE,
+                                    SlaveType.PERIPHERAL)
 
     self.sgm.connect_nodes(uart_name, master_name)
 
@@ -1052,19 +1010,20 @@ class IntTest(unittest.TestCase):
     if self.dbg:
       print "adding a nodes"
 
-    self.sgm.add_node("uart", gm.NodeType.HOST_INTERFACE)
-    uart_name = gm.get_unique_name("uart", gm.NodeType.HOST_INTERFACE)
+    self.sgm.add_node("uart", NodeType.HOST_INTERFACE)
+    uart_name = gm.get_unique_name("uart", NodeType.HOST_INTERFACE)
 
     node = self.sgm.get_node(uart_name)
     self.assertEqual(node.name, "uart")
 
   def test_set_parameters(self):
     """Set all the parameters aquired from a module."""
-    self.sgm.add_node("uart", gm.NodeType.HOST_INTERFACE)
-    uart_name = gm.get_unique_name("uart", gm.NodeType.HOST_INTERFACE)
+    self.sgm.add_node("uart", NodeType.HOST_INTERFACE)
+    uart_name = gm.get_unique_name("uart", NodeType.HOST_INTERFACE)
 
-    file_name = os.getenv("SAPLIB_BASE") + "/hdl/rtl/wishbone/host_interface/uart/uart_io_handler.v"
-    parameters = saputils.get_module_tags(filename = file_name, bus="wishbone")
+    file_name = os.getenv("SAPLIB_BASE") +
+        "/hdl/rtl/wishbone/host_interface/uart/uart_io_handler.v"
+    parameters = saputils.get_module_tags(file_name, "wishbone")
 
     self.sgm.set_parameters(uart_name, parameters)
     parameters = None
@@ -1079,12 +1038,12 @@ class IntTest(unittest.TestCase):
     self.assertEqual(parameters["module"], "uart_io_handler")
 
 #  def test_bind_pin_to_port(self):
-#    self.sgm.add_node("uart", gm.NodeType.host_interface)
-#    uart_name = gm.get_unique_name("uart", gm.NodeType.host_interface)
+#    self.sgm.add_node("uart", NodeType.HOST_INTERFACE)
+#    uart_name = gm.get_unique_name("uart", NodeType.HOST_INTERFACE)
 #
 #    file_name = os.getenv("SAPLIB_BASE") +
 #                "/hdl/rtl/wishbone/host_interface/uart/uart_io_handler.v"
-#    parameters = saputils.get_module_tags(filename = file_name, bus="wishbone")
+#    parameters = saputils.get_module_tags(file_name, "wishbone")
 #
 #    self.sgm.set_parameters(uart_name, parameters)
 #
@@ -1097,28 +1056,19 @@ class IntTest(unittest.TestCase):
 #    self.assertEqual(parameters["ports"]["phy_uart_in"]["port"], "RX")
 
   def test_move_peripheral_slave(self):
-    self.sgm.add_node("slave_1",
-                      gm.NodeType.slave,
-                      gm.SlaveType.PERIPHERAL,
-                      debug = self.dbg)
-    self.sgm.add_node("slave_2",
-                      gm.NodeType.slave,
-                      gm.SlaveType.PERIPHERAL,
-                      debug = self.dbg)
-    self.sgm.add_node("slave_3",
-                      gm.NodeType.slave,
-                      gm.SlaveType.PERIPHERAL,
-                      debug = self.dbg)
+    self.sgm.add_node("slave_1", NodeType.SLAVE, SlaveType.PERIPHERAL, self.dbg)
+    self.sgm.add_node("slave_2", NodeType.SLAVE, SlaveType.PERIPHERAL, self.dbg)
+    self.sgm.add_node("slave_3", NodeType.SLAVE, SlaveType.PERIPHERAL, self.dbg)
 
     if self.dbg:
       count = self.sgm.get_number_of_peripheral_slaves()
       print "Number of slaves: %d" % (count)
-    self.sgm.move_slave(2, 1, gm.SlaveType.PERIPHERAL)
+    self.sgm.move_slave(2, 1, SlaveType.PERIPHERAL)
 
     s3_name = gm.get_unique_name("slave_3",
-                                 gm.NodeType.slave,
-                                 gm.SlaveType.PERIPHERAL,
-                                 slave_index = 1)
+                                 NodeType.SLAVE,
+                                 SlaveType.PERIPHERAL,
+                                 slave_index=1)
 
     result = True
     try:
@@ -1130,95 +1080,59 @@ class IntTest(unittest.TestCase):
     self.assertEqual(result, True)
 
   def test_move_memory_slave(self):
-    self.sgm.add_node("slave_1",
-                      gm.NodeType.slave,
-                      gm.SlaveType.memory,
-                      debug = self.dbg)
-    self.sgm.add_node("slave_2",
-                      gm.NodeType.slave,
-                      gm.SlaveType.memory,
-                      debug = self.dbg)
-    self.sgm.add_node("slave_3",
-                      gm.NodeType.slave,
-                      gm.SlaveType.memory,
-                      debug = self.dbg)
+    self.sgm.add_node("slave_1", NodeType.SLAVE, SlaveType.memory, self.dbg)
+    self.sgm.add_node("slave_2", NodeType.SLAVE, SlaveType.memory, self.dbg)
+    self.sgm.add_node("slave_3", NodeType.SLAVE, SlaveType.memory, self.dbg)
 
     if self.dbg:
       count = self.sgm.get_number_of_memory_slaves()
       print "Number of slaves: %d" % (count)
 
-    result = self.sgm.move_slave(2, 1, gm.SlaveType.memory)
+    result = self.sgm.move_slave(2, 1, SlaveType.memory)
 
     s3_name = gm.get_unique_name("slave_3",
-                                 gm.NodeType.slave,
-                                 gm.SlaveType.memory,
-                                 slave_index = 1)
+                                 NodeType.SLAVE,
+                                 SlaveType.memory,
+                                 slave_index=1)
 
     node = self.sgm.get_node(s3_name)
 
   def test_get_slave_at(self):
-    self.sgm.add_node("slave_1",
-                      gm.NodeType.slave,
-                      gm.SlaveType.PERIPHERAL,
-                      debug = self.dbg)
-    self.sgm.add_node("slave_2",
-                      gm.NodeType.slave,
-                      gm.SlaveType.PERIPHERAL,
-                      debug = self.dbg)
-    self.sgm.add_node("slave_3",
-                      gm.NodeType.slave,
-                      gm.SlaveType.PERIPHERAL,
-                      debug = self.dbg)
+    self.sgm.add_node("slave_1", NodeType.SLAVE, SlaveType.PERIPHERAL, self.dbg)
+    self.sgm.add_node("slave_2", NodeType.SLAVE, SlaveType.PERIPHERAL, self.dbg)
+    self.sgm.add_node("slave_3", NodeType.SLAVE, SlaveType.PERIPHERAL, self.dbg)
 
     test_name = gm.get_unique_name("slave_2",
-                                   gm.NodeType.slave,
-                                   gm.SlaveType.PERIPHERAL,
-                                   slave_index = 1)
-    found_name = self.sgm.get_slave_name_at(1, gm.SlaveType.PERIPHERAL)
-    node = self.sgm.get_slave_at(1, gm.SlaveType.PERIPHERAL)
+                                   NodeType.SLAVE,
+                                   SlaveType.PERIPHERAL,
+                                   slave_index=1)
+    found_name = self.sgm.get_slave_name_at(1, SlaveType.PERIPHERAL)
+    node = self.sgm.get_slave_at(1, SlaveType.PERIPHERAL)
 
     self.assertEqual(test_name, node.unique_name)
 
   def test_get_slave_name_at(self):
-    self.sgm.add_node("slave_1",
-                      gm.NodeType.slave,
-                      gm.SlaveType.PERIPHERAL,
-                      debug = self.dbg)
-    self.sgm.add_node("slave_2",
-                      gm.NodeType.slave,
-                      gm.SlaveType.PERIPHERAL,
-                      debug = self.dbg)
-    self.sgm.add_node("slave_3",
-                      gm.NodeType.slave,
-                      gm.SlaveType.PERIPHERAL,
-                      debug = self.dbg)
+    self.sgm.add_node("slave_1", NodeType.SLAVE, SlaveType.PERIPHERAL, self.dbg)
+    self.sgm.add_node("slave_2", NodeType.SLAVE, SlaveType.PERIPHERAL, self.dbg)
+    self.sgm.add_node("slave_3", NodeType.SLAVE, SlaveType.PERIPHERAL, self.dbg)
 
     test_name = gm.get_unique_name("slave_2",
-                                   gm.NodeType.slave,
-                                   gm.SlaveType.PERIPHERAL,
-                                   slave_index = 1)
-    found_name = self.sgm.get_slave_name_at(1, gm.SlaveType.PERIPHERAL)
+                                   NodeType.SLAVE,
+                                   SlaveType.PERIPHERAL,
+                                   slave_index=1)
+    found_name = self.sgm.get_slave_name_at(1, SlaveType.PERIPHERAL)
 
 
     self.assertEqual(test_name, found_name)
 
   def test_remove_slave(self):
-    self.sgm.add_node("slave_1",
-                      gm.NodeType.slave,
-                      gm.SlaveType.PERIPHERAL,
-                      debug = self.dbg)
-    self.sgm.add_node("slave_2",
-                      gm.NodeType.slave,
-                      gm.SlaveType.PERIPHERAL,
-                      debug = self.dbg)
-    self.sgm.add_node("slave_3",
-                      gm.NodeType.slave,
-                      gm.SlaveType.PERIPHERAL,
-                      debug = self.dbg)
+    self.sgm.add_node("slave_1", NodeType.SLAVE, SlaveType.PERIPHERAL, self.dbg)
+    self.sgm.add_node("slave_2", NodeType.SLAVE, SlaveType.PERIPHERAL, self.dbg)
+    self.sgm.add_node("slave_3", NodeType.SLAVE, SlaveType.PERIPHERAL, self.dbg)
 
-    self.sgm.remove_slave(1, gm.SlaveType.PERIPHERAL)
+    self.sgm.remove_slave(1, SlaveType.PERIPHERAL)
 
-    count = self.sgm.get_number_of_slaves(gm.SlaveType.PERIPHERAL)
+    count = self.sgm.get_number_of_slaves(SlaveType.PERIPHERAL)
     self.assertEqual(count, 2)
 
 if __name__ == "__main__":
