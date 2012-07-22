@@ -676,7 +676,27 @@ class UTest(unittest.TestCase):
         self.sgm.is_slave_connected_to_slave, mock.Mock(spec=SapNode))
 
   def test_move_memory_slave(self):
-    pass
+    arg_f, arg_t = 0, 1
+
+    self.sgm.get_number_of_memory_slaves = mock.Mock(return_value=?)
+    self.sgm.get_nodes_dict = mock.Mock(return_value={
+      ???
+    })
+    self.sgm.get_unique_name = mock.Mock()
+    self.sgm.relabel_nodes = mock.Mock()
+    self.sgm.get_node = mock.Mock()
+
+    self.sgm.get_number_of_memory_slaves.assert_called_once_with()
+    self.sgm.get_nodes_dict.assert_called_once_with()
+    self.sgm.get_uniqe_name.assert_called_once_with()
+
+  def test_move_memory_slave_from_dne_raises_SlaveError(self):
+    arg_f, arg_t = 0, 1
+    self.fail("not impl")
+
+  def test_move_memory_slave_to_dne_raises_SlaveError(self):
+    arg_f, arg_t = 0, 1
+    self.fail("not impl")
 
   def test_move_peripheral_slave(self):
     pass

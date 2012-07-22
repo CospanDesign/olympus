@@ -79,6 +79,7 @@ class SapGraphManager:
 
     # Additions for DI.
     self.get_unique_name = get_unique_name
+    self.relabel_nodes = nx.relabel_nodes
 
   def clear_graph(self):
     """Resets the graph."""
@@ -384,8 +385,8 @@ class SapGraphManager:
       for name in graph_dict.keys():
         print "key: " + name
 
-    self.graph = nx.relabel_nodes(self.graph,
-                                  {from_node.unique_name : from_unique})
+    self.graph = self.relabel_nodes(self.graph,
+        {from_node.unique_name : from_unique})
     from_node = self.get_node(from_unique)
     from_node.slave_index = to_index
     from_node.unique_name = from_unique
@@ -395,7 +396,7 @@ class SapGraphManager:
                                      to_node.node_type,
                                      to_node.slave_type,
                                      to_node.slave_index)
-    self.graph = nx.relabel_nodes(self.graph, {to_node.unique_name:to_unique})
+    self.graph = self.relabel_nodes(self.graph, {to_node.unique_name:to_unique})
 
     to_node = self.get_node(to_unique)
     to_node.slave_index = from_index
