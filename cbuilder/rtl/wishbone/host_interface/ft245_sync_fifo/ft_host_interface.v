@@ -76,7 +76,7 @@ output 				      ftdi_siwu;
 input				        ftdi_suspend_n;
 
 //debug
-output  reg [7:0]   debug;
+output              [7:0]  debug;
 
 parameter   PING  = 4'h0;
 parameter   WRITE = 4'h1;
@@ -103,6 +103,8 @@ reg		[7:0]		next_wstate;
 reg		[31:0]  temp_data;
 wire          sof;
 
+wire  [7:0]   ft_245_debug;
+
 //instantiate the ft245_sync core
 ft245_sync_fifo sync_fifo(
 	.clk(clk),
@@ -126,9 +128,13 @@ ft245_sync_fifo sync_fifo(
 	.ftdi_rd_n(ftdi_rd_n),
 	.ftdi_oe_n(ftdi_oe_n),
 	.ftdi_siwu(ftdi_siwu),
-	.ftdi_suspend_n(ftdi_suspend_n)
+	.ftdi_suspend_n(ftdi_suspend_n),
+
+  .debug(ft_245_debug)
 
 );
+
+//assign  debug = ft_245_debug;
 
 //XXX: Possible race condition
 //XXX: Will the assembler hold the data for the HOST - > MASTER read path?
@@ -146,12 +152,20 @@ reg                   dw_ready;
 reg                   reset_assembler;
 reg [31:0]            read_dw;
 
+
 reg                   read_ack;
 
 parameter             READ_FIFO = 4'h1;
 parameter             ACK_WAIT  = 4'h2;
 
-reg [3:0]             astate  = IDLE;
+reg [1:0]             astate  = IDLE;
+
+assign debug[1:0]  = astate;
+assign debug[2] = in_fifo_empty;
+assign debug[3] = in_fifo_rd;
+assign debug[4] = (in_fifo_data == 8'h08); 
+assign debug[5] = dw_ready;
+assign debug[7:6] = byte_count[1:0];
 
 //Host -> Master DW  assembler
 always @ (posedge clk) begin
@@ -170,7 +184,6 @@ always @ (posedge clk) begin
       case (astate)
         IDLE: begin
           if (!in_fifo_empty) begin
-            in_fifo_rd      <=  1;
             astate          <=  READ_FIFO;
           end
         end
@@ -188,20 +201,25 @@ always @ (posedge clk) begin
           end
           else begin
             //$display ("ASSEMBLER: %t: in fifo is not empty", $time);
-            working_dw      <= {working_dw[23:0], in_fifo_data};
-            in_fifo_rd      <=  1;
-            if (byte_count == 2'h3) begin
-              byte_count    <=  2'h0;
-              read_dw       <=  {working_dw[23:0], in_fifo_data};
-              dw_ready      <=  1;
-              working_dw    <=  32'h0000;
-              astate        <=  ACK_WAIT;
-              in_fifo_rd    <=  0;
-            end
-            byte_count      <=  byte_count + 1;
             if (in_fifo_empty) begin
-              astate        <=  IDLE;
+              astate          <=  IDLE;
               in_fifo_rd      <=  0;
+            end
+            else begin
+              in_fifo_rd      <=  1;
+            end
+            if (in_fifo_rd) begin
+              working_dw      <= {working_dw[23:0], in_fifo_data};
+              if (byte_count == 2'h3) begin
+                byte_count    <=  2'h0;
+                read_dw       <=  {working_dw[23:0], in_fifo_data};
+                dw_ready      <=  1;
+                working_dw    <=  32'h0000;
+                astate        <=  ACK_WAIT;
+                in_fifo_rd    <=  0;
+              end
+ 
+              byte_count      <=  byte_count + 1;
             end
           end
         end
@@ -246,7 +264,7 @@ always @ (posedge clk) begin
     read_ack        <=  0;
 
     //debug data
-    debug           <= 8'h00;
+//    debug           <= 8'h00;
 	end
 	else begin
 		//read should only be pulsed
@@ -256,7 +274,7 @@ always @ (posedge clk) begin
     //read_ready      <=  0;
     read_ack        <=  0;
 
-    debug[1]        <=  (rstate != IDLE);
+//    debug[1]        <=  (rstate != IDLE);
     //debug[1]        <=  (rstate == READ_COMMAND);
     case (rstate)
       IDLE: begin
@@ -264,7 +282,7 @@ always @ (posedge clk) begin
         reset_assembler     <=  1;
         if (sof && (astate == READ_FIFO)) begin
           if (!in_fifo_empty && (in_fifo_data == 8'hCD)) begin
-            debug[0]        <=  !debug[0];
+//            debug[0]        <=  !debug[0];
             reset_assembler <=  0;
             $display("FT_READ: Detected start of transfer with good ID");
             rstate          <=  READ_COMMAND;
@@ -333,7 +351,7 @@ always @ (posedge clk) begin
       end
       READ_DATA: begin
         //read data from the host
-        debug[2]                <=  1;
+//        debug[2]                <=  1;
         if (dw_ready) begin
           read_ack          <=  1;
 //XXX: this is a possible point of error because I could wait here for ever!
@@ -355,7 +373,7 @@ always @ (posedge clk) begin
             rstate          <=  READ_DATA; //read_ready      <=  1;
           end
           else begin
-            debug[2]        <=  0;
+//            debug[2]        <=  0;
             rstate          <=  IDLE;
           end
         end
@@ -373,39 +391,107 @@ end
 //MASTER -> HOST
 
 //Master -> Host Dissassembler
-reg [3:0]   dissassembler_count;
+reg [3:0]   dcount;
 reg [31:0]  output_dw;
 reg         write_id;
 wire        dissassembler_ready;
-assign      dissassembler_ready = (!out_fifo_full && (dissassembler_count == 0));
+//assign      dissassembler_ready = (!out_fifo_full && (dcount == 0) && !finish_strobe);
 reg         new_output_data;
 reg [31:0]  output_data;
 
+reg [7:0]   out_cache;
+reg [3:0]   dstate;
+
+wire        dissassembly_valid;
+assign      dissassembly_valid = ((dcount > 0) && !out_fifo_full);
+
+assign      dissassembler_ready = ((dstate == IDLE) && !out_fifo_full);
+
+parameter   DWRITE          = 4'h1;
+parameter   DFIFO_CHECK     = 4'h2;
+parameter   DFIFO_WAIT      = 4'h3;
+
 always @ (posedge clk) begin
   if (rst) begin
-    dissassembler_count     <=  4'h0;
+    dcount     <=  4'h0;
     out_fifo_wr             <=  0;
     output_data             <=  32'h0000;
+    out_cache               <=  8'h00;
+    dstate                  <=  IDLE;
   end
   else begin
     out_fifo_wr             <=  0;
-    if (write_id) begin
-      //the only time where we write just 1 byte at a time
-      out_fifo_data         <=  8'hDC;
-      out_fifo_wr           <=  1;
-    end
-    if (new_output_data) begin
-      dissassembler_count   <=  4'h4;
-      output_data           <=  output_dw;
-    end
-    if (dissassembler_count > 0 && !out_fifo_full) begin
-      out_fifo_data         <=   output_data[31:24];
-      out_fifo_wr           <=   1;
+    case (dstate)
+      IDLE: begin
+        if (write_id) begin
+          out_fifo_data     <=  8'hDC;
+          out_fifo_wr       <=  1;
+        end
+        else if (new_output_data) begin
+          dcount            <=  4'h3;
+          output_data       <=  output_dw;
+          dstate            <=  DWRITE;
+        end
+      end
+      DWRITE: begin
+        if (!out_fifo_full) begin
+          out_fifo_data     <=  output_data[31:24];
+          out_fifo_wr       <=  1;
+          output_data       <=  {output_data[23:0], 8'h00};
+          dcount            <=  dcount - 1;
+          if (dcount == 0) begin
+            out_cache       <=  output_data[31:24];
+            dstate          <= DFIFO_CHECK;
+          end
+        end
+      end
+      DFIFO_CHECK: begin
+        if (out_fifo_full) begin
+          dstate            <=  DFIFO_WAIT;
+        end
+        else begin
+          dstate            <=  IDLE;
+        end
+      end
+      DFIFO_WAIT: begin
+        if (!out_fifo_full) begin
+          out_fifo_wr       <=  1;
+          out_fifo_data     <=  out_cache;
+          dstate            <=  IDLE;
+        end
+      end
+      default: begin
+        dstate  <=  IDLE;
+      end
+    endcase
+  end
 
+/*
+    if (finish_strobe) begin
+      if (out_fifo_full) begin
+        cache_valid         <=  1;
+      end
+      else begin
+        if (cache_valid) begin
+          out_fifo_data     <=  out_cache; 
+        end
+        cache_valid         <=  0;
+        finish_strobe       <=  0;
+      end
+    end
+    if (dcount > 0 && !out_fifo_full) begin
+      out_fifo_data         <=  output_data[31:24];
+      out_fifo_wr           <=  1;
+
+      if (dcount == 1) begin
+        out_cache           <=  output_data[31:24];
+        finish_strobe       <=  1;
+      end
       output_data           <=  {output_data[23:0], 8'h00};
-      dissassembler_count   <=  dissassembler_count - 1;
+      dcount   <=  dcount - 1;
     end
   end
+*/
 end
 
 
@@ -438,7 +524,8 @@ always @ (posedge clk) begin
     write_id                  <=  0;
     oh_ready                  <=  0;
     new_output_data           <=  0;
-    if (dissassembler_ready && !new_output_data && !read_busy) begin
+//    if (dissassembler_ready && !new_output_data && !read_busy) begin
+    if (dissassembler_ready && !new_output_data) begin
       case (wstate)
         IDLE: begin
 //XXX: There is possibly a race condition with the read PATH and write path vying for control

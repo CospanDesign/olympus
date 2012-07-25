@@ -13,7 +13,8 @@ import getopt
 sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, os.pardir, os.pardir, "cbuilder/drt"))
 import drt as drt_controller
 
-MEM_SIZE = 250
+MEM_SIZE = 126
+TEST_MEM_SIZE = 252
 
 class Dionysus (object):
   
@@ -207,9 +208,23 @@ class Dionysus (object):
       return None
 
     #I need to watch out for the modem status bytes
-    response = self.dev.read_data(length * 4 + 8 )
+    read_count = 0
+    response = Array('B')
     rsp = Array('B')
-    rsp.fromstring(response)
+    timeout = time.time() + self.read_timeout
+
+    while (time.time() < timeout) and (read_count < (length * 4 + 8)):
+#      print "Read Count %d, Max Count = %d" % (read_count, (length * 4 + 8))
+      response = self.dev.read_data((length * 4 + 8 ) - read_count)
+#      response = self.dev.read_data(length * 4 + 8 )
+      temp  = Array('B')
+      temp.fromstring(response)
+      if (len(temp) > 0):
+#        print "Length Read: %d" % len(temp)
+        rsp += temp
+        read_count = len(rsp)
+
+    print "read length = %d, total length = %d" % (len(rsp), (length * 4 + 8))
 
     if self.dbg:
       print "response length: " + str(length * 4 + 8)
@@ -371,6 +386,7 @@ class Dionysus (object):
     self.dev.read_data_set_chunksize(0x10000)
 
     self.dev.set_flowctrl('hw')
+    #self.dev.set_flowctrl('hw2')
     self.dev.purge_buffers()
 
 
@@ -536,7 +552,8 @@ def test_all_memory (syc = None, mem_size=MEM_SIZE):
 #      n3 = 0x00
 #      n4 = 0x00
       
-      rand = int(random.random() * 256.0)
+      #rand = int(random.random() * 256.0)
+      rand = 0
       
       #Create 1024 * 2 array
       data_out = Array('B')
@@ -811,7 +828,7 @@ if __name__ == '__main__':
       #print "Printing DRT:"
       #syc.pretty_print_drt()
 
-      test_all_memory(syc, 254) 
+      test_all_memory(syc, TEST_MEM_SIZE) 
       sys.exit()
 
     else:

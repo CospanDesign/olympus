@@ -352,18 +352,19 @@ reg         txe_debug;
 
 initial begin
   rxe_debug <=  1;
-//  #1236;
-//  rxe_debug <=  0;
-//  #100;
-//  rxe_debug <=  1;
+  #4680;
+  rxe_debug <=  0;
+  #350;
+  rxe_debug <=  1;
 end
 
 initial begin
   txe_debug <=  1;
-  #6208;
-  txe_debug <=  0;
-  #84;
-  txe_debug <=  1;
+//  #6208;
+//  #6165;
+//  txe_debug <=  0;
+//  #84;
+//  txe_debug <=  1;
 end
 //virtual FTDI chip
 always @ (negedge ftdi_clk) begin
@@ -374,12 +375,10 @@ always @ (negedge ftdi_clk) begin
     write_count     <=  0;
     ftdi_in_data    <=  0;
     temp_count      <=  0;
-    txe_n     <=  1;  
   end
   else begin
     //not in reset
     rde_n <= ~(ftdi_ready_to_read && rxe_debug);
-    txe_n <=  ~(txe_debug);
     //rde_n <= ~ftdi_ready_to_read;
     //inject a stop reading command
     if (rde_n && (rxe_debug == 0)) begin
@@ -515,9 +514,11 @@ always @ (posedge ftdi_clk) begin
     new_data    <=  0;
     read_data   <=  0;
     dat_out     <=  0;
+    txe_n     <=  1;  
 
   end
   else begin
+    txe_n <=  ~(txe_debug);
     //not in reset
     if (~rd_n) begin
       //this is a good place to see if the core is readinga command

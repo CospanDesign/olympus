@@ -24,6 +24,7 @@ module afifo
   //Writing port.  
   input wire  [DATA_WIDTH-1:0]        data_in,  
   output reg                          full,
+  output wire                         almost_full,
   input wire                          wr_en,
   input wire                          din_clk,
   input wire                          rst);
@@ -36,6 +37,9 @@ module afifo
   wire                                set_status, rst_status;
   reg                                 status;
   wire                                preset_full, preset_empty;
+
+
+  assign                              almost_full = status;
     
     //////////////Code///////////////
     //Data ports logic:
