@@ -13,8 +13,11 @@ import getopt
 sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, os.pardir, os.pardir, "cbuilder/drt"))
 import drt as drt_controller
 
+#MEM_SIZE = 680
+#TEST_MEM_SIZE = 690
 MEM_SIZE = 126
-TEST_MEM_SIZE = 252
+TEST_MEM_SIZE = 690
+
 
 class Dionysus (object):
   
@@ -581,7 +584,7 @@ def test_all_memory (syc = None, mem_size=MEM_SIZE):
 #      row_count = 12
 #      column_count = 10
 #      data_out = Array('B', [n1, n2, n3, n4])
-      print "Writing %d DWORDS of data" % (len(data_out))
+      print "Writing %d bytes of data" % (len(data_out))
       result = syc.write(dev_index, 0, data_out, mem_bus)
       if result:
         print "Write Successful!"
@@ -589,7 +592,7 @@ def test_all_memory (syc = None, mem_size=MEM_SIZE):
         print "Write Failed!"
 
       
-#      time.sleep(1)
+#      time.sleep(.1)
       print "Reading %d DWORDS of data" % (len(data_out))
       data_in = Array('B')
       data_in = syc.read(len(data_out) / 4, dev_index, 0,  mem_bus)

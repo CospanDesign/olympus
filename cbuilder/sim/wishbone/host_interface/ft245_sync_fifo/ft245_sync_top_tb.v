@@ -404,7 +404,18 @@ always @ (negedge ftdi_clk) begin
             state  <=  RX_ENABLE_OUTPUT;
             //count is given in 32 bits, so need to multiply it by 4 to send all bytes
             //add eight for the address and control data
-            ftdi_write_size <= (data_count  * 4) + 8;
+            if (syc_command[27:24] == 1) begin 
+              //writing
+              ftdi_write_size <= (data_count  * 4) + 8;
+            end
+            else if (syc_command[27:24] == 2) begin
+              //reading
+              ftdi_write_size <=  8;
+            end
+            else begin
+              //ping
+              ftdi_write_size <=  8;
+            end
             count_data  = 1;
             write_count   <= 0;
             ftdi_in_data    <= 8'hCD;
@@ -422,9 +433,9 @@ always @ (negedge ftdi_clk) begin
             //ftdi_in_data      <= syc_command[31:24];
             //ftdi_in_data    <= 8'hCD;
             //syc_command   <= {syc_command[24:0], 8'h0};
-            if (write_count < ftdi_write_size) begin
-              write_count <= write_count;
-            end
+//            if (write_count < ftdi_write_size) begin
+//              write_count <= write_count;
+//            end
           end
         end
         RX_WRITING: begin
@@ -441,6 +452,7 @@ always @ (negedge ftdi_clk) begin
       //            //$display ("tb: sending %h", syc_address[31:24]);
               ftdi_in_data <= syc_address[31:24];
               syc_address <= {syc_address[23:0], 8'h0};
+
             end
             else if (write_count > 7 && write_count < 4'hC) begin
               //larger than 7

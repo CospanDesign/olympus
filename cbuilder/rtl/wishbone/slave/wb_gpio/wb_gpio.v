@@ -242,7 +242,7 @@ always @ (posedge clk) begin
 		end
 		if (interrupts != 0) begin
 			//tell the master that we have interrupts
-			$display ("found an interrupt in the slave");
+//			$display ("found an interrupt in the slave");
 			wbs_int_o	<= 1;
 		end
 		else begin

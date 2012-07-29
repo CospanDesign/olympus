@@ -76,7 +76,7 @@ output 				      ftdi_siwu;
 input				        ftdi_suspend_n;
 
 //debug
-output              [7:0]  debug;
+output              [15:0]  debug;
 
 parameter   PING  = 4'h0;
 parameter   WRITE = 4'h1;
@@ -103,7 +103,7 @@ reg		[7:0]		next_wstate;
 reg		[31:0]  temp_data;
 wire          sof;
 
-wire  [7:0]   ft_245_debug;
+wire  [15:0]   ft_245_debug;
 
 //instantiate the ft245_sync core
 ft245_sync_fifo sync_fifo(
@@ -134,7 +134,7 @@ ft245_sync_fifo sync_fifo(
 
 );
 
-//assign  debug = ft_245_debug;
+assign  debug = ft_245_debug;
 
 //XXX: Possible race condition
 //XXX: Will the assembler hold the data for the HOST - > MASTER read path?
@@ -160,12 +160,17 @@ parameter             ACK_WAIT  = 4'h2;
 
 reg [1:0]             astate  = IDLE;
 
+/*
 assign debug[1:0]  = astate;
 assign debug[2] = in_fifo_empty;
 assign debug[3] = in_fifo_rd;
-assign debug[4] = (in_fifo_data == 8'h08); 
-assign debug[5] = dw_ready;
-assign debug[7:6] = byte_count[1:0];
+assign debug[4] = dw_ready;
+assign debug[7:5] = rstate[2:0];
+assign debug[15:8]  = in_fifo_data;
+*/
+//assign debug[4] = (in_fifo_data == 8'h08); 
+//assign debug[5] = dw_ready;
+//assign debug[7:6] = byte_count[1:0];
 
 //Host -> Master DW  assembler
 always @ (posedge clk) begin
@@ -180,7 +185,7 @@ always @ (posedge clk) begin
   end
   else begin
     in_fifo_rd          <=  0;
-    if (!write_busy) begin
+//    if (!write_busy) begin
       case (astate)
         IDLE: begin
           if (!in_fifo_empty) begin
@@ -200,26 +205,33 @@ always @ (posedge clk) begin
             end
           end
           else begin
-            //$display ("ASSEMBLER: %t: in fifo is not empty", $time);
             if (in_fifo_empty) begin
               astate          <=  IDLE;
               in_fifo_rd      <=  0;
-            end
-            else begin
-              in_fifo_rd      <=  1;
-            end
-            if (in_fifo_rd) begin
-              working_dw      <= {working_dw[23:0], in_fifo_data};
               if (byte_count == 2'h3) begin
+                //watch out for the condition where I just got done reading a double word
                 byte_count    <=  2'h0;
                 read_dw       <=  {working_dw[23:0], in_fifo_data};
                 dw_ready      <=  1;
                 working_dw    <=  32'h0000;
                 astate        <=  ACK_WAIT;
-                in_fifo_rd    <=  0;
               end
- 
-              byte_count      <=  byte_count + 1;
+            end
+            else begin
+              in_fifo_rd      <=  1;
+              if (in_fifo_rd) begin
+                working_dw      <= {working_dw[23:0], in_fifo_data};
+                if (byte_count == 2'h3) begin
+                  byte_count    <=  2'h0;
+                  read_dw       <=  {working_dw[23:0], in_fifo_data};
+                  dw_ready      <=  1;
+                  working_dw    <=  32'h0000;
+                  astate        <=  ACK_WAIT;
+                  in_fifo_rd    <=  0;
+                end
+  
+                byte_count      <=  byte_count + 1;
+              end
             end
           end
         end
@@ -234,7 +246,7 @@ always @ (posedge clk) begin
           astate <=  IDLE;
         end
       endcase
-    end
+//    end
   end
 end
 
