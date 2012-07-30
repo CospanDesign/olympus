@@ -37,7 +37,7 @@ SOFTWARE.
 
 	number of registers this should be equal to the nubmer of ADDR_???
 	parameters
-	DRT_SIZE:  4194304
+	DRT_SIZE:  8388607
 
 */
 

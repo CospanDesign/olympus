@@ -26,6 +26,8 @@ SOFTWARE.
 `include "sdram_include.v"
 
 
+`define MAX_DWORD 512
+
 module sdram_read (
   rst,
   clk,
@@ -45,7 +47,8 @@ module sdram_read (
   fifo_reset,
   fifo_data,
   fifo_write,
-  fifo_full
+  fifo_full,
+  fifo_empty
 );
 
 input               rst;
@@ -70,6 +73,7 @@ output  reg [31:0]  fifo_data;
 output  reg         fifo_write;
 output  reg         fifo_reset;
 input               fifo_full;
+input               fifo_empty;
 
 parameter           IDLE            = 4'h0;
 parameter           ACTIVATE        = 4'h1;
@@ -86,6 +90,7 @@ reg         [15:0]  delay;
 reg         [21:0]  read_address;
 reg                 read_top;
 reg                 read_bottom;
+reg         [10:0]  dword_count;
 
 wire        [11:0]  row;
 wire        [7:0]   column;
@@ -115,6 +120,7 @@ always @ (posedge clk) begin
     ram_data    <=  32'h0000;
     fifo_reset  <=  0;
     wait_for_refresh  <=  0;
+    dword_count <=  0;
 
   end
   else begin
@@ -146,6 +152,7 @@ always @ (posedge clk) begin
     else begin
       case (state)
         IDLE: begin
+          dword_count       <=  0;
           fifo_reset        <=  1;
           if (enable && ~fifo_full) begin
             $display ("SDRAM_READ: IDLE: Read request");
@@ -159,11 +166,21 @@ always @ (posedge clk) begin
             wait_for_refresh  <=  1;
           end
           else begin
-            if (~enable) begin
-              state       <=  IDLE;
+            if (dword_count < `MAX_DWORD)begin
+              if (~enable) begin
+                state       <=  IDLE;
+              end
+              else if (~fifo_full) begin
+                state       <=  ACTIVATE;
+              end
             end
-            else if (~fifo_full) begin
-              state       <=  ACTIVATE;
+            else begin
+              if (fifo_empty) begin
+                dword_count <= 0;
+              end
+              if (~enable) begin
+                state       <=  IDLE;
+              end
             end
           end
         end
@@ -193,6 +210,7 @@ always @ (posedge clk) begin
           read_top      <=  1;
           state         <=  READ_BOTTOM;
           read_address  <=  read_address + 2;
+          dword_count   <=  dword_count + 1;
         end
         READ_BOTTOM: begin
           $display ("SDRAM_READ: Reading bottom word");

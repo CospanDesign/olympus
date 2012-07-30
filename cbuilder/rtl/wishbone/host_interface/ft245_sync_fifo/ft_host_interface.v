@@ -147,7 +147,7 @@ assign                write_busy  = (wstate != IDLE);
 //Host -> Master DW Assembler Register
 reg                   reset_read_state;
 reg [31:0]            working_dw;
-reg [1:0]             byte_count;
+reg [2:0]             byte_count;
 reg                   dw_ready;
 reg                   reset_assembler;
 reg [31:0]            read_dw;
@@ -155,10 +155,13 @@ reg [31:0]            read_dw;
 
 reg                   read_ack;
 
-parameter             READ_FIFO = 4'h1;
-parameter             ACK_WAIT  = 4'h2;
+parameter             READ_FIFO   = 4'h1;
+parameter             PROCESS_DATA = 4'h2;
+parameter             PRE_RESET   = 4'h3;
+parameter             RESET_FIFO  = 4'h4;
+parameter             ACK_WAIT    = 4'h5;
 
-reg [1:0]             astate  = IDLE;
+reg [2:0]             astate  = IDLE;
 
 /*
 assign debug[1:0]  = astate;
@@ -185,68 +188,55 @@ always @ (posedge clk) begin
   end
   else begin
     in_fifo_rd          <=  0;
-//    if (!write_busy) begin
-      case (astate)
-        IDLE: begin
-          if (!in_fifo_empty) begin
+    case (astate)
+      IDLE: begin
+        if (!in_fifo_empty) begin
+          in_fifo_rd      <=  1;
+          if (reset_assembler) begin
+            astate        <= PRE_RESET;
+          end
+          else begin
             astate          <=  READ_FIFO;
           end
         end
-        READ_FIFO: begin
-          if (reset_assembler) begin
-            working_dw        <=  32'h0000;
-            byte_count        <=  2'b00;
-            dw_ready          <=  0;
-            if (!in_fifo_empty) begin
-              in_fifo_rd      <=  1;
-            end
-            else begin
-              astate          <=  IDLE;
-            end
-          end
-          else begin
-            if (in_fifo_empty) begin
-              astate          <=  IDLE;
-              in_fifo_rd      <=  0;
-              if (byte_count == 2'h3) begin
-                //watch out for the condition where I just got done reading a double word
-                byte_count    <=  2'h0;
-                read_dw       <=  {working_dw[23:0], in_fifo_data};
-                dw_ready      <=  1;
-                working_dw    <=  32'h0000;
-                astate        <=  ACK_WAIT;
-              end
-            end
-            else begin
-              in_fifo_rd      <=  1;
-              if (in_fifo_rd) begin
-                working_dw      <= {working_dw[23:0], in_fifo_data};
-                if (byte_count == 2'h3) begin
-                  byte_count    <=  2'h0;
-                  read_dw       <=  {working_dw[23:0], in_fifo_data};
-                  dw_ready      <=  1;
-                  working_dw    <=  32'h0000;
-                  astate        <=  ACK_WAIT;
-                  in_fifo_rd    <=  0;
-                end
-  
-                byte_count      <=  byte_count + 1;
-              end
-            end
-          end
+      end
+      PRE_RESET: begin
+        astate  <=  RESET_FIFO;
+      end
+      RESET_FIFO: begin
+        working_dw        <=  32'h0000;
+        byte_count        <=  0;
+        dw_ready          <=  0;
+        astate            <=  IDLE;
+      end
+      READ_FIFO: begin
+        astate            <=  PROCESS_DATA;
+        byte_count        <=  byte_count + 1;
+      end
+      PROCESS_DATA: begin
+        working_dw        <=  {working_dw[23:0], in_fifo_data};
+
+        if (byte_count == 3'h4) begin
+          read_dw         <=  {working_dw[23:0], in_fifo_data};
+          dw_ready        <=  1;
+          working_dw      <=  32'h0000;
+          astate          <=  ACK_WAIT;
         end
-        ACK_WAIT: begin
-          if (read_ack) begin
-            dw_ready          <=  0;
-            astate            <=  IDLE;
-            byte_count        <=  0;
-          end
+        else begin
+          astate  <=  IDLE;
         end
-        default: begin
-          astate <=  IDLE;
+      end
+      ACK_WAIT: begin
+        if (read_ack) begin
+          dw_ready          <=  0;
+          astate            <=  IDLE;
+          byte_count        <=  0;
         end
-      endcase
-//    end
+      end
+      default: begin
+        astate  <=  IDLE;
+      end
+    endcase
   end
 end
 
@@ -292,17 +282,10 @@ always @ (posedge clk) begin
       IDLE: begin
         //if there is new data within the incomming FIFO
         reset_assembler     <=  1;
-        if (sof && (astate == READ_FIFO)) begin
-          if (!in_fifo_empty && (in_fifo_data == 8'hCD)) begin
-//            debug[0]        <=  !debug[0];
+        if (sof && (in_fifo_data == 8'hCD)) begin
             reset_assembler <=  0;
             $display("FT_READ: Detected start of transfer with good ID");
             rstate          <=  READ_COMMAND;
-          end
-          else begin
-            //debug[1]        <=  !debug[1];
-            $display ("FT_READ: Detected bad ID!");
-          end
         end
       end
       READ_COMMAND: begin
@@ -421,7 +404,7 @@ assign      dissassembler_ready = ((dstate == IDLE) && !out_fifo_full);
 
 parameter   DWRITE          = 4'h1;
 parameter   DFIFO_CHECK     = 4'h2;
-parameter   DFIFO_WAIT      = 4'h3;
+parameter   DSLEEP          = 4'h3;
 
 always @ (posedge clk) begin
   if (rst) begin
@@ -440,70 +423,34 @@ always @ (posedge clk) begin
           out_fifo_wr       <=  1;
         end
         else if (new_output_data) begin
-          dcount            <=  4'h3;
+          dstate            <=  DFIFO_CHECK;
+          dcount            <=  4'h4;
           output_data       <=  output_dw;
-          dstate            <=  DWRITE;
-        end
-      end
-      DWRITE: begin
-        if (!out_fifo_full) begin
-          out_fifo_data     <=  output_data[31:24];
-          out_fifo_wr       <=  1;
-          output_data       <=  {output_data[23:0], 8'h00};
-          dcount            <=  dcount - 1;
-          if (dcount == 0) begin
-            out_cache       <=  output_data[31:24];
-            dstate          <= DFIFO_CHECK;
-          end
         end
       end
       DFIFO_CHECK: begin
-        if (out_fifo_full) begin
-          dstate            <=  DFIFO_WAIT;
+        if (!out_fifo_full) begin
+          dstate            <=  DWRITE;
         end
-        else begin
-          dstate            <=  IDLE;
+        if (dcount == 0) begin
+          dstate            <= IDLE;
         end
       end
-      DFIFO_WAIT: begin
-        if (!out_fifo_full) begin
-          out_fifo_wr       <=  1;
-          out_fifo_data     <=  out_cache;
-          dstate            <=  IDLE;
-        end
+      DWRITE: begin
+        out_fifo_data     <=  output_data[31:24];
+        out_fifo_wr       <=  1;
+        output_data       <=  {output_data[23:0], 8'h00};
+        dcount            <=  dcount - 1;
+        dstate            <=  DSLEEP;
+      end
+      DSLEEP: begin
+        dstate            <=  DFIFO_CHECK;
       end
       default: begin
         dstate  <=  IDLE;
       end
     endcase
   end
-
-/*
-    if (finish_strobe) begin
-      if (out_fifo_full) begin
-        cache_valid         <=  1;
-      end
-      else begin
-        if (cache_valid) begin
-          out_fifo_data     <=  out_cache; 
-        end
-        cache_valid         <=  0;
-        finish_strobe       <=  0;
-      end
-    end
-    if (dcount > 0 && !out_fifo_full) begin
-      out_fifo_data         <=  output_data[31:24];
-      out_fifo_wr           <=  1;
-
-      if (dcount == 1) begin
-        out_cache           <=  output_data[31:24];
-        finish_strobe       <=  1;
-      end
-      output_data           <=  {output_data[23:0], 8'h00};
-      dcount   <=  dcount - 1;
-    end
-  end
-*/
 end
 
 
@@ -536,7 +483,6 @@ always @ (posedge clk) begin
     write_id                  <=  0;
     oh_ready                  <=  0;
     new_output_data           <=  0;
-//    if (dissassembler_ready && !new_output_data && !read_busy) begin
     if (dissassembler_ready && !new_output_data) begin
       case (wstate)
         IDLE: begin

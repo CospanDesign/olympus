@@ -414,7 +414,7 @@ always @ (negedge ftdi_clk) begin
             end
             else begin
               //ping
-              ftdi_write_size <=  8;
+              ftdi_write_size <=  4;
             end
             count_data  = 1;
             write_count   <= 0;

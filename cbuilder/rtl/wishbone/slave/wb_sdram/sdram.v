@@ -247,7 +247,8 @@ sdram_read read_path (
   .fifo_reset(read_fifo_reset),
   .fifo_data(read_path_data),
   .fifo_write(read_path_write_pulse),
-  .fifo_full(read_fifo_full)
+  .fifo_full(read_fifo_full),
+  .fifo_empty(read_fifo_empty)
 );
 
 //Initialization Write Path

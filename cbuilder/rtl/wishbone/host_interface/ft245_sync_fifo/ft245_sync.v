@@ -75,7 +75,7 @@ assign debug = debug_w;
 
 wire    [7:0]   data_out;
 
-assign          ftdi_data  = (ftdi_oe_n) ? (out_cache_valid ? out_cache: data_out) : 8'hZ;
+assign          ftdi_data  = ftdi_oe_n ? data_out : 8'hZ;
 //assign          ftdi_data  = (ftdi_oe_n) ? data_out : 8'hZ;
 
 //wires
@@ -126,7 +126,7 @@ afifo #(
 `ifndef TEST
   .ADDRESS_WIDTH(10)
 `else
-  .ADDRESS_WIDTH(3)
+  .ADDRESS_WIDTH(10)
 `endif
   )
   fifo_in (
@@ -168,12 +168,8 @@ afifo #(
 
 parameter                   IDLE            = 4'h0;
 parameter                   ENABLE_READING  = 4'h1;
-parameter                   FTDI_BUFFER     = 4'h2;
-parameter                   READ            = 4'h3;
-parameter                   RECON_ONE       = 4'h4;
-parameter                   RECON_TWO       = 4'h5;
-parameter                   FIFO_WAIT       = 4'h6;
-parameter                   RECEIVE_WAIT    = 4'h7;
+parameter                   READ            = 4'h2;
+parameter                   SEND_TO_FIFO    = 4'h3;
 
 
 assign debug_w[2:0] = rstate;
@@ -191,9 +187,11 @@ assign debug_w[15:8]  = data_in;
 
 reg [7:0]       ftdi_buffer;
 
-reg [7:0]       cache1_data;
-reg [7:0]       cache2_data;
-reg [7:0]       cache3_data;
+reg             read_available;
+reg             read;
+
+
+reg [8:0]       fifo_read_data;
 
 always @ (posedge ftdi_clk) begin
 
@@ -201,23 +199,11 @@ always @ (posedge ftdi_clk) begin
     output_enable         <=  0;
     read_enable           <=  0;
     rstate                 <=  IDLE;
-
     start_of_frame        <=  0;
-
-    in_fifo_wr            <=  0;
-    data_in               <=  0;
-    local_sof             <=  0;
-
-    debug_r               <=  16'h00;
-
-    cache1_data           <=  8'h00;
-    cache2_data           <=  8'h00;
-    cache3_data           <=  8'h00;
-
     ftdi_buffer           <=  8'h00;
-    end
+    read_available        <=  0;
+  end
   else begin
-    in_fifo_wr                <=  0;
     case (rstate)
       IDLE: begin
         output_enable         <=  0;
@@ -225,7 +211,7 @@ always @ (posedge ftdi_clk) begin
 
         start_of_frame        <=  0;
 
-        if (receive_available && !in_fifo_full &&!write_busy) begin
+        if (receive_available &&!write_busy) begin
           //Reading from the host
           if (!prev_receive_available) begin
             start_of_frame    <=  1;
@@ -236,91 +222,30 @@ always @ (posedge ftdi_clk) begin
         end
       end
       ENABLE_READING: begin
-        if (receive_available && !in_fifo_full) begin
-          //output enable has been low for one clock cycle so start reading
-          read_enable         <=  1;
-          rstate               <=  FTDI_BUFFER;
-        end
-        else begin
-          //receive available is not ready, go to IDLE
-          rstate               <=  IDLE;
-        end
-      end
-      FTDI_BUFFER: begin
-        ftdi_buffer           <=  ftdi_data; 
-        rstate                <=  READ;
+        read_enable         <=  1;
+        rstate               <=  READ;
       end
       READ: begin
-        //save the current data just in case the in FIFO is full
-        cache2_data           <=  cache1_data;
-        cache1_data           <=  ftdi_buffer;
-        data_in               <=  ftdi_buffer;
-//XXX: There can be a nicer way to do this
-        local_sof             <=  start_of_frame;
+        read_enable           <=  0;
+        fifo_read_data        <=  {start_of_frame, ftdi_data};
         start_of_frame        <=  0;
-        if (!receive_available) begin
-          //FT245 has no more data
-          read_enable       <=  0;
-          if (in_fifo_full) begin
-            rstate            <=  FIFO_WAIT;
+        read_enable           <=  0;
+        ftdi_buffer           <=  ftdi_data;
+        rstate                <=  SEND_TO_FIFO;
+        read_available        <=  1;
+      end
+      SEND_TO_FIFO: begin
+        if (read) begin
+          read_available  <=  0;
+          if (!receive_available) begin
+            read_enable     <=  0;
+            rstate        <=  IDLE;
           end
           else begin
-            in_fifo_wr        <=  1;
-            rstate            <=  IDLE;
+            read_enable     <=  1;
+            rstate        <=  READ;
           end
         end
-        else begin
-          if (in_fifo_full) begin
-            read_enable       <=  0;
-            rstate            <=  RECON_ONE;
-          end
-          else begin
-            //Contine reading
-            in_fifo_wr        <=  1;
-            read_enable       <=  1;
-            ftdi_buffer       <=  ftdi_data;
-          end
-        end
-      end
-      RECON_ONE: begin
-        local_sof <=  0;
-        data_in   <=  cache2_data;
-        if (!in_fifo_full) begin
-          in_fifo_wr  <=  1;
-          rstate      <=  RECON_TWO;
-        end
-      end
-      RECON_TWO: begin
-        local_sof <=  0;
-        data_in   <=  cache1_data;
-        if (!in_fifo_full) begin
-          in_fifo_wr  <=  1;
-          rstate      <=  FIFO_WAIT;
-        end
-      end
-      FIFO_WAIT: begin
-        local_sof <=  0;
-        data_in     <=  ftdi_buffer;
-        //more data an be put into the incomming FIFO
-        if (!in_fifo_full) begin
-
-          //data stored in the cache can be written to the FIFO
-          in_fifo_wr      <=  1;
-          if (receive_available) begin
-            //more data to read so go back to the read rstate
-            rstate              <=  FTDI_BUFFER;
-          end
-          else begin
-            //there is n more data and hte FIFO is not full anymore
-            read_enable         <=  0;
-            rstate           <=  IDLE;
-          end
-        end
-      end
-      RECEIVE_WAIT: begin
-//        ftdi_buffer         <=  ftdi_data; 
-//        read_enable         <=  1;
-        rstate              <=  READ;
       end
       default: begin
         $display ("FT245: Entered illegal rstate");
@@ -332,147 +257,85 @@ always @ (posedge ftdi_clk) begin
 end
 
 
+reg [1:0]                   fstate;
+reg [8:0]                   fifo_buffer;
+
+//IN FIFO CONTROLLER
+parameter                   WRITE_TO_FIFO   = 4'h1;
+
+always @ (posedge ftdi_clk) begin
+  if (rst) begin
+    in_fifo_wr    <=  0;
+    read          <=  0;
+    data_in       <=  8'h00;
+    fifo_buffer   <=  9'h000;
+    local_sof             <=  0;
+  end
+  else begin
+    in_fifo_wr  <=  0;
+    read        <=  0;
+    case (fstate)
+      IDLE: begin
+        if (!in_fifo_full && read_available) begin
+          read        <=  1;
+          fifo_buffer <=  fifo_read_data;
+          fstate      <=  WRITE_TO_FIFO;
+        end
+      end
+      WRITE_TO_FIFO: begin
+        local_sof     <=  fifo_buffer[8];
+        data_in       <=  fifo_buffer[7:0];
+        in_fifo_wr    <=  1;
+        fstate        <=  IDLE;
+      end
+      default: begin
+        fstate        <=  IDLE;
+      end
+    endcase
+  end
+end
+
+
 reg                         prev_transmit_ready;
 wire t_ready_sync;
 assign  t_ready_sync      =  (transmit_ready && prev_transmit_ready);
 
 parameter                   WRITE               = 4'h1;
-parameter                   FT245_WAIT          = 4'h2;
-parameter                   FT245_WAIT_FINISH   = 4'h3;
-//assign debug_w[1:0] = wstate[1:0];
+parameter                   GET_WRITE_DATA      = 4'h2;
+parameter                   SLEEP               = 4'h3;
 
 always @ (posedge ftdi_clk) begin
   if (rst) begin
-    wstate                <=  IDLE;
-    write_enable          <=  0;
-    send_immediately      <=  0;
-    out_fifo_rd           <=  0;
-    out_cache             <=  8'h00;
-    out_cache_valid       <=  0;
-    //finish_flag           <=  0;
-//    debug_r                 <=  3'h0;
-    prev_transmit_ready   <=  0;
-    
-
+    wstate             <=  IDLE;
+    write_enable      <=  0;
+    send_immediately  <=  0;
+    out_fifo_rd       <=  0;
   end
   else begin
-//XXX: should I reset the out_fifo_rd?
-    out_fifo_rd               <=  0;
-    send_immediately          <=  0;
-    write_enable              <=  0;
-
+    write_enable      <=  0;
+    send_immediately  <=  0;
+    out_fifo_rd       <=  0;
     case (wstate)
       IDLE: begin
-        if (t_ready_sync && !out_fifo_empty && !read_busy) begin
-          //Writing to the host
-
-          //it takes 1 clock cycle to get data from the host
+        if (!read_busy && !out_fifo_empty && transmit_ready) begin
           out_fifo_rd         <=  1;
-          wstate              <=  WRITE;
+          wstate              <=  GET_WRITE_DATA;
         end
+      end
+      GET_WRITE_DATA: begin
+        wstate                <=  WRITE;
       end
       WRITE: begin
-        if (transmit_ready) begin
-          if (out_fifo_empty) begin
-//debug_r[0]  <=  ~debug_r[0];
-            //Transmitter is ready but there is no data in the FIFO
-            out_fifo_rd       <=  0;
-//XXX: There might be data in here from the previous read, but there is no data for the NEXT read
-            write_enable      <=  0;
-            wstate             <=  IDLE;
-//XXX: This is the last data sent
-            //debug_r[0]          <=  ~debug_r[0];
-          end
-          else begin
-            //FT245 is ready and the FIFO is ready and not empty
-//XXX: This happens so often that I don't need this
-            out_fifo_rd       <=  1;
-            write_enable      <=  1;
-          end
-        end
-        else begin //trasmitter is not ready
-//***This is where all the problems start
-
-          //the write FIFO data is ready to transmit
-          out_fifo_rd         <=  0;
-          //disable writing to the output FIFO
-          write_enable        <=  0;
-          out_cache           <=  data_out;
-          out_cache_valid     <=  1;
-          if (out_fifo_empty) begin
- //           finish_flag       <=  1;
-            wstate            <=  FT245_WAIT_FINISH;
-          end
-          else begin
-            wstate            <=  FT245_WAIT;
-          end
-        end
+        write_enable           <=  1;
+        wstate                  <= SLEEP;
       end
-      FT245_WAIT: begin
-//***Problems happen in here
-        write_enable  <=  0;
-        if (t_ready_sync) begin
-          //transmitter is ready again
-          write_enable        <=  1;
-          if (write_enable) begin
-            out_cache_valid <= 0;
-//debug_r[1]  <=  ~debug_r[1];
-            if (out_fifo_empty) begin
-//XXX: this doesn't seem to ever happen but it could happen that after the
-//cache is empty the out_fifo could be empty
-              write_enable  <=  0;
-                
-              wstate         <=  IDLE;
-            end
-            else begin
-//THIS HAPPENS A LOT!
-//              
-              out_fifo_rd   <=  0;
-              wstate         <=  IDLE;
-            end
-          end
-        end
+      SLEEP: begin
+        wstate                <=  IDLE;
       end
-      FT245_WAIT_FINISH: begin
-        write_enable  <=  0;
-        if (t_ready_sync) begin
-          //transmitter is ready again
-          write_enable        <=  1;
-          if (write_enable) begin
-            out_cache_valid <= 0;
-
-//MAYBE THIS GETS THING ONE STEP BEHND??
-
-//XXX: I think this is where something might go wrong
-//SOMETIMES  when I'm in here I don't write out data
-
-            write_enable  <= 0;
-            //finish_flag   <= 0;
-//this got passed 254
-
-//when I changed this to go into WRITE it broke :(
-            wstate         <=  IDLE;
-              
-//***: It doesn't ever seem to go to "out_fifo_empty" here
-
-
-//                if (out_fifo_empty) begin
-//XXX: this doesn't seem to happen
-//                  
-//                  debug_r[0]      <=  ~debug_r[0];
-//                end
-//                else begin
-//                  debug_r[1]      <=  ~debug_r[1];
-//                end
-          end
-        end
-      end
-
       default: begin
-        wstate  <=  IDLE;
+        wstate                <=  IDLE;
       end
     endcase
-    prev_transmit_ready <=  transmit_ready;
   end
 end
 

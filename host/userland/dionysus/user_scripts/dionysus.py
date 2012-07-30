@@ -15,8 +15,8 @@ import drt as drt_controller
 
 #MEM_SIZE = 680
 #TEST_MEM_SIZE = 690
-MEM_SIZE = 126
-TEST_MEM_SIZE = 690
+MEM_SIZE = 1100
+TEST_MEM_SIZE = 2097151
 
 
 class Dionysus (object):
