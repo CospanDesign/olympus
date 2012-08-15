@@ -25,23 +25,26 @@ SOFTWARE.
 /*
   07/08/2012
     -Initial Commit
+
+  07/30/2012
+    -Attached Flow control for CTS RTS
+    -Removed DTR DSR for this initial version
 */
 
 `timescale 1 ns/100 ps
 
 //Control Flag Defines
-`define CONTROL_RESET         0;
-`define CONTROL_SET_BAUDRATE  1;
-`define CONTROL_FC_CTS_RTS    2;
-`define CONTROL_FC_DTR_DSR    3;
+`define CONTROL_RESET         0
+`define CONTROL_SET_BAUDRATE  1
+`define CONTROL_FC_CTS_RTS    2
 //XXX: Flow Control Flags
 
 //Status Flag Defines
-`define STATUS_RX_AVAILABLE   0;
-`define STATUS_TX_READY       1;
-`define STATUS_RX_FULL        2;
-`define STATUS_RX_ERROR       3;
-`define STATUS_FC_ERROR       4;
+`define STATUS_RX_AVAILABLE   0
+`define STATUS_TX_READY       1
+`define STATUS_RX_FULL        2
+`define STATUS_RX_ERROR       3
+`define STATUS_FC_ERROR       4
 
 module uart_controller (
   clk,
@@ -52,9 +55,6 @@ module uart_controller (
 
   cts,
   rts,
-
-  dtr,
-  dsr,
 
   control,
   status,
@@ -71,41 +71,46 @@ module uart_controller (
 );
 
 
-input           clk;
-input           rst;
+input               clk;
+input               rst;
 
-input           rx;
-output          tx;
+input               rx;
+output              tx;
 
 //I need to verify flow control is correct
-output          cts;
-input           rts;
+output  reg         cts;
+input               rts;
 
-input           dtr;
-output          dsr;
+input [7:0]         control;
+output reg [7:0]    status;
 
-input [7:0]     control;
-output [7:0]    status;
+input [31:0]        prescaler;
 
-input [31:0]    prescaler;
+input               write_pulse;
+input [7:0]         write_data;
+output              write_fifo_full;
 
-input           write_pulse;
-input [7:0]     write_data;
-output          write_fifo_full;
+output [7:0]        read_data;
+input               read_pulse;
+output              read_fifo_empty;
 
-output [7:0]    read_data;
-input           read_pulse;
-output          read_fifo_empty;
 
-reg             transmit;
-wire [7:0]      tx_byte;
-wire            received;
-wire [7:0]      rx_byte;
+//FIFO Registers
+reg                 write_fifo_read_pulse;
+reg                 read_fifo_write_pulse;
 
-wire            is_receiving;
-wire            is_transmitting;
 
-wire            rx_error;
+reg                 transmit;
+wire [7:0]          tx_byte;
+wire                received;
+wire [7:0]          rx_byte;
+
+wire                is_receiving;
+wire                is_transmitting;
+
+wire                rx_error;
+
+reg                 local_read;
 
 
 //Write FIFO
@@ -154,8 +159,8 @@ afifo #(
     .empty(read_fifo_empty),
 
     //Commands
-    .wr_en(rd_fifo_write_pulse),
-    .rd_en(rd_fifo_read_pulse)
+    .wr_en(read_fifo_write_pulse),
+    .rd_en(read_pulse || local_read)
 );
 
 //Low Level UART
@@ -174,10 +179,65 @@ uart u (
 );
 
 
+parameter     IDLE  = 3'h0;
+parameter     SEND  = 3'h1;
+parameter     READ  = 3'h2;
+
+wire          flowcontrol;
+assign        flowcontrol = control[`CONTROL_FC_CTS_RTS];
+
+reg [3:0]     state;
+
+reg           test;
+
+
 always @ (posedge clk) begin
   if (rst) begin
+    cts                         <=  0;
+    state                       <=  IDLE;
+    write_fifo_read_pulse       <=  0;
+    read_fifo_write_pulse       <=  0;
+    local_read                  <=  0;
+
+
+    test                        <=  0;
   end
   else begin
+    write_fifo_read_pulse       <=  0; 
+    read_fifo_write_pulse       <=  0;
+    transmit                    <=  0;
+    local_read                  <=  0;
+
+    //transmitting
+    if (!write_fifo_empty && ! is_transmitting) begin
+      if (flowcontrol) begin
+        if (control[`CONTROL_FC_CTS_RTS]) begin
+          //tell the remote device that we have data to send
+          if (~cts) begin
+            //device is ready to receive data
+            transmit         <=  1; 
+          end
+        end
+        //here is where DTR DSR can be put in
+      end
+      else begin
+        transmit            <=  1;
+      end
+    end
+
+
+    if (read_fifo_full && control[`CONTROL_FC_CTS_RTS]) begin
+      cts                   <=  1;
+    end
+
+    //Check the remote side for receive data
+    if (received && !read_fifo_full) begin
+      read_fifo_write_pulse   <=  1;
+    end
+    else if (received && read_fifo_full) begin
+//X: the user will pull this line low
+      local_read  <=  1;
+    end
   end
 end
 

@@ -129,8 +129,6 @@ uart_controller uc (
   .tx(tx),
   .cts(cts),
   .rts(rts),
-  .dtr(drt),
-  .dsr(dsr),
 
   //Control/Status
   .control(control),
@@ -149,6 +147,9 @@ uart_controller uc (
 );
 
 
+reg             uart_write_en;
+reg   [15:0]    uart_write_size;
+
 //blocks
 always @ (posedge clk) begin
   if (rst) begin
@@ -161,12 +162,21 @@ always @ (posedge clk) begin
     write_pulse       <=  0;
     write_data        <=  8'h0;
     read_pulse        <=  0;
+
+    //write
+    uart_write_en     <=  0;
+    uart_write_size   <=  16'h0;
   end
 
   else begin
     //when the master acks our ack, then put our ack down
     if (wbs_ack_o & ~ wbs_stb_i)begin
       wbs_ack_o <= 0;
+    end
+    if (wbs_cyc_i == 0) begin
+      //at the end of a cycle disable the special case of writing to the UART FIFO
+      uart_write_en   <=  0;
+      uart_write_size <=  0;
     end
 
     if (wbs_stb_i & wbs_cyc_i) begin
@@ -175,12 +185,10 @@ always @ (posedge clk) begin
         //write request
         case (wbs_adr_i) 
           ADDR_0: begin
-            //writing something to address 0
-            //do something
+            //write register
+            uart_write_en   <=  1;
+            uart_write_size <=  wbs_dat_i[31:16];
 
-            //NOTE THE FOLLOWING LINE IS AN EXAMPLE
-            //  THIS IS WHAT THE USER WILL WRITE TO ADDRESS 0
-            $display("user wrote %h", wbs_dat_i);
           end
           ADDR_1: begin
             //writing something to address 1
