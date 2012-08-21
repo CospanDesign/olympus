@@ -25,18 +25,17 @@ task  read_from_uart;
     in_byte[1]  <=  in_bit;
     #`FULL_PERIOD
     in_byte[2]  <=  in_bit;
-    #`FULL_PERIOD
+    #`FULL_PERIOD;
     in_byte[3]  <=  in_bit;
-    #`FULL_PERIOD
+    #`FULL_PERIOD;
     in_byte[4]  <=  in_bit;
-    #`FULL_PERIOD
+    #`FULL_PERIOD;
     in_byte[5]  <=  in_bit;
-    #`FULL_PERIOD
+    #`FULL_PERIOD;
     in_byte[6]  <=  in_bit;
-    #`FULL_PERIOD
+    #`FULL_PERIOD;
     in_byte[7]  <=  in_bit;
-    #`FULL_PERIOD
-*/
+    #`FULL_PERIOD;
     end
 endtask
 

@@ -71,13 +71,9 @@ SOFTWARE.
  *		-send a request to reall all the flags, and verify that only half of
  *		the flags were written to
  */
-
-`include "project_defines.v"
-`define TIMEOUT_COUNT 40
+`define TIMEOUT_COUNT 100
 `define INPUT_FILE "master_input_test_data.txt"  
 `define OUTPUT_FILE "master_output_test_data.txt"
-
-
 
 module wishbone_master_tb (
 );
@@ -109,17 +105,6 @@ wire [31:0]	wbm_dat_o;
 wire		wbm_ack_o;
 wire		wbm_int_o;
 
-//reg   [7:0] send_byte;
-//wire  rx;
-
-reg [15:0]	delay		= 0;
-reg			    delay_finished = 0;
-reg			    hp_delay	= 0;
-reg			    fp_delay	= 0;
-reg         received = 0;
-
-
-`include "virtual_uart_device.v"
 
 wishbone_master wm (
 	.clk(clk),
@@ -239,13 +224,6 @@ reg		command_finished;
 reg		read_data;
 reg		data_read;
 
-
-reg   [7:0] byte  = 8'h55;
-reg   rx          = 1;
-reg   tx_busy     = 0;
-
-
-
 initial begin
 	fd_out			=	0;
 	read_count		= 	0;
@@ -253,10 +231,6 @@ initial begin
 	data_read		<= 	0;
 	timeout_count	=	0;
 	execute_command	<=	0;
-
-
-  rx <=  1;
-  tx_busy <=  0;
 
 	$dumpfile ("design.vcd");
 	$dumpvars (0, wishbone_master_tb);
@@ -266,9 +240,6 @@ initial begin
 
 	rst				<= 0;
 	#4
-  write_to_uart (byte, rx);
-
-
 	rst				<= 1;
 
 	//clear the handler signals
@@ -319,7 +290,7 @@ initial begin
 					#1
 					execute_command <= 0;
 				end
-				#10
+				#100
 				$display ("TB: finished command");
 				//if (!$feof(fd_in)) begin
 				//	ch = $fgetc(fd_in);
@@ -465,11 +436,5 @@ always @ (posedge clk) begin
 		end
 	end//not reset
 end
-
-
-
-
-
-
 
 endmodule

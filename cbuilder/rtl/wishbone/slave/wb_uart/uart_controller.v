@@ -29,22 +29,24 @@ SOFTWARE.
   07/30/2012
     -Attached Flow control for CTS RTS
     -Removed DTR DSR for this initial version
-*/
-
+*/ 
 `timescale 1 ns/100 ps
 
 //Control Flag Defines
-`define CONTROL_RESET         0
-`define CONTROL_SET_BAUDRATE  1
-`define CONTROL_FC_CTS_RTS    2
+`define CONTROL_RESET           0
+`define CONTROL_FC_CTS_RTS      1
 //XXX: Flow Control Flags
+`define CONTROL_READ_INTERRUPT  2
+`define CONTROL_WRITE_INTERRUPT 3
 
 //Status Flag Defines
-`define STATUS_RX_AVAILABLE   0
-`define STATUS_TX_READY       1
-`define STATUS_RX_FULL        2
-`define STATUS_RX_ERROR       3
-`define STATUS_FC_ERROR       4
+`define STATUS_RX_AVAILABLE     0
+`define STATUS_TX_READY         1
+`define STATUS_RX_FULL          2
+`define STATUS_RX_ERROR         3
+`define STATUS_FC_ERROR         4
+
+`define PRESCALER_DIV           8
 
 module uart_controller (
   clk,
@@ -58,16 +60,29 @@ module uart_controller (
 
   control,
   status,
+  status_reset,
 
   prescaler,
+  set_clock_div,
+  clock_div,
+  default_clock_div,
 
-  write_pulse,
-  write_data,
-  write_fifo_full,
+  write_strobe,
+  write_strobe_count,
+  write_data0,
+  write_data1,
+  write_data2,
+  write_data3,
 
-  read_pulse,
-  read_fifo_empty,
-  read_data
+  write_full,
+  write_available,
+  write_size,
+
+  read_strobe,
+  read_empty,
+  read_data,
+  read_count,
+  read_size
 );
 
 
@@ -81,29 +96,51 @@ output              tx;
 output  reg         cts;
 input               rts;
 
-input [7:0]         control;
-output reg [7:0]    status;
+input       [7:0]   control;
+output reg  [7:0]   status;
+input               status_reset;
 
-input [31:0]        prescaler;
+output      [31:0]  prescaler;
+input               set_clock_div;
+input       [31:0]  clock_div;
+output      [31:0]  default_clock_div;
 
-input               write_pulse;
-input [7:0]         write_data;
-output              write_fifo_full;
+input               write_strobe;
+input       [3:0]   write_strobe_count;
+input       [7:0]   write_data0;
+input       [7:0]   write_data1;
+input       [7:0]   write_data2;
+input       [7:0]   write_data3;
 
-output [7:0]        read_data;
-input               read_pulse;
-output              read_fifo_empty;
+output              write_full;
+output      [31:0]  write_available;
+output wire [31:0]  write_size;
+
+output      [7:0]   read_data;
+input               read_strobe;
+output              read_empty;
+output wire [31:0]  read_count;
+output wire [31:0]  read_size;
 
 
 //FIFO Registers
-reg                 write_fifo_read_pulse;
-reg                 read_fifo_write_pulse;
+reg         [7:0]   write_fifo[0:255];
+reg         [7:0]   read_fifo[0:255];
 
 
+reg                 write_fifo_read_strobe;
+wire        [31:0]  tx_read_count;
+
+reg                 read_fifo_write_strobe;
+wire        [31:0]  rx_fifo_size;
+wire        [31:0]  rx_write_available;
+
+
+//UART Core
 reg                 transmit;
-wire [7:0]          tx_byte;
+wire  [7:0]         tx_byte;
 wire                received;
-wire [7:0]          rx_byte;
+wire  [7:0]         rx_byte;
 
 wire                is_receiving;
 wire                is_transmitting;
@@ -111,56 +148,61 @@ wire                is_transmitting;
 wire                rx_error;
 
 reg                 local_read;
+wire                flowcontrol;
+reg [3:0]           state;
+reg                 test;
 
 
-//Write FIFO
-afifo #(
-  .DATA_WIDTH(8),
-  .ADDRESS_WIDTH(8) //256 byte FIFO
-  )
-  fifo_wr (
-    .rst(rst),
+//STATUS FLAGs
+reg                 write_overflow;
+reg                 write_underflow;
 
-    //Clocks
-    .din_clk(clk),
-    .dout_clk(clk),
+reg                 read_overflow;
+reg                 read_underflow;
 
-    //Data
-    .data_in(write_data),
-    .data_out(tx_byte),
 
-    //Status
-    .full(write_fifo_full),
-    .empty(write_fifo_empty),
 
-    //commands
-    .wr_en(write_pulse),
-    .rd_en(write_fifo_read_pulse)
+uart_fifo uf_tx (
+  .clk(clk),
+  .rst(rst),
+
+  .size(write_size),
+  
+  .write_strobe(write_strobe),
+  .write_strobe_count(write_strobe_count),
+  .write_available(write_available),
+  .write_data0(write_data0),
+  .write_data1(write_data1),
+  .write_data2(write_data2),
+  .write_data3(write_data3),
+
+  .read_strobe(tx_read_strobe),
+  .read_count(tx_read_count),
+  .read_data(tx_byte),
+  .overflow(tx_overflow),
+  .underflow(tx_underflow),
+  .full(tx_full),
+  .empty(tx_empty)
 );
 
-//Read FIFO
-afifo #(
-  .DATA_WIDTH(8),
-  .ADDRESS_WIDTH(8)
-  )
-  fifo_rd(
-    .rst(rst),
+uart_fifo uf_rx (
+  .clk(clk),
+  .rst(rst),
+  
+  .size(rx_fifo_size),
 
-    //Clocks
-    .din_clk(clk),
-    .dout_clk(clk),
-
-    //Data
-    .data_in(rx_byte),
-    .data_out(read_data),
-
-    //Status
-    .full(read_fifo_full),
-    .empty(read_fifo_empty),
-
-    //Commands
-    .wr_en(read_fifo_write_pulse),
-    .rd_en(read_pulse || local_read)
+  .write_strobe(rx_write_strobe),
+  .write_strobe_count(1), //always putting in 1 byte
+  .write_available(rx_write_available),
+  .write_data0(rx_byte),
+  
+  .read_strobe(received),
+  .read_count(read_count),
+  .read_data(read_data),
+  .overflow(rx_overflow),
+  .underflow(rx_underflow),
+  .full(rx_full),
+  .empty(rx_empty)
 );
 
 //Low Level UART
@@ -175,7 +217,10 @@ uart u (
   .rx_byte(rx_byte),
   .is_receiving(is_receiving),
   .is_transmitting(is_transmitting),
-  .rx_error(rx_error)
+  .rx_error(rx_error),
+  .set_clock_div(set_clock_div),
+  .user_clock_div(clock_div),
+  .default_clock_div(default_clock_div)
 );
 
 
@@ -183,37 +228,44 @@ parameter     IDLE  = 3'h0;
 parameter     SEND  = 3'h1;
 parameter     READ  = 3'h2;
 
-wire          flowcontrol;
-assign        flowcontrol = control[`CONTROL_FC_CTS_RTS];
 
-reg [3:0]     state;
+//asynchronous logic
 
-reg           test;
+assign        flowcontrol       = control[`CONTROL_FC_CTS_RTS];
+assign        prescaler         = `CLOCK_RATE / `PRESCALER_DIV;
 
 
+//synchronous logic
+
+//main control state machine
 always @ (posedge clk) begin
   if (rst) begin
-    cts                         <=  0;
-    state                       <=  IDLE;
-    write_fifo_read_pulse       <=  0;
-    read_fifo_write_pulse       <=  0;
-    local_read                  <=  0;
-
-
-    test                        <=  0;
+    cts                           <=  0;
+    state                         <=  IDLE;
+    write_fifo_read_strobe        <=  0;
+    read_fifo_write_strobe        <=  0;
+    local_read                    <=  0;
+    test                          <=  0;
+    status                        <=  0;
   end
   else begin
-    write_fifo_read_pulse       <=  0; 
-    read_fifo_write_pulse       <=  0;
-    transmit                    <=  0;
-    local_read                  <=  0;
+    write_fifo_read_strobe        <=  0; 
+    read_fifo_write_strobe        <=  0;
+    transmit                      <=  0;
+    local_read                    <=  0;
+    cts                           <=  0;
+
+
+    if (status_reset) begin
+      //reset status flags
+    end
 
     //transmitting
-    if (!write_fifo_empty && ! is_transmitting) begin
+    if (!tx_empty && ! is_transmitting) begin
       if (flowcontrol) begin
         if (control[`CONTROL_FC_CTS_RTS]) begin
           //tell the remote device that we have data to send
-          if (~cts) begin
+          if (~rts) begin
             //device is ready to receive data
             transmit         <=  1; 
           end
@@ -225,18 +277,8 @@ always @ (posedge clk) begin
       end
     end
 
-
-    if (read_fifo_full && control[`CONTROL_FC_CTS_RTS]) begin
+    if (rx_full && control[`CONTROL_FC_CTS_RTS]) begin
       cts                   <=  1;
-    end
-
-    //Check the remote side for receive data
-    if (received && !read_fifo_full) begin
-      read_fifo_write_pulse   <=  1;
-    end
-    else if (received && read_fifo_full) begin
-//X: the user will pull this line low
-      local_read  <=  1;
     end
   end
 end

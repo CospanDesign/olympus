@@ -43,7 +43,7 @@ SOFTWARE.
 */
 
 /*
-  Use this to tell sycamore how to populate the Device ROM table
+  Use this to tell olympus how to populate the Device ROM table
   so that users can interact with your slave
 
   META DATA
@@ -57,10 +57,10 @@ SOFTWARE.
 
   number of registers this should be equal to the nubmer of ADDR_???
   parameters
-  DRT_SIZE:  4
+  DRT_SIZE:  7
 
 */
-
+`include "project_defines.v"
 
 module wb_uart (
   clk,
@@ -79,46 +79,70 @@ module wb_uart (
   wbs_int_o
 );
 
-input         clk;
-input         rst;
+input               clk;
+input               rst;
 
 //wishbone slave signals
-input         wbs_we_i;
-input         wbs_stb_i;
-input         wbs_cyc_i;
-input   [3:0] wbs_sel_i;
-input   [31:0]  wbs_adr_i;
-input     [31:0]  wbs_dat_i;
+input               wbs_we_i;
+input               wbs_stb_i;
+input               wbs_cyc_i;
+input       [3:0]   wbs_sel_i;
+input       [31:0]  wbs_adr_i;
+input       [31:0]  wbs_dat_i;
 output reg  [31:0]  wbs_dat_o;
-output reg      wbs_ack_o;
-output reg      wbs_int_o;
+output reg          wbs_ack_o;
+output reg          wbs_int_o;
 
-parameter     ADDR_0  = 32'h00000000;
-parameter     ADDR_1  = 32'h00000001;
-parameter     ADDR_2  = 32'h00000002;
+parameter           REG_CONTROL     = 32'h00000000;
+parameter           REG_STATUS      = 32'h00000001;
+parameter           REG_PRESCALER   = 32'h00000002;
+parameter           REG_BAUDRATE    = 32'h00000003;
+parameter           REG_WRITE       = 32'h00000004;
+parameter           REG_READ_COUNT  = 32'h00000005;
+parameter           REG_READ        = 32'h00000006;
 
 
 //uart controller PHY
-output        tx;
-input         rx;
+output              tx;
+input               rx;
 
-input         rts;
-output        cts;
+input               rts;
+output              cts;
 
-input         dtr;
-output        dsr;
+input               dtr;
+output              dsr;
 
-reg   [7:0]   control;
-wire  [7:0]   status;
-reg   [31:0]  prescaler;
+reg         [7:0]   control;
+wire        [7:0]   status;
+reg                 status_reset;
+wire        [31:0]  prescaler;
+reg                 set_clock_div;
+reg         [31:0]  clock_div;
+wire        [31:0]  default_clock_div;
 
-reg           write_pulse;
-reg   [7:0]   write_data;
-wire          write_fifo_full;
+reg                 write_strobe;
+reg         [3:0]   write_strobe_count;
 
-reg           read_pulse;
-wire  [7:0]   read_data;
-wire          read_fifo_empty;
+reg         [7:0]   write_data [0:4];
+wire                write_full;
+wire        [31:0]  write_available;
+reg         [15:0]  write_count;
+wire        [31:0]  write_size;
+
+reg                 read_strobe;
+wire        [7:0]   read_data;
+wire                read_empty;
+wire        [31:0]  read_count;
+wire        [31:0]  read_size;
+
+//write_data
+reg                 write_en;
+reg                 read_en;
+reg          [1:0]  local_read_count;
+//user requests to read this much data
+reg          [31:0] user_read_count;
+reg                 user_read_limit;
+
 
 uart_controller uc (
   .clk(clk),
@@ -133,115 +157,214 @@ uart_controller uc (
   //Control/Status
   .control(control),
   .status(status),
+  .status_reset(status_reset),
   .prescaler(prescaler),
+  .set_clock_div(set_clock_div),
+  .clock_div(clock_div),
+  .default_clock_div(default_clock_div),
 
   //Data In
-  .write_pulse(write_pulse),
-  .write_data(write_data),
-  .write_fifo_full(write_fifo_full),
+  .write_strobe(write_strobe),
+  .write_strobe_count(write_strobe_count),
+  .write_data0(write_data[0]),
+  .write_data1(write_data[1]),
+  .write_data2(write_data[2]),
+  .write_data3(write_data[3]),
+  .write_full(write_full),
+  .write_available(write_available),
+  .write_size(write_size),
 
   //Data Out
-  .read_pulse(read_pulse),
-  .read_fifo_empty(read_fifo_empty),
-  .read_data(read_data)
+  .read_strobe(read_strobe),
+  .read_data(read_data),
+  .read_empty(read_empty),
+  .read_count(read_count),
+  .read_size(read_size)
 );
 
-
-reg             uart_write_en;
-reg   [15:0]    uart_write_size;
+integer         i;
 
 //blocks
 always @ (posedge clk) begin
   if (rst) begin
-    wbs_dat_o         <= 32'h0;
-    wbs_ack_o         <= 0;
-    wbs_int_o         <= 0;
+    wbs_dat_o               <= 32'h0;
+    wbs_ack_o               <= 0;
+    wbs_int_o               <= 0;
 
-    control           <=  8'h0;
-    prescaler         <=  32'h0000;
-    write_pulse       <=  0;
-    write_data        <=  8'h0;
-    read_pulse        <=  0;
+    control                 <=  8'h0;
+    write_strobe            <=  0;
+//    write_data              <=  8'h0;
+    read_strobe              <=  0;
+
+    user_read_count         <=  0;
+    user_read_limit         <=  0;
 
     //write
-    uart_write_en     <=  0;
-    uart_write_size   <=  16'h0;
+    write_en                <=  0;
+    write_strobe            <=  0;
+    write_strobe_count      <=  0;
+    write_count             <=  15'h000;
+
+    for (i = 0; i < 4; i = i + 1) begin
+      write_data[i]         <=  0;
+    end
+    //status
+    status_reset            <=  0;
+    set_clock_div           <=  0;
+    clock_div               <=  0;
+
   end
 
   else begin
+    status_reset            <=  0;
+    write_strobe            <=  0;
+    set_clock_div           <=  0;
+
     //when the master acks our ack, then put our ack down
     if (wbs_ack_o & ~ wbs_stb_i)begin
-      wbs_ack_o <= 0;
+      wbs_ack_o             <= 0;
     end
     if (wbs_cyc_i == 0) begin
       //at the end of a cycle disable the special case of writing to the UART FIFO
-      uart_write_en   <=  0;
-      uart_write_size <=  0;
+      write_en              <=  0;
+      read_en               <=  0;
+      write_count           <=  0;
     end
 
     if (wbs_stb_i & wbs_cyc_i) begin
       //master is requesting somethign
       if (wbs_we_i) begin
-        //write request
-        case (wbs_adr_i) 
-          ADDR_0: begin
-            //write register
-            uart_write_en   <=  1;
-            uart_write_size <=  wbs_dat_i[31:16];
 
-          end
-          ADDR_1: begin
-            //writing something to address 1
-            //do something
-  
-            //NOTE THE FOLLOWING LINE IS AN EXAMPLE
-            //  THIS IS WHAT THE USER WILL WRITE TO ADDRESS 0
-            $display("user wrote %h", wbs_dat_i);
-          end
-          ADDR_2: begin
-            //writing something to address 3
-            //do something
-  
-            //NOTE THE FOLLOWING LINE IS AN EXAMPLE
-            //  THIS IS WHAT THE USER WILL WRITE TO ADDRESS 0
-            $display("user wrote %h", wbs_dat_i);
-          end
-          //add as many ADDR_X you need here
-          default: begin
-          end
-        endcase
+        //write request
+        if (write_en) begin
+            write_strobe              <=  1;
+            write_strobe_count         <=  4;
+            write_data[0]             <=  wbs_dat_i[31:24];
+            write_data[1]             <=  wbs_dat_i[23:16];
+            write_data[2]             <=  wbs_dat_i[15:8];
+            write_data[3]             <=  wbs_dat_i[7:0];
+        end
+
+        else begin
+
+          case (wbs_adr_i) 
+            REG_CONTROL: begin
+              control                 <=  wbs_dat_i[31:0];
+            end
+            REG_STATUS: begin
+              //USER CANNOT WRITE ANYTHING TO STATUS
+            end
+            REG_PRESCALER: begin
+              //USER CANNOT WRITE ANYTHING TO PRESCALER
+            end
+            REG_BAUDRATE: begin
+              //the host will have to calculate out the baudrate
+              clock_div               <=  wbs_dat_i[31:0];
+              set_clock_div           <=  1;
+              $display("user wrote %h", wbs_dat_i);
+            end
+            REG_WRITE: begin
+              //this is where the start of a UART write will begin, subsequent burst reads after this will be written to a output FIFO
+              //I need a flag that will inidicate that the user will be writting to the buffer
+ 
+              //write register
+              write_en              <=  1;
+              write_strobe          <=  1;
+              write_strobe_count    <=  2;
+              write_count           <=  wbs_dat_i[31:16];
+              write_data[0]         <=  wbs_dat_i[15:8];
+              write_data[1]         <=  wbs_dat_i[7:0];
+            end
+            REG_READ_COUNT: begin
+              //USER CANNOT WRITE ANYTHING TO READ COUNT
+              user_read_count         <=  wbs_dat_i;
+            end
+            REG_READ: begin
+              //USER CANNOT WRITE ANYTHING TO THE READ
+            end
+            default: begin
+            end
+          endcase
+        end
       end
 
       else begin 
-        //read request
-        case (wbs_adr_i)
-          ADDR_0: begin
-            //reading something from address 0
-            //NOTE THE FOLLOWING LINE IS AN EXAMPLE
-            //  THIS IS WHAT THE USER WILL READ FROM ADDRESS 0
-            $display("user read %h", ADDR_0);
-            wbs_dat_o <= ADDR_0;
+        if (read_en) begin
+          if (wbs_ack_o == 0) begin
+            if (user_read_limit) begin
+              if (local_read_count == 3) begin
+                wbs_ack_o <=  1;
+              end
+              local_read_count  <=  local_read_count + 1;
+              if (local_read_count == 0) begin
+                read_en           <=  0;
+                wbs_ack_o         <=  1;
+              end
+              if (read_count == 0) begin
+                read_en           <=  0;
+                local_read_count  <=  0;
+                wbs_ack_o         <=  1;
+              end
+            end
+            else begin
+              read_en             <=  0;
+              wbs_ack_o           <=  1;
+            end
+            wbs_dat_o             <=  {wbs_dat_o[31:8], read_data};
           end
-          ADDR_1: begin
-            //reading something from address 1
-            //NOTE THE FOLLOWING LINE IS AN EXAMPLE
-            //  THIS IS WHAT THE USER WILL READ FROM ADDRESS 0
-            $display("user read %h", ADDR_1);
-            wbs_dat_o <= ADDR_1;
-          end
-          ADDR_2: begin
-            //reading soething from address 2
-            //NOTE THE FOLLOWING LINE IS AN EXAMPLE
-            //  THIS IS WHAT THE USER WILL READ FROM ADDRESS 0
-            $display("user read %h", ADDR_2);
-            wbs_dat_o <= ADDR_2;
-          end
-          //add as many ADDR_X you need here
-          default: begin
-          end
-        endcase
+        end
+        else begin
+          //read request
+          case (wbs_adr_i)
+            REG_CONTROL: begin
+              wbs_dat_o <= control;
+            end
+            REG_STATUS: begin
+              //reset all status flags on a READ
+              status_reset      <=  1;
+              wbs_dat_o         <= status;
+            end
+            REG_PRESCALER: begin
+              wbs_dat_o <= prescaler;
+            end
+            REG_BAUDRATE: begin
+              if (clock_div ==  0) begin
+                wbs_dat_o <=  default_clock_div;
+              end
+              else begin
+                wbs_dat_o <= clock_div;
+              end
+            end
+            REG_WRITE: begin
+              wbs_dat_o <=  32'h00000000;
+            end
+            REG_READ_COUNT: begin
+              wbs_dat_o <=  read_count;
+            end
+            REG_READ: begin
+              if (read_count > 0) begin
+                read_en           <=  1;
+                read_strobe       <=  1;
+                //reset the 8-bit -> 32-bit converter counter
+                local_read_count  <=  0;
+                wbs_dat_o         <=  0;
+                if (user_read_count > 0) begin
+                  user_read_limit <=  1;
+                end
+              end
+              else begin
+                wbs_dat_o <=  32'h00000000;
+              end
+            end
+            default: begin
+              wbs_dat_o <=  32'h00000000;
+            end
+          endcase
+        end
       end
-      wbs_ack_o <= 1;
+      if (!read_en || ((wbs_adr_i == REG_READ) && (read_count == 0))) begin
+        wbs_ack_o <= 1;
+      end
     end
   end
 end

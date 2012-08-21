@@ -1,7 +1,8 @@
 ../../interconnect/example_2port_interconnect/wishbone_interconnect.v
 ../../../../rtl/generic/graycounter.v
 ../../../../rtl/generic/afifo.v
-../../../../rtl/generic/uart.v
+rtl/uart_v2.v
+rtl/uart_fifo.v
 rtl/uart_controller.v
 rtl/wb_uart.v
 ../../../../rtl/wishbone/slave/device_rom_table/device_rom_table.v
