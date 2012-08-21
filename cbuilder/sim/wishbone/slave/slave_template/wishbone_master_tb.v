@@ -290,7 +290,7 @@ initial begin
 					#1
 					execute_command <= 0;
 				end
-				#10
+				#100
 				$display ("TB: finished command");
 				//if (!$feof(fd_in)) begin
 				//	ch = $fgetc(fd_in);
