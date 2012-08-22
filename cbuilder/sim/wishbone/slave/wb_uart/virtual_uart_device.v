@@ -1,14 +1,22 @@
+
 `include "project_defines.v"
-`define BAUD_RATE 9600
-`define PRESCALER 8 
+`define BAUDRATE 57600
+`define PRESCALER_COUNT 8 
 
-`define CLOCK_DIVIDE `CLOCK_RATE / (`BAUD_RATE * `PRESCALER)
+//`define CLOCK_DIVIDE `CLOCK_RATE / (`BAUDRATE * `PRESCALER_COUNT)
 
-`define HALF_PERIOD (`PRESCALER / 2 * `CLOCK_DIVIDE)
-`define FULL_PERIOD (`PRESCALER * `CLOCK_DIVIDE)
+//`define HALF_PERIOD ((`CLOCK_DIVIDE * `PRESCALER_COUNT) / 2)
+//`define FULL_PERIOD (`CLOCK_DIVIDE * `PRESCALER_COUNT)
+//`define TWO_PERIODS (`CLOCK_DIVIDE * `PRESCALER_COUNT * 2)
+
+`define PERIOD  ((`CLOCK_RATE / (`BAUDRATE)) * 20)
+
+`define HALF_PERIOD   (`PERIOD / 2)
+`define FULL_PERIOD   (`PERIOD)
 
 
 reg [3:0]   bit_index = 0;
+reg [31:0]  delta   = 0;
 
 task  read_from_uart;
   input in_bit;
@@ -16,26 +24,41 @@ task  read_from_uart;
 
   begin
 
+    $display ("CLOCK Rate: %d", `CLOCK_RATE);
+    $display ("BAUDRATE:  %d", `BAUDRATE);
+    $display ("PERIOD: %d", `PERIOD);
     $display ("Full Period: %d", `FULL_PERIOD);
-    $display ("Half Period: %d", `FULL_PERIOD);
+    $display ("Half Period: %d", `HALF_PERIOD);
+    in_byte       <=  8'h00;
+    $display ("Start: %t", $time);
+    #`HALF_PERIOD;
     #`FULL_PERIOD;
-    #`FULL_PERIOD;
+    $display ("1.5 Periods: %t", $time);
     in_byte[0]  <=  in_bit;
     #`FULL_PERIOD;
+    $display ("1 Period: %t", $time);
     in_byte[1]  <=  in_bit;
     #`FULL_PERIOD
+    $display ("1 Period: %t", $time);
     in_byte[2]  <=  in_bit;
     #`FULL_PERIOD;
+    $display ("1 Period: %t", $time);
     in_byte[3]  <=  in_bit;
     #`FULL_PERIOD;
+    $display ("1 Period: %t", $time);
     in_byte[4]  <=  in_bit;
     #`FULL_PERIOD;
+    $display ("1 Period: %t", $time);
     in_byte[5]  <=  in_bit;
     #`FULL_PERIOD;
+    $display ("1 Period: %t", $time);
     in_byte[6]  <=  in_bit;
     #`FULL_PERIOD;
+    $display ("1 Period: %t", $time);
     in_byte[7]  <=  in_bit;
     #`FULL_PERIOD;
+    $display ("1 Period: %t", $time);
+
     end
 endtask
 
@@ -64,15 +87,16 @@ task write_to_uart;
     //send seventh bit
     $display ("7th...");
     out_bit             <=  out_byte[bit_index];
-    #`FULL_PERIOD
+    delta       <=  $time;
+    #`HALF_PERIOD
     $display ("out_bit: %h", out_bit);
     bit_index           <=  bit_index + 1;
     #`HALF_PERIOD
-
+    delta       <=  $time - delta;
     //send sixth bit
     $display ("6th...");
     out_bit             <=  out_byte[bit_index];
-    #`FULL_PERIOD
+    #`HALF_PERIOD
     $display ("out_bit: %h", out_bit);
     bit_index           <=  bit_index + 1;
     #`HALF_PERIOD
@@ -80,7 +104,7 @@ task write_to_uart;
     //send 5th bit
     $display ("5th...");
     out_bit             <=  out_byte[bit_index];
-    #`FULL_PERIOD
+    #`HALF_PERIOD
     $display ("out_bit: %h", out_bit);
     bit_index           <=  bit_index + 1;
     #`HALF_PERIOD
@@ -88,7 +112,7 @@ task write_to_uart;
     //send 4th bit
     $display ("4th...");
     out_bit             <=  out_byte[bit_index];
-    #`FULL_PERIOD
+    #`HALF_PERIOD
     $display ("out_bit: %h", out_bit);
     bit_index           <=  bit_index + 1;
     #`HALF_PERIOD
@@ -96,7 +120,7 @@ task write_to_uart;
     //send 3rd bit
     $display ("3rd...");
     out_bit             <=  out_byte[bit_index];
-    #`FULL_PERIOD
+    #`HALF_PERIOD
     $display ("out_bit: %h", out_bit);
     bit_index           <=  bit_index + 1;
     #`HALF_PERIOD
@@ -104,7 +128,7 @@ task write_to_uart;
     //send 2nd bit
     $display ("2nd...");
     out_bit             <=  out_byte[bit_index];
-    #`FULL_PERIOD
+    #`HALF_PERIOD
     $display ("out_bit: %h", out_bit);
     bit_index           <=  bit_index + 1;
     #`HALF_PERIOD
@@ -112,7 +136,7 @@ task write_to_uart;
     //send 1st bit
     $display ("1st...");
     out_bit             <=  out_byte[bit_index];
-    #`FULL_PERIOD
+    #`HALF_PERIOD
     $display ("out_bit: %h", out_bit);
     bit_index           <=  bit_index + 1;
     #`HALF_PERIOD
@@ -120,7 +144,7 @@ task write_to_uart;
     //send 0th bit
     $display ("0th...");
     out_bit             <=  out_byte[bit_index];
-    #`FULL_PERIOD
+    #`HALF_PERIOD
     $display ("out_bit: %h", out_bit);
     bit_index           <=  bit_index + 1;
     #`HALF_PERIOD
@@ -129,11 +153,10 @@ task write_to_uart;
     $display ("stop bit");
     out_bit                  <= 1;
     #`FULL_PERIOD
-    #`HALF_PERIOD
     out_bit                  <=  1;
 
+    $display ("Length of one period = %d ns", delta);
   
-    wait(received == 0);
   end
 //Virtual UART
 endtask
