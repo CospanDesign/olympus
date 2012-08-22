@@ -71,12 +71,16 @@ SOFTWARE.
  *		-send a request to reall all the flags, and verify that only half of
  *		the flags were written to
  */
+
+`timescale 1ns / 1ps
+
 `define TIMEOUT_COUNT 100
 `define INPUT_FILE "master_input_test_data.txt"  
 `define OUTPUT_FILE "master_output_test_data.txt"
 
 module wishbone_master_tb (
 );
+
 
 //test signals
 reg			clk	= 0;
@@ -156,6 +160,13 @@ wire [31:0]	wbs1_dat_i;
 wire [31:0]	wbs1_adr_o;
 wire		wbs1_int_i;
 
+
+//UART PHY
+wire    tx;
+wire    rx;
+reg     rts;
+wire    cts;
+
 //slave 1
 wb_uart s1 (
 
@@ -169,8 +180,11 @@ wb_uart s1 (
 	.wbs_ack_o(wbs1_ack_i),
 	.wbs_dat_o(wbs1_dat_i),
 	.wbs_adr_i(wbs1_adr_o),
-	.wbs_int_o(wbs1_int_i)
-
+	.wbs_int_o(wbs1_int_i),
+  .tx(tx),
+  .rx(rx),
+  .rts(rts),
+  .cts(cts)
 );
 
 
@@ -208,6 +222,29 @@ wishbone_interconnect wi (
 
 );
 
+
+reg           test_transmit = 0;
+reg   [7:0]   test_tx_byte  = 8'h55;
+wire          test_received;
+wire  [7:0]   test_rx_byte;
+wire          test_is_receiving;
+wire          test_is_transmitting;
+wire          test_rx_error;
+
+uart  u_test (
+  .clk(clk),
+  .rst(rst),
+  .rx(tx),
+  .tx(rx),
+  .transmit(test_transmit),
+  .tx_byte(test_tx_byte),
+  .received(test_received),
+  .rx_byte(test_rx_byte),
+  .is_receiving(test_is_receiving),
+  .is_transmitting(test_is_transmitting),
+  .rx_error(test_rx_error)
+);
+
 integer fd_in;
 integer fd_out;
 integer read_count;
@@ -216,7 +253,7 @@ integer ch;
 
 integer data_count;
 
-always #2 clk = ~clk;
+always #10 clk = ~clk;
 
 
 reg		execute_command;
@@ -299,7 +336,7 @@ initial begin
 			end //end read_count == 4
 		end //end while ! eof
 	end //end not reset
-	#100
+	#500000
 	$fclose (fd_in);
 	$fclose (fd_out);
 	$finish();
@@ -437,4 +474,16 @@ always @ (posedge clk) begin
 	end//not reset
 end
 
+
+
+initial begin
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  8'h12;
+  #1000
+
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+end
 endmodule

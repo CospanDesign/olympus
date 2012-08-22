@@ -111,14 +111,16 @@ always @ (posedge clk) begin
 
     tx                    <= 1;
     clock_div             <=  default_clock_div;
-    rx_clk_divider        <=  default_clock_div;
-    tx_clk_divider        <=  default_clock_div;
+    rx_clk_divider        <=  0;
+    tx_clk_divider        <=  0;
     if (set_clock_div) begin
       clock_div           <=  user_clock_div;
-      rx_clk_divider      <=  user_clock_div;
-      tx_clk_divider      <=  user_clock_div;
     end
-    
+
+    $display ("clock_div: %d", default_clock_div);
+    $display ("half period: %d", default_clock_div * (`HALF_PERIOD)); 
+    $display ("full period: %d", default_clock_div * (`FULL_PERIOD)); 
+
   end
   else begin
 

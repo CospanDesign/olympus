@@ -76,7 +76,12 @@ module wb_uart (
   wbs_ack_o,
   wbs_dat_o,
   wbs_adr_i,
-  wbs_int_o
+  wbs_int_o,
+
+  tx,
+  rx,
+  rts,
+  cts
 );
 
 input               clk;
@@ -127,6 +132,7 @@ reg         [7:0]   write_data [0:4];
 wire                write_full;
 wire        [31:0]  write_available;
 reg         [15:0]  write_count;
+reg         [15:0]  write_countdown;
 wire        [31:0]  write_size;
 
 reg                 read_strobe;
@@ -201,9 +207,10 @@ always @ (posedge clk) begin
 
     //write
     write_en                <=  0;
-    write_strobe            <=  0;
     write_strobe_count      <=  0;
     write_count             <=  15'h000;
+
+    write_countdown         <=  0;
 
     for (i = 0; i < 4; i = i + 1) begin
       write_data[i]         <=  0;
@@ -237,12 +244,19 @@ always @ (posedge clk) begin
 
         //write request
         if (write_en) begin
+          if (write_countdown == 0) begin
+            write_strobe        <=  0;
+            write_en            <=  0;
+            write_strobe_count  <=  0;
+          end
+          else begin
             write_strobe              <=  1;
-            write_strobe_count         <=  4;
+            write_strobe_count        <=  4;
             write_data[0]             <=  wbs_dat_i[31:24];
             write_data[1]             <=  wbs_dat_i[23:16];
             write_data[2]             <=  wbs_dat_i[15:8];
             write_data[3]             <=  wbs_dat_i[7:0];
+          end
         end
 
         else begin
@@ -272,6 +286,19 @@ always @ (posedge clk) begin
               write_strobe          <=  1;
               write_strobe_count    <=  2;
               write_count           <=  wbs_dat_i[31:16];
+              if (wbs_dat_i[31:16] < 2) begin
+                write_strobe_count  <=  wbs_dat_i[31:16];
+              end
+              if (wbs_dat_i[31:16] == 0) begin
+                write_countdown     <=  0;
+                write_en            <=  0;
+              end
+              if (wbs_dat_i[31:16] == 1) begin
+                write_countdown     <=  0;
+              end
+              else if (wbs_dat_i [31:16] > 1) begin
+                write_countdown     <=  wbs_dat_i[31:16] - 2; 
+              end
               write_data[0]         <=  wbs_dat_i[15:8];
               write_data[1]         <=  wbs_dat_i[7:0];
             end

@@ -130,15 +130,16 @@ reg         [7:0]   read_fifo[0:255];
 
 reg                 write_fifo_read_strobe;
 wire        [31:0]  tx_read_count;
+reg                 tx_read_strobe;
+wire        [7:0]   tx_fifo_read_data;
 
-reg                 read_fifo_write_strobe;
 wire        [31:0]  rx_fifo_size;
 wire        [31:0]  rx_write_available;
 
 
 //UART Core
 reg                 transmit;
-wire  [7:0]         tx_byte;
+reg   [7:0]         tx_byte;
 wire                received;
 wire  [7:0]         rx_byte;
 
@@ -178,7 +179,7 @@ uart_fifo uf_tx (
 
   .read_strobe(tx_read_strobe),
   .read_count(tx_read_count),
-  .read_data(tx_byte),
+  .read_data(tx_fifo_read_data),
   .overflow(tx_overflow),
   .underflow(tx_underflow),
   .full(tx_full),
@@ -191,12 +192,12 @@ uart_fifo uf_rx (
   
   .size(rx_fifo_size),
 
-  .write_strobe(rx_write_strobe),
+  .write_strobe(received),
   .write_strobe_count(1), //always putting in 1 byte
   .write_available(rx_write_available),
   .write_data0(rx_byte),
   
-  .read_strobe(received),
+  .read_strobe(read_strobe),
   .read_count(read_count),
   .read_data(read_data),
   .overflow(rx_overflow),
@@ -243,15 +244,16 @@ always @ (posedge clk) begin
     cts                           <=  0;
     state                         <=  IDLE;
     write_fifo_read_strobe        <=  0;
-    read_fifo_write_strobe        <=  0;
     local_read                    <=  0;
     test                          <=  0;
     status                        <=  0;
+    tx_read_strobe                <=  0;
+    tx_byte                       <=  0;
   end
   else begin
     write_fifo_read_strobe        <=  0; 
-    read_fifo_write_strobe        <=  0;
     transmit                      <=  0;
+    tx_read_strobe                <=  0;
     local_read                    <=  0;
     cts                           <=  0;
 
@@ -261,18 +263,23 @@ always @ (posedge clk) begin
     end
 
     //transmitting
-    if (!tx_empty && ! is_transmitting) begin
+//XXX: The write strobe is here to work around the condition when the user is writing and the UART is reading
+//XXX: at the same time, this can be fixed with more logic
+    if (!tx_empty && !is_transmitting && !tx_empty && !transmit) begin
       if (flowcontrol) begin
         if (control[`CONTROL_FC_CTS_RTS]) begin
           //tell the remote device that we have data to send
           if (~rts) begin
             //device is ready to receive data
-            transmit         <=  1; 
+            tx_byte           <=  tx_fifo_read_data;
+            transmit          <=  1; 
           end
         end
         //here is where DTR DSR can be put in
       end
       else begin
+        tx_byte              =  tx_fifo_read_data;
+        tx_read_strobe      <=  1;
         transmit            <=  1;
       end
     end

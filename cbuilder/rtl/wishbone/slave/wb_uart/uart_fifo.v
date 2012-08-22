@@ -119,78 +119,96 @@ always @ (posedge clk) begin
     underflow         <=  0;
     //if there is a write strobe put data into the FIFO
      //allowed overflow
-    if (full) begin
-      if (allow_overflow) begin
-        out_pointer           <=  out_pointer + write_strobe_count;
-      end
-      overflow              <=  1;
-    end
-    else if ((write_strobe_count >= 2) && (in_pointer + 1 == last)) begin
-      if (allow_overflow) begin
-        out_pointer           <=  out_pointer + (write_strobe_count - 1);
-      end
-      else begin
-        //only go up to 1
-        fifo[in_pointer]      <=  write_data0;
-        in_pointer            <=  in_pointer  + 1;
+
+    if (write_strobe) begin
+/*
+      if (full) begin
+        write_available       <=  0;
+        if (allow_overflow) begin
+          out_pointer           <=  out_pointer + write_strobe_count;
+        end
         overflow              <=  1;
       end
-      overflow              <=  1;
+      else if ((write_strobe_count >= 2) && (in_pointer + 1 == last)) begin
+        write_available       <=  0;
+        if (allow_overflow) begin
+          out_pointer           <=  out_pointer + (write_strobe_count - 1);
+        end
+        else begin
+          //only go up to 1
+          fifo[in_pointer]      <=  write_data0;
+          in_pointer            <=  in_pointer  + 1;
+          overflow              <=  1;
+        end
+        overflow              <=  1;
+      end
+      else if ((write_strobe_count >= 3) && (in_pointer + 2 == last)) begin
+        write_available       <=  0;
+        if (allow_overflow) begin
+          out_pointer           <=  out_pointer + (write_strobe_count - 2);
+        end
+        else begin
+          //only go up to 2
+          fifo[in_pointer]      <=  write_data0;
+          fifo[in_pointer + 1]  <=  write_data1;
+          in_pointer            <=  in_pointer + 2;
+        end
+        overflow              <=  1;
+      end
+      else if ((write_strobe_count == 4) && (in_pointer + 3 == last)) begin
+        write_available       <=  0;
+        if (allow_overflow) begin
+          //only go up to 3
+          fifo[in_pointer]      <=  write_data0;
+          fifo[in_pointer + 1]  <=  write_data1;
+          fifo[in_pointer + 2]  <=  write_data2;
+          fifo[in_pointer + 3]  <=  write_data3;
+          in_pointer            <=  in_pointer + 4;
+        end
+        else begin
+          fifo[in_pointer]      <=  write_data0;
+          fifo[in_pointer + 1]  <=  write_data1;
+          fifo[in_pointer + 2]  <=  write_data2;
+          out_pointer           <=  out_pointer + 3;
+        end
+        overflow                <=  1;
+      end
+      //no restrictions
+*/
+//      else begin
+        if (write_strobe_count == 1) begin
+          write_available       <=  0;
+          $display("Writing without restrictions");
+          fifo[in_pointer]      <=  write_data0;
+          in_pointer            <=  in_pointer  + 1;
+        end
+        else if (write_strobe_count == 2) begin
+          $display("Writing without restrictions");
+          fifo[in_pointer]      <=  write_data0;
+          fifo[in_pointer + 1]  <=  write_data1;
+          in_pointer            <=  in_pointer + 2;
+        end
+        else if (write_strobe_count == 3) begin
+          fifo[in_pointer]      <=  write_data0;
+          fifo[in_pointer + 1]  <=  write_data1;
+          fifo[in_pointer + 2]  <=  write_data2;
+          in_pointer            <=  in_pointer + 3;
+        end
+        else if (write_strobe_count == 4) begin
+          fifo[in_pointer]      <=  write_data0;
+          fifo[in_pointer + 1]  <=  write_data1;
+          fifo[in_pointer + 2]  <=  write_data2;
+          fifo[in_pointer + 3]  <=  write_data3;
+          in_pointer            <=  in_pointer + 4;
+        end
+//      end
     end
-    else if ((write_strobe_count >= 3) && (in_pointer + 2 == last)) begin
-      if (allow_overflow) begin
-        out_pointer           <=  out_pointer + (write_strobe_count - 2);
-      end
-      else begin
-        //only go up to 2
-        fifo[in_pointer]      <=  write_data0;
-        fifo[in_pointer + 1]  <=  write_data1;
-        in_pointer            <=  in_pointer + 2;
-      end
-      overflow              <=  1;
-    end
-    else if ((write_strobe_count == 4) && (in_pointer + 3 == last)) begin
-      if (allow_overflow) begin
-        //only go up to 3
-        fifo[in_pointer]      <=  write_data0;
-        fifo[in_pointer + 1]  <=  write_data1;
-        fifo[in_pointer + 2]  <=  write_data2;
-        in_pointer            <=  in_pointer + 3;
-      end
-      else begin
-        out_pointer           <=  out_pointer + 3;
-      end
-      overflow              <=  1;
-    end
-    //no restrictions
-    else begin
-      if (write_strobe_count == 1) begin
-        fifo[in_pointer]      <=  write_data0;
-        in_pointer            <=  in_pointer  + 1;
-      end
-      else if (write_strobe_count == 2) begin
-        fifo[in_pointer]      <=  write_data0;
-        fifo[in_pointer + 1]  <=  write_data1;
-        in_pointer            <=  in_pointer + 2;
-      end
-      else if (write_strobe_count == 3) begin
-        fifo[in_pointer]      <=  write_data0;
-        fifo[in_pointer + 1]  <=  write_data1;
-        fifo[in_pointer + 2]  <=  write_data2;
-        in_pointer            <=  in_pointer + 3;
-      end
-      else if (write_strobe_count == 4) begin
-        fifo[in_pointer]      <=  write_data0;
-        fifo[in_pointer + 1]  <=  write_data1;
-        fifo[in_pointer + 2]  <=  write_data2;
-        fifo[in_pointer + 3]  <=  write_data3;
-        in_pointer            <=  in_pointer + 4;
-      end
-    end
-
+ 
     //if there is a read strobe read a byte from the FIFO and increment the out_pointer
     if (read_strobe) begin
       if (!empty) begin
+//XXX: There is an edge case when a read_strobe happens on the same edge a a write strobe
+//XXX: Basically the out pointer will be messed up
         out_pointer           <=  out_pointer + 1;
       end
       else begin
