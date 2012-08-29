@@ -23,6 +23,7 @@ SOFTWARE.
 */
 
 
+`timescale 1ns/1ps
 /*
 A custom FIFO that can take multiple bytes in at a time
 */
@@ -34,12 +35,8 @@ module uart_fifo (
   size,
 
   write_strobe,
-  write_strobe_count,
   write_available,
-  write_data0,
-  write_data1,
-  write_data2,
-  write_data3,
+  write_data,
 
   read_strobe,
   read_count,
@@ -53,7 +50,7 @@ module uart_fifo (
 );
 
 //parameters
-parameter           FIFO_SIZE       = 8; 
+parameter           FIFO_SIZE       = 10; 
 parameter           ALLOW_OVERFLOW  = 1;
 
 
@@ -63,13 +60,8 @@ input                           rst;
 output  wire  [31:0]            size;
                               
 input                           write_strobe;
-input         [3:0]             write_strobe_count;
-output                          write_size;
-output  reg   [31:0]            write_available;
-input         [7:0]             write_data0;
-input         [7:0]             write_data1;
-input         [7:0]             write_data2;
-input         [7:0]             write_data3;
+output  wire  [31:0]            write_available;
+input         [7:0]             write_data;
                               
 input                           read_strobe;
 output  reg   [31:0]            read_count;
@@ -81,27 +73,48 @@ output  reg                     underflow;
 output                          full;
 output                          empty;
 
+
 //Wires, Registers
-reg         [7:0]               fifo [FIFO_SIZE - 1: 0];
 reg         [FIFO_SIZE - 1: 0]  in_pointer;
 reg         [FIFO_SIZE - 1: 0]  out_pointer;
-wire                            last;
+
+
+dual_port_bram #(
+  .DATA_WIDTH(8),
+  .ADDR_WIDTH(FIFO_SIZE),
+//  .MEM_FILE("mem_file.txt"),
+  .MEM_FILE_LENGTH(8)
+) mem (
+  .a_clk(clk),
+  .a_wr(write_strobe),
+  .a_addr(in_pointer),
+  .a_din(write_data),
+  //.a_dout(),
+
+  .b_clk(clk),
+  .b_wr(0),
+  .b_addr(out_pointer),
+  .b_din(0),
+  .b_dout(read_data)
+);
+
+//synthesis attribute ram_style of mem is block
+wire        [FIFO_SIZE - 1: 0]  last;
 wire                            allow_overflow;
 
 //Asynchronous Logic
-assign                          size            =  (1 << FIFO_SIZE); 
+assign                          size            =  1 << FIFO_SIZE; 
 assign                          last            = (out_pointer - 1);
 assign                          full            = (in_pointer == last);
-assign                          empty           = (out_pointer == in_pointer);
+assign                          empty           = (read_count == 0);
 assign                          allow_overflow  = ALLOW_OVERFLOW;
-assign                          read_data       = fifo[out_pointer];
+assign                          write_available = size - read_count;
 
 integer                         i;
 
 //Synchronous Logic
 always @ (posedge clk) begin
   if (rst) begin
-    write_available   <=  size;
     read_count        <=  0;
     in_pointer        <=  0;
     out_pointer       <=  0;
@@ -109,114 +122,47 @@ always @ (posedge clk) begin
     overflow          <=  0;
     underflow         <=  0;
 
-    for (i = 0; i < size; i = i + 1) begin
-      fifo[i]         <=  0;
-    end
-
   end
   else begin
     overflow          <=  0;
     underflow         <=  0;
-    //if there is a write strobe put data into the FIFO
-     //allowed overflow
 
     if (write_strobe) begin
-/*
-      if (full) begin
-        write_available       <=  0;
-        if (allow_overflow) begin
-          out_pointer           <=  out_pointer + write_strobe_count;
-        end
-        overflow              <=  1;
-      end
-      else if ((write_strobe_count >= 2) && (in_pointer + 1 == last)) begin
-        write_available       <=  0;
-        if (allow_overflow) begin
-          out_pointer           <=  out_pointer + (write_strobe_count - 1);
-        end
-        else begin
-          //only go up to 1
-          fifo[in_pointer]      <=  write_data0;
-          in_pointer            <=  in_pointer  + 1;
-          overflow              <=  1;
-        end
-        overflow              <=  1;
-      end
-      else if ((write_strobe_count >= 3) && (in_pointer + 2 == last)) begin
-        write_available       <=  0;
-        if (allow_overflow) begin
-          out_pointer           <=  out_pointer + (write_strobe_count - 2);
-        end
-        else begin
-          //only go up to 2
-          fifo[in_pointer]      <=  write_data0;
-          fifo[in_pointer + 1]  <=  write_data1;
-          in_pointer            <=  in_pointer + 2;
-        end
-        overflow              <=  1;
-      end
-      else if ((write_strobe_count == 4) && (in_pointer + 3 == last)) begin
-        write_available       <=  0;
-        if (allow_overflow) begin
-          //only go up to 3
-          fifo[in_pointer]      <=  write_data0;
-          fifo[in_pointer + 1]  <=  write_data1;
-          fifo[in_pointer + 2]  <=  write_data2;
-          fifo[in_pointer + 3]  <=  write_data3;
-          in_pointer            <=  in_pointer + 4;
-        end
-        else begin
-          fifo[in_pointer]      <=  write_data0;
-          fifo[in_pointer + 1]  <=  write_data1;
-          fifo[in_pointer + 2]  <=  write_data2;
-          out_pointer           <=  out_pointer + 3;
-        end
-        overflow                <=  1;
-      end
-      //no restrictions
-*/
-//      else begin
-        if (write_strobe_count == 1) begin
-          write_available       <=  0;
-          $display("Writing without restrictions");
-          fifo[in_pointer]      <=  write_data0;
-          in_pointer            <=  in_pointer  + 1;
-        end
-        else if (write_strobe_count == 2) begin
-          $display("Writing without restrictions");
-          fifo[in_pointer]      <=  write_data0;
-          fifo[in_pointer + 1]  <=  write_data1;
-          in_pointer            <=  in_pointer + 2;
-        end
-        else if (write_strobe_count == 3) begin
-          fifo[in_pointer]      <=  write_data0;
-          fifo[in_pointer + 1]  <=  write_data1;
-          fifo[in_pointer + 2]  <=  write_data2;
-          in_pointer            <=  in_pointer + 3;
-        end
-        else if (write_strobe_count == 4) begin
-          fifo[in_pointer]      <=  write_data0;
-          fifo[in_pointer + 1]  <=  write_data1;
-          fifo[in_pointer + 2]  <=  write_data2;
-          fifo[in_pointer + 3]  <=  write_data3;
-          in_pointer            <=  in_pointer + 4;
-        end
-//      end
-    end
- 
-    //if there is a read strobe read a byte from the FIFO and increment the out_pointer
-    if (read_strobe) begin
-      if (!empty) begin
-//XXX: There is an edge case when a read_strobe happens on the same edge a a write strobe
-//XXX: Basically the out pointer will be messed up
-        out_pointer           <=  out_pointer + 1;
+      if (full && !read_strobe) begin
+        //overflow
+        $display ("UART CONTROLLER: Overflow condition");
+        out_pointer         <=  out_pointer + 1;
+        overflow            <=  1;
       end
       else begin
-        underflow             <=  1;
+        //not overflow
+        if (!read_strobe) begin
+          read_count          <=  read_count + 1;
+        end
+      end
+      in_pointer            <=  in_pointer + 1;
+    end
+
+    if (read_strobe) begin
+      if (empty) begin
+        //empty
+        underflow           <=  1;
+      end
+      else begin
+        if (full && write_strobe) begin
+          //check for that very rare condition where the write strobe and the read strobe is begin used at the same time
+          //and the FIFO is full
+          overflow          <=  0;
+        end
+        else begin
+          if (!write_strobe) begin
+            read_count        <=  read_count - 1;
+          end
+          out_pointer       <=  out_pointer + 1;
+        end
       end
     end
   end
-end 
-
+end
 
 endmodule

@@ -30,7 +30,7 @@ SOFTWARE.
     -Attached Flow control for CTS RTS
     -Removed DTR DSR for this initial version
 */ 
-`timescale 1 ns/100 ps
+`timescale 1ns/1ps
 
 //Control Flag Defines
 `define CONTROL_RESET           0
@@ -68,11 +68,7 @@ module uart_controller (
   default_clock_div,
 
   write_strobe,
-  write_strobe_count,
-  write_data0,
-  write_data1,
-  write_data2,
-  write_data3,
+  write_data,
 
   write_full,
   write_available,
@@ -106,11 +102,7 @@ input       [31:0]  clock_div;
 output      [31:0]  default_clock_div;
 
 input               write_strobe;
-input       [3:0]   write_strobe_count;
-input       [7:0]   write_data0;
-input       [7:0]   write_data1;
-input       [7:0]   write_data2;
-input       [7:0]   write_data3;
+input       [7:0]   write_data;
 
 output              write_full;
 output      [31:0]  write_available;
@@ -128,13 +120,20 @@ reg         [7:0]   write_fifo[0:255];
 reg         [7:0]   read_fifo[0:255];
 
 
-reg                 write_fifo_read_strobe;
 wire        [31:0]  tx_read_count;
 reg                 tx_read_strobe;
 wire        [7:0]   tx_fifo_read_data;
+wire                tx_overflow;
+wire                tx_underflow;
+wire                tx_full;
+wire                tx_empty;
 
 wire        [31:0]  rx_fifo_size;
 wire        [31:0]  rx_write_available;
+wire                rx_overflow;
+wire                rx_underflow;
+wire                rx_full;
+wire                rx_empty;
 
 
 //UART Core
@@ -170,12 +169,8 @@ uart_fifo uf_tx (
   .size(write_size),
   
   .write_strobe(write_strobe),
-  .write_strobe_count(write_strobe_count),
   .write_available(write_available),
-  .write_data0(write_data0),
-  .write_data1(write_data1),
-  .write_data2(write_data2),
-  .write_data3(write_data3),
+  .write_data(write_data),
 
   .read_strobe(tx_read_strobe),
   .read_count(tx_read_count),
@@ -193,9 +188,8 @@ uart_fifo uf_rx (
   .size(rx_fifo_size),
 
   .write_strobe(received),
-  .write_strobe_count(1), //always putting in 1 byte
   .write_available(rx_write_available),
-  .write_data0(rx_byte),
+  .write_data(rx_byte),
   
   .read_strobe(read_strobe),
   .read_count(read_count),
@@ -207,7 +201,7 @@ uart_fifo uf_rx (
 );
 
 //Low Level UART
-uart u (
+uart_v2 u (
   .clk(clk),
   .rst(rst),
   .rx(rx),
@@ -221,7 +215,8 @@ uart u (
   .rx_error(rx_error),
   .set_clock_div(set_clock_div),
   .user_clock_div(clock_div),
-  .default_clock_div(default_clock_div)
+  .default_clock_div(default_clock_div),
+  .prescaler(prescaler)
 );
 
 
@@ -233,7 +228,6 @@ parameter     READ  = 3'h2;
 //asynchronous logic
 
 assign        flowcontrol       = control[`CONTROL_FC_CTS_RTS];
-assign        prescaler         = `CLOCK_RATE / `PRESCALER_DIV;
 
 
 //synchronous logic
@@ -243,7 +237,6 @@ always @ (posedge clk) begin
   if (rst) begin
     cts                           <=  0;
     state                         <=  IDLE;
-    write_fifo_read_strobe        <=  0;
     local_read                    <=  0;
     test                          <=  0;
     status                        <=  0;
@@ -251,7 +244,6 @@ always @ (posedge clk) begin
     tx_byte                       <=  0;
   end
   else begin
-    write_fifo_read_strobe        <=  0; 
     transmit                      <=  0;
     tx_read_strobe                <=  0;
     local_read                    <=  0;
@@ -262,25 +254,29 @@ always @ (posedge clk) begin
       //reset status flags
     end
 
+
+    if (tx_read_strobe) begin
+      $display ("UART_CONTROLLER: Setting tx_byte to %h", tx_fifo_read_data);
+      tx_byte                     <=  tx_fifo_read_data;
+      transmit                    <=  1;
+    end
+
     //transmitting
 //XXX: The write strobe is here to work around the condition when the user is writing and the UART is reading
 //XXX: at the same time, this can be fixed with more logic
-    if (!tx_empty && !is_transmitting && !tx_empty && !transmit) begin
+    if (!tx_empty && !is_transmitting && !transmit && !tx_read_strobe && !write_strobe) begin
       if (flowcontrol) begin
         if (control[`CONTROL_FC_CTS_RTS]) begin
           //tell the remote device that we have data to send
           if (~rts) begin
             //device is ready to receive data
-            tx_byte           <=  tx_fifo_read_data;
-            transmit          <=  1; 
+            tx_read_strobe    <=  1;
           end
         end
         //here is where DTR DSR can be put in
       end
       else begin
-        tx_byte              =  tx_fifo_read_data;
-        tx_read_strobe      <=  1;
-        transmit            <=  1;
+        tx_read_strobe        <=  1;
       end
     end
 

@@ -29,7 +29,10 @@ SOFTWARE.
  */
 
 
-module bram (
+module bram #(
+  parameter DATA_WIDTH = 32,
+  parameter ADDR_WIDTH = 10
+)(
 	clk,
 	rst,
 
@@ -46,14 +49,14 @@ input rst;
 
 input en;
 input we;
-input [31:0] write_address;
-input [31:0] read_address;
-input [31:0] data_in;
-output reg [31:0] data_out;
+input [(ADDR_WIDTH - 1):0] write_address;
+input [(ADDR_WIDTH - 1):0] read_address;
+input [(DATA_WIDTH - 1):0] data_in;
+output reg [(DATA_WIDTH - 1):0] data_out;
 
 //synthesis attribute ram_style of mem is block
-reg [31:0] mem [0:1023]; //pragma attribute mem ram_block TRUE
-reg [31:0] read_address_reg;
+reg [(DATA_WIDTH - 1):0] mem [0:((1 << ADDR_WIDTH) - 1)]; //pragma attribute mem ram_block TRUE
+reg [(ADDR_WIDTH - 1):0] read_address_reg;
 
 
 /*
@@ -64,7 +67,7 @@ end
 
 always @ (posedge clk) begin
 	if (rst) begin
-		data_out <= 32'h0;
+		data_out <= 0;
 	end
 	else begin
 		if (en) begin

@@ -1,13 +1,22 @@
 //example device rom table file
 
 //ID/version of device rom table
-0001_1EAF
+0001_C594
 //Number of DRT devices attached
 0000_0001
 //RFU
 0000_0000
 //RFU
 0000_0000
+//RFU
+0000_0000
+//RFU
+0000_0000
+//RFU
+0000_0000
+//RFU
+0000_0000
+
 
 //First Device (GPIO) * for now device ID's are in rtl/wishbone/slave/device_rom_table/drt.txt
 0000_0001
@@ -17,4 +26,12 @@
 0000_0004
 //Size of address space for a device: 4
 0000_0004
+//RFU
+0000_0000
+//RFU
+0000_0000
+//RFU
+0000_0000
+//RFU
+0000_0000
 

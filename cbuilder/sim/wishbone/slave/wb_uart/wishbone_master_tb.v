@@ -231,7 +231,7 @@ wire          test_is_receiving;
 wire          test_is_transmitting;
 wire          test_rx_error;
 
-uart  u_test (
+uart_v2  u_test (
   .clk(clk),
   .rst(rst),
   .rx(tx),
@@ -301,8 +301,8 @@ initial begin
 
 			if (read_count != 4) begin
 				ch = $fgetc(fd_in);
-				$display ("Error: read_count = %h", read_count);
-				$display ("Character: %h", ch);
+				$display ("TB: %t: Error: read_count = %h", $time,  read_count);
+				$display ("TB: %t: Character: %h", $time, ch);
 			end
 			else begin
 				$display ("TB: executing command");
@@ -336,7 +336,7 @@ initial begin
 			end //end read_count == 4
 		end //end while ! eof
 	end //end not reset
-	#500000
+	#1800000
 	$fclose (fd_in);
 	$fclose (fd_out);
 	$finish();
@@ -350,45 +350,49 @@ parameter TB_READ		=	4'h3;
 reg	[3:0]	state;
 
 reg	reading_multiple	= 0;
-reg	prev_int			= 0;
+reg	prev_int			    = 0;
+reg first_write       = 0;
 
 //initial begin
 //    $monitor("%t, state: %h", $time, state);
 //end
 
 always @ (posedge clk) begin
-	in_ready			<= 0;
-	out_ready			<= 1;
-	command_finished	<= 0;
+	in_ready			            <= 0;
+	out_ready			            <= 1;
+	command_finished	        <= 0;
 
 	if (rst) begin
-		state				<= TB_IDLE;
-		read_data			<= 0;
-		reading_multiple	<= 0;
-		timeout_count		<= 0;
-		prev_int			<= 0;
+		state				            <= TB_IDLE;
+		read_data			          <= 0;
+		reading_multiple	      <= 0;
+		timeout_count		        <= 0;
+		prev_int			          <= 0;
+    first_write             <=  0;
 	end
 	else begin
+
 		if (timeout_count > 0) begin
 			timeout_count	<= timeout_count - 1;
 		end
 		if (execute_command && timeout_count == 0) begin
 			$display ("TB: Master timed out while executing command: %h", in_command);
-			state	<= TB_IDLE;
-			command_finished <= 1;
+			state	                <= TB_IDLE;
+			command_finished      <= 1;
 
 		end //end reached the end of a timeout
 
 		case (state)
 			TB_IDLE: begin
+		    reading_multiple	              <= 0;
 				if (out_en) begin
-					state	<= TB_READ;
-					out_ready	<= 0;
+					state	                        <= TB_READ;
+					out_ready	                    <= 0;
 				end
 				if (execute_command & ~command_finished) begin
 					$display ("TB: #:C:A:D = %h:%h:%h:%h", in_data_count, in_command, in_address, in_data);
-					timeout_count	<= `TIMEOUT_COUNT;
-					state			<= TB_EXECUTE;
+					timeout_count	                <= `TIMEOUT_COUNT;
+					state			                    <= TB_EXECUTE;
 				end
 			end
 			TB_EXECUTE: begin
@@ -402,7 +406,8 @@ always @ (posedge clk) begin
 						//in_command
 						//in_address
 						//in_data
-						state	<= TB_WRITE;
+						state	            <= TB_WRITE;
+            first_write       <=  1;
 					end
 					else begin
 						//read command
@@ -417,25 +422,25 @@ always @ (posedge clk) begin
 					$display ("TB: read: S:A:D = %h:%h:%h\n", out_status, out_address, out_data);
 				end
 				else if (master_ready && ~in_ready) begin
-					if (in_data_count == 0) begin
+					if (in_data_count <= 1) begin
 						$display("TB: finishd write");
 						//wrote last double word of data
-						command_finished	<= 1;
-						state	<= TB_IDLE;
+						command_finished	          <= 1;
+						state	                      <= TB_IDLE;
 					end
 					else begin
 						//need to write more data, ask the read block to read more
 						if (data_read) begin
 							$display ("TB: send new data: %h", in_data);
-							read_data	<= 0;
-							in_ready	<= 1;
-							in_data_count	<= in_data_count -1;
+							read_data	                <= 0;
+							in_ready	                <= 1;
+							in_data_count	            <= in_data_count -1;
 							//the in data is set by the initial
 						end
 						else begin
 							$display("TB: (burst mode) get another double word");
-							timeout_count <= `TIMEOUT_COUNT;
-							read_data	<= 1;
+							timeout_count             <= `TIMEOUT_COUNT;
+							read_data	                <= 1;
 						end//send another data
 					end
 				end
@@ -445,7 +450,7 @@ always @ (posedge clk) begin
 				if (out_en) begin
 					$display ("TB: read: S:A:D = %h:%h:%h", out_status, out_address, out_data);
 					out_ready	<= 0;
-					if (out_data_count == 0) begin
+					if (out_data_count <= 1) begin
 						if (reading_multiple) begin
 							reading_multiple	<= 0;
 						end
@@ -485,5 +490,81 @@ initial begin
   test_transmit       <=  1;
   #20
   test_transmit       <=  0;
+  #20
+
+  while (test_is_transmitting) begin
+  #20;
+  end
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  8'h55;
+  #1000
+
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #20;
+
+
+  while (test_is_transmitting) begin
+  #20;
+  end
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  8'hBB;
+  #1000
+
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #20;
+
+  while (test_is_transmitting) begin
+  #20;
+  end
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  8'hCC;
+  #1000
+
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #20;
+
+  while (test_is_transmitting) begin
+  #20;
+  end
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  8'hDD;
+  #1000
+
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #20;
+
+  while (test_is_transmitting) begin
+  #20;
+  end
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  8'hEE;
+  #1000
+
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #20;
+
+
+
+
 end
 endmodule

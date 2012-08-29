@@ -21,8 +21,7 @@ module uart (
 	rx_byte,
 	is_receiving,
 	is_transmitting,
-	rx_error,
-  clock_div
+	rx_error
 );
 
 

@@ -755,6 +755,50 @@ def test_memory(syc = None):
       print " "
 
 
+def test_uart_config(syc, dev_index):
+  print "testing UART config"
+  data = syc.read(1, dev_index, 2);
+  prescaler = (data[0] << 24) + (data[1] << 16) + (data[2] << 8) + data[3]
+  print "Prescaler: %d" % prescaler
+  data = syc.read(1, dev_index, 3);
+  clock_divider = (data[0] << 24) + (data[1] << 16) + (data[2] << 8) + data[3]
+
+
+  print "Clock Divider: " + str(clock_divider)
+  print "Clock Divider Array: " + str(data)
+  send_address = 3
+  send_data = Array('B', [0x00, 0x00, 0x00, 0x6C])
+  result = syc.write(dev_index, send_address, send_data)
+
+
+def test_uart_send(syc, dev_index):
+  print "testing UART send"
+  size = 1
+  send_address = 5
+  #although I'm only sending 1 byte, I need the second byte for padding
+  send_data = Array('B', [0x00, 0x10, 0x43, 0x6F, 0x73, 0x70, 0x61, 0x6E, 0x20, 0x44, 0x65, 0x73, 0x69, 0x67, 0x6E, 0x0A, 0x0D, 0x00, 0x00, 0x00])
+  result = syc.write(dev_index, send_address, send_data)
+
+
+def test_uart_receive(syc, dev_index):
+  print "\t\tUART TEST: testing UART receive"
+  data = syc.read(1, dev_index, 6)
+  print "read_count = %s" % str(data)
+  read_count = (data[0] << 24) + (data[1] << 16) + (data[2] << 8) + data[3]
+  print "read_count = %d" % read_count
+  result = syc.write(dev_index, 6, data)
+  if read_count > 0:
+    dw_count = 0
+    if read_count <= 2:
+      dw_count = read_count
+    else:
+      dw_count = 1 + (read_count - 2) / 4
+      if (read_count - 2) % 4 > 0:
+        dw_count = dw_count + 1
+
+    data = syc.read(dw_count, dev_index, 7)
+    print "data (raw): %s" % str(data)
+    print "data (string): %s" % str(data.tostring())
 
 
 def dionysus_unit_test(syc = None):
@@ -769,12 +813,18 @@ def dionysus_unit_test(syc = None):
     address_offset = string.atoi(syc.drt_lines[((dev_index + 1) * 8) + 2], 16)
     num_of_registers = string.atoi(syc.drt_lines[((dev_index + 1) * 8) + 3], 16)
     data_list = list()
-    if (device_id == 5):
-      test_memory(syc)
+
+#    if (device_id == 5):
+#      test_memory(syc)
   
-    if (device_id == 1):
-      test_leds(syc, dev_index)
-      test_buttons(syc, dev_index)
+#    if (device_id == 1):
+#      test_leds(syc, dev_index)
+#      test_buttons(syc, dev_index)
+
+    if (device_id == 2):
+      test_uart_config(syc, dev_index)
+      test_uart_send(syc, dev_index)
+      test_uart_receive(syc, dev_index)
   
  
 def usage():

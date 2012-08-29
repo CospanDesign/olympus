@@ -23,26 +23,6 @@ SOFTWARE.
 */
 
 /*
-  10/29/2011
-    -added an 'else' statement that so either the
-    reset HDL will be executed or the actual code
-    not both
-*/
-
-/*
-  10/23/2011
-    -fixed the wbs_ack_i to wbs_ack_o
-    -added the default entries for read and write
-      to illustrate the method of communication
-    -added license
-*/
-/*
-  9/10/2011
-    -removed the duplicate wbs_dat_i
-    -added the wbs_sel_i port
-*/
-
-/*
   Use this to tell olympus how to populate the Device ROM table
   so that users can interact with your slave
 
@@ -61,6 +41,7 @@ SOFTWARE.
 
 */
 `include "project_defines.v"
+`timescale 1ns/1ps
 
 module wb_uart (
   clk,
@@ -81,7 +62,9 @@ module wb_uart (
   tx,
   rx,
   rts,
-  cts
+  cts,
+  dtr,
+  dsr
 );
 
 input               clk;
@@ -101,10 +84,11 @@ output reg          wbs_int_o;
 parameter           REG_CONTROL     = 32'h00000000;
 parameter           REG_STATUS      = 32'h00000001;
 parameter           REG_PRESCALER   = 32'h00000002;
-parameter           REG_BAUDRATE    = 32'h00000003;
-parameter           REG_WRITE       = 32'h00000004;
-parameter           REG_READ_COUNT  = 32'h00000005;
-parameter           REG_READ        = 32'h00000006;
+parameter           REG_CLOCK_DIV   = 32'h00000003;
+parameter           REG_WRITE_COUNT = 32'h00000004;
+parameter           REG_WRITE       = 32'h00000005;
+parameter           REG_READ_COUNT  = 32'h00000006;
+parameter           REG_READ        = 32'h00000007;
 
 
 //uart controller PHY
@@ -126,15 +110,15 @@ reg         [31:0]  clock_div;
 wire        [31:0]  default_clock_div;
 
 reg                 write_strobe;
-reg         [3:0]   write_strobe_count;
 
-reg         [7:0]   write_data [0:4];
+reg         [7:0]   write_data;
 wire                write_full;
 wire        [31:0]  write_available;
 reg         [15:0]  write_count;
-reg         [15:0]  write_countdown;
+reg         [1:0]   dw_countdown;
 wire        [31:0]  write_size;
 
+reg         [1:0]   read_delay;
 reg                 read_strobe;
 wire        [7:0]   read_data;
 wire                read_empty;
@@ -148,6 +132,9 @@ reg          [1:0]  local_read_count;
 //user requests to read this much data
 reg          [31:0] user_read_count;
 reg                 user_read_limit;
+
+wire                reading;
+wire                writing;
 
 
 uart_controller uc (
@@ -171,11 +158,7 @@ uart_controller uc (
 
   //Data In
   .write_strobe(write_strobe),
-  .write_strobe_count(write_strobe_count),
-  .write_data0(write_data[0]),
-  .write_data1(write_data[1]),
-  .write_data2(write_data[2]),
-  .write_data3(write_data[3]),
+  .write_data(write_data),
   .write_full(write_full),
   .write_available(write_available),
   .write_size(write_size),
@@ -190,6 +173,9 @@ uart_controller uc (
 
 integer         i;
 
+assign          reading   = (wbs_cyc_i && !wbs_we_i && (read_count > 0) && ((user_read_limit > 0) || (wbs_adr_i == REG_READ)));
+assign          writing   = (wbs_cyc_i && wbs_we_i && ((write_count > 0) || (wbs_adr_i == REG_WRITE)));
+
 //blocks
 always @ (posedge clk) begin
   if (rst) begin
@@ -201,20 +187,18 @@ always @ (posedge clk) begin
     write_strobe            <=  0;
 //    write_data              <=  8'h0;
     read_strobe              <=  0;
+    read_delay              <=  0;
 
     user_read_count         <=  0;
     user_read_limit         <=  0;
 
     //write
     write_en                <=  0;
-    write_strobe_count      <=  0;
-    write_count             <=  15'h000;
 
-    write_countdown         <=  0;
+    write_count             <=  0;
+    dw_countdown            <=  0;
+    write_data              <=  0;
 
-    for (i = 0; i < 4; i = i + 1) begin
-      write_data[i]         <=  0;
-    end
     //status
     status_reset            <=  0;
     set_clock_div           <=  0;
@@ -226,41 +210,61 @@ always @ (posedge clk) begin
     status_reset            <=  0;
     write_strobe            <=  0;
     set_clock_div           <=  0;
+    read_strobe             <=  0;
 
     //when the master acks our ack, then put our ack down
-    if (wbs_ack_o & ~ wbs_stb_i)begin
+    if (wbs_ack_o & ~wbs_stb_i)begin
       wbs_ack_o             <= 0;
     end
     if (wbs_cyc_i == 0) begin
       //at the end of a cycle disable the special case of writing to the UART FIFO
       write_en              <=  0;
       read_en               <=  0;
-      write_count           <=  0;
     end
 
     if (wbs_stb_i & wbs_cyc_i) begin
       //master is requesting somethign
+      //write request
       if (wbs_we_i) begin
-
-        //write request
+        //check if this is a continuation of a read
         if (write_en) begin
-          if (write_countdown == 0) begin
-            write_strobe        <=  0;
-            write_en            <=  0;
-            write_strobe_count  <=  0;
-          end
-          else begin
+          if (!wbs_ack_o) begin
+            $display ("Writing a byte write_count == %d, dw_countdown == %d", write_count, dw_countdown);
+            case (dw_countdown)
+              0: begin
+                write_data            <=  wbs_dat_i[7:0];
+              end
+              1: begin
+                write_data            <=  wbs_dat_i[15:8];
+              end
+              2: begin
+                write_data            <=  wbs_dat_i[23:16];
+              end
+              3: begin
+                write_data            <=  wbs_dat_i[31:24];
+              end
+            endcase
             write_strobe              <=  1;
-            write_strobe_count        <=  4;
-            write_data[0]             <=  wbs_dat_i[31:24];
-            write_data[1]             <=  wbs_dat_i[23:16];
-            write_data[2]             <=  wbs_dat_i[15:8];
-            write_data[3]             <=  wbs_dat_i[7:0];
+            if (dw_countdown == 0) begin
+              wbs_ack_o               <=  1;
+              //I KNOW this code is redundant but it is more readible
+              dw_countdown            <=  3;
+            end
+            else begin
+              dw_countdown            <=  dw_countdown - 1;
+            end
+            if (write_count == 0) begin
+              dw_countdown            <=  3;
+              wbs_ack_o               <=  1;
+            end
+            else begin
+              write_count             <=  write_count - 1;
+            end
           end
         end
-
+ 
+        //not a continuation of a write
         else begin
-
           case (wbs_adr_i) 
             REG_CONTROL: begin
               control                 <=  wbs_dat_i[31:0];
@@ -271,36 +275,36 @@ always @ (posedge clk) begin
             REG_PRESCALER: begin
               //USER CANNOT WRITE ANYTHING TO PRESCALER
             end
-            REG_BAUDRATE: begin
+            REG_CLOCK_DIV: begin
               //the host will have to calculate out the baudrate
               clock_div               <=  wbs_dat_i[31:0];
               set_clock_div           <=  1;
               $display("user wrote %h", wbs_dat_i);
             end
+            REG_WRITE_COUNT: begin
+              //USER ANNOT WRITE ANYTHING TO WRITE COUNT
+            end
             REG_WRITE: begin
+              $display ("Starting a write cycle");
               //this is where the start of a UART write will begin, subsequent burst reads after this will be written to a output FIFO
               //I need a flag that will inidicate that the user will be writting to the buffer
- 
+
               //write register
-              write_en              <=  1;
-              write_strobe          <=  1;
-              write_strobe_count    <=  2;
-              write_count           <=  wbs_dat_i[31:16];
-              if (wbs_dat_i[31:16] < 2) begin
-                write_strobe_count  <=  wbs_dat_i[31:16];
+              write_en                <=  1;
+              dw_countdown            <=  1;
+              if (wbs_dat_i[31:16] <= 2) begin
+                dw_countdown          <=  wbs_dat_i[17:16] - 1;
               end
               if (wbs_dat_i[31:16] == 0) begin
-                write_countdown     <=  0;
-                write_en            <=  0;
+                write_count           <=  0;
+                write_en              <=  0;
               end
-              if (wbs_dat_i[31:16] == 1) begin
-                write_countdown     <=  0;
+              if (wbs_dat_i[31:16]     <= 2) begin
+                write_count           <=  wbs_dat_i[31:16]  - 1;
               end
-              else if (wbs_dat_i [31:16] > 1) begin
-                write_countdown     <=  wbs_dat_i[31:16] - 2; 
+              else begin
+                write_count             <=  wbs_dat_i[31:16];
               end
-              write_data[0]         <=  wbs_dat_i[15:8];
-              write_data[1]         <=  wbs_dat_i[7:0];
             end
             REG_READ_COUNT: begin
               //USER CANNOT WRITE ANYTHING TO READ COUNT
@@ -315,29 +319,68 @@ always @ (posedge clk) begin
         end
       end
 
+      //reading
       else begin 
         if (read_en) begin
           if (wbs_ack_o == 0) begin
             if (user_read_limit) begin
-              if (local_read_count == 3) begin
-                wbs_ack_o <=  1;
+              if (read_delay > 0) begin
+                read_delay  <=  read_delay - 1;
               end
-              local_read_count  <=  local_read_count + 1;
-              if (local_read_count == 0) begin
-                read_en           <=  0;
-                wbs_ack_o         <=  1;
-              end
-              if (read_count == 0) begin
-                read_en           <=  0;
-                local_read_count  <=  0;
-                wbs_ack_o         <=  1;
+              else begin
+                $display ("WB_UART: Reading a byte user_read_count == %d, local_read_count == %d", user_read_count, local_read_count);
+                //I can't use a normal shift register because the first value won't be at the end if the user
+                //specifies anything below a multiple of 4
+                case (local_read_count)
+                  0: begin
+                    wbs_dat_o[31:24]  <=  read_data;
+                    wbs_dat_o[23:0]   <=  0;
+                    read_strobe       <=  1;
+                    read_delay        <=  2;
+                  end
+                  1: begin
+                    wbs_dat_o[23:16]  <=  read_data;
+                    read_strobe       <=  1;
+                    read_delay        <=  2;
+
+                  end
+                  2: begin
+                    wbs_dat_o[15:8]  <=  read_data;
+                    read_strobe       <=  1;
+                    read_delay        <=  2;
+
+                  end
+                  3: begin
+                    wbs_dat_o[7:0]  <=  read_data;
+                    read_strobe       <=  1;
+                    read_delay        <=  2;
+                  end
+                endcase
+
+                
+                if (local_read_count == 3) begin
+                  wbs_ack_o         <=  1;
+                end
+                if (user_read_count == 0) begin
+                  $display ("WB_UART: Finished reading all the user's data");
+                  user_read_limit   <=  0;
+                  wbs_ack_o         <=  1;
+                  read_strobe       <=  0;
+                end
+                else begin
+                  local_read_count  <=  local_read_count + 1;
+                  user_read_count   <=  user_read_count - 1;
+                end
+                if (read_count == 0) begin
+                  user_read_limit   <=  0;
+                  local_read_count  <=  0;
+                  wbs_ack_o         <=  1;
+                end
               end
             end
             else begin
-              read_en             <=  0;
               wbs_ack_o           <=  1;
             end
-            wbs_dat_o             <=  {wbs_dat_o[31:8], read_data};
           end
         end
         else begin
@@ -354,13 +397,16 @@ always @ (posedge clk) begin
             REG_PRESCALER: begin
               wbs_dat_o <= prescaler;
             end
-            REG_BAUDRATE: begin
+            REG_CLOCK_DIV: begin
               if (clock_div ==  0) begin
                 wbs_dat_o <=  default_clock_div;
               end
               else begin
                 wbs_dat_o <= clock_div;
               end
+            end
+            REG_WRITE_COUNT: begin
+              wbs_dat_o <=  write_available;
             end
             REG_WRITE: begin
               wbs_dat_o <=  32'h00000000;
@@ -369,17 +415,34 @@ always @ (posedge clk) begin
               wbs_dat_o <=  read_count;
             end
             REG_READ: begin
+              $display ("User requested data");
               if (read_count > 0) begin
                 read_en           <=  1;
-                read_strobe       <=  1;
+                read_strobe       <=  0;
                 //reset the 8-bit -> 32-bit converter counter
                 local_read_count  <=  0;
                 wbs_dat_o         <=  0;
-                if (user_read_count > 0) begin
+                wbs_dat_o[31:24]  <=  read_data;
+                wbs_dat_o[23:0]   <=  0;
+                if (user_read_count > 1) begin
+                  read_delay      <=  2;
+                  //user has specified an amount of data to read
                   user_read_limit <=  1;
+                  local_read_count  <=  0;
+                  //decrement the user_read_count because we are requesting a byte right now
+                  if (user_read_count >= 2) begin
+                    user_read_count <=  user_read_count - 2;
+                  end
+                end
+                else begin
+                  read_delay        <=  2;
+                  user_read_limit   <=  1;
+                  local_read_count  <=  0;
+                  user_read_count   <=  1;
                 end
               end
               else begin
+                //no data just return 0
                 wbs_dat_o <=  32'h00000000;
               end
             end
@@ -389,7 +452,7 @@ always @ (posedge clk) begin
           endcase
         end
       end
-      if (!read_en || ((wbs_adr_i == REG_READ) && (read_count == 0))) begin
+      if (!reading && !writing) begin
         wbs_ack_o <= 1;
       end
     end
