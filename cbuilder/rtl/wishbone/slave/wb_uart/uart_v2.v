@@ -26,9 +26,8 @@ SOFTWARE.
 
 
 `include "project_defines.v"
-`timescale 1ns/1ps
+`timescale 1 ns/1 ps
 
-`define DEFAULT_BAUDRATE 57600
 `define PRESCALER_COUNT 8 
 
 `define HALF_PERIOD `PRESCALER_COUNT / 2
@@ -36,7 +35,9 @@ SOFTWARE.
 `define TWO_PERIODS (`PRESCALER_COUNT * 2)
 
 
-module uart_v2 (
+module uart_v2 #(
+  parameter DEFAULT_BAUDRATE = 57600
+)(
   clk,
   rst,
   rx,
@@ -111,7 +112,7 @@ reg [7:0] tx_data;
 
 //Asynchronous Logic
 assign    prescaler           = `CLOCK_RATE / (`PRESCALER_COUNT);
-assign    default_clock_div   = `CLOCK_RATE / (`PRESCALER_COUNT * `DEFAULT_BAUDRATE);
+assign    default_clock_div   = `CLOCK_RATE / (`PRESCALER_COUNT * DEFAULT_BAUDRATE);
 //assign    received    = (rx_state == RX_RECEIVED);
 assign    rx_error            = (rx_state == RX_ERROR);
 assign    is_receiving        = (rx_state != RX_IDLE);
@@ -144,9 +145,9 @@ always @ (posedge clk) begin
       clock_div           <=  user_clock_div;
     end
 
-    $display ("clock_div: %d", default_clock_div);
-    $display ("half period: %d", default_clock_div * (`HALF_PERIOD)); 
-    $display ("full period: %d", default_clock_div * (`FULL_PERIOD)); 
+//    $display ("%m clock_div: %d", default_clock_div);
+//    $display ("%m half period: %d", default_clock_div * (`HALF_PERIOD)); 
+//    $display ("%m full period: %d", default_clock_div * (`FULL_PERIOD)); 
 
   end
   else begin

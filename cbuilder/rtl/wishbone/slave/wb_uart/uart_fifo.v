@@ -82,8 +82,13 @@ reg         [FIFO_SIZE - 1: 0]  out_pointer;
 dual_port_bram #(
   .DATA_WIDTH(8),
   .ADDR_WIDTH(FIFO_SIZE),
-//  .MEM_FILE("mem_file.txt"),
+`ifdef SIMULATION
+  .MEM_FILE("mem_file.txt"),
   .MEM_FILE_LENGTH(8)
+`else
+  .MEM_FILE("NOTHING"),
+  .MEM_FILE_LENGTH(0)
+`endif
 ) mem (
   .a_clk(clk),
   .a_wr(write_strobe),
@@ -118,6 +123,10 @@ always @ (posedge clk) begin
     read_count        <=  0;
     in_pointer        <=  0;
     out_pointer       <=  0;
+`ifdef SIMULATION
+    read_count        <=  1;
+    in_pointer        <=  1;
+`endif
 
     overflow          <=  0;
     underflow         <=  0;

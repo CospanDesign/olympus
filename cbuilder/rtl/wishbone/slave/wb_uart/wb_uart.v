@@ -131,7 +131,6 @@ reg                 read_en;
 reg          [1:0]  local_read_count;
 //user requests to read this much data
 reg          [31:0] user_read_count;
-reg                 user_read_limit;
 
 wire                reading;
 wire                writing;
@@ -173,7 +172,7 @@ uart_controller uc (
 
 integer         i;
 
-assign          reading   = (wbs_cyc_i && !wbs_we_i && (read_count > 0) && ((user_read_limit > 0) || (wbs_adr_i == REG_READ)));
+assign          reading   = (wbs_cyc_i && !wbs_we_i && (read_count > 0) && (wbs_adr_i == REG_READ));
 assign          writing   = (wbs_cyc_i && wbs_we_i && ((write_count > 0) || (wbs_adr_i == REG_WRITE)));
 
 //blocks
@@ -185,12 +184,11 @@ always @ (posedge clk) begin
 
     control                 <=  8'h0;
     write_strobe            <=  0;
-//    write_data              <=  8'h0;
     read_strobe              <=  0;
     read_delay              <=  0;
 
     user_read_count         <=  0;
-    user_read_limit         <=  0;
+    local_read_count        <=  0;
 
     //write
     write_en                <=  0;
@@ -323,63 +321,61 @@ always @ (posedge clk) begin
       else begin 
         if (read_en) begin
           if (wbs_ack_o == 0) begin
-            if (user_read_limit) begin
               if (read_delay > 0) begin
-                read_delay  <=  read_delay - 1;
-              end
-              else begin
-                $display ("WB_UART: Reading a byte user_read_count == %d, local_read_count == %d", user_read_count, local_read_count);
-                //I can't use a normal shift register because the first value won't be at the end if the user
-                //specifies anything below a multiple of 4
-                case (local_read_count)
-                  0: begin
-                    wbs_dat_o[31:24]  <=  read_data;
-                    wbs_dat_o[23:0]   <=  0;
-                    read_strobe       <=  1;
-                    read_delay        <=  2;
-                  end
-                  1: begin
-                    wbs_dat_o[23:16]  <=  read_data;
-                    read_strobe       <=  1;
-                    read_delay        <=  2;
-
-                  end
-                  2: begin
-                    wbs_dat_o[15:8]  <=  read_data;
-                    read_strobe       <=  1;
-                    read_delay        <=  2;
-
-                  end
-                  3: begin
-                    wbs_dat_o[7:0]  <=  read_data;
-                    read_strobe       <=  1;
-                    read_delay        <=  2;
-                  end
-                endcase
-
-                
-                if (local_read_count == 3) begin
-                  wbs_ack_o         <=  1;
-                end
-                if (user_read_count == 0) begin
-                  $display ("WB_UART: Finished reading all the user's data");
-                  user_read_limit   <=  0;
-                  wbs_ack_o         <=  1;
-                  read_strobe       <=  0;
-                end
-                else begin
-                  local_read_count  <=  local_read_count + 1;
-                  user_read_count   <=  user_read_count - 1;
-                end
-                if (read_count == 0) begin
-                  user_read_limit   <=  0;
-                  local_read_count  <=  0;
-                  wbs_ack_o         <=  1;
-                end
-              end
+              read_delay  <=  read_delay - 1;
             end
             else begin
-              wbs_ack_o           <=  1;
+              $display ("\n\n");
+              $display ("WB_UART (%g): Reading a byte user_read_count == %d, local_read_count == %d", $time, user_read_count, local_read_count);
+              $display ("WB_UART: Data: %h", read_data);
+              //I can't use a normal shift register because the first value won't be at the end if the user
+              //specifies anything below a multiple of 4
+              case (local_read_count)
+                0: begin
+                  $display ("WB_UART (%g): putting read data into the top byte", $time);
+                  wbs_dat_o[31:24]  <=  read_data;
+                  wbs_dat_o[23:0]   <=  0;
+                  read_strobe       <=  1;
+                  read_delay        <=  2;
+                end
+                1: begin
+                  wbs_dat_o[23:16]  <=  read_data;
+                  read_strobe       <=  1;
+                  read_delay        <=  2;
+
+                end
+                2: begin
+                  wbs_dat_o[15:8]  <=  read_data;
+                  read_strobe       <=  1;
+                  read_delay        <=  2;
+
+                end
+                3: begin
+                  wbs_dat_o[7:0]  <=  read_data;
+                  read_strobe       <=  1;
+                  read_delay        <=  2;
+                end
+              endcase
+
+              
+              if (local_read_count == 3) begin
+                $display ("WB_UART (%g): Sending an Ack for a  32 bit data packet to the host", $time);
+                wbs_ack_o         <=  1;
+              end
+              if (user_read_count == 0) begin
+                $display ("WB_UART (%g): Finished reading all the user's data", $time);
+                wbs_ack_o         <=  1;
+                read_strobe       <=  0;
+              end
+              else begin
+                local_read_count  <=  local_read_count + 1;
+                user_read_count   <=  user_read_count - 1;
+              end
+              if (read_count == 0) begin
+                local_read_count  <=  0;
+                $display ("WB_UART (%g): Read FIFO is empty", $time);
+                wbs_ack_o         <=  1;
+              end
             end
           end
         end
@@ -427,7 +423,6 @@ always @ (posedge clk) begin
                 if (user_read_count > 1) begin
                   read_delay      <=  2;
                   //user has specified an amount of data to read
-                  user_read_limit <=  1;
                   local_read_count  <=  0;
                   //decrement the user_read_count because we are requesting a byte right now
                   if (user_read_count >= 2) begin
@@ -436,9 +431,8 @@ always @ (posedge clk) begin
                 end
                 else begin
                   read_delay        <=  2;
-                  user_read_limit   <=  1;
                   local_read_count  <=  0;
-                  user_read_count   <=  1;
+                  user_read_count   <=  0;
                 end
               end
               else begin
@@ -453,6 +447,7 @@ always @ (posedge clk) begin
         end
       end
       if (!reading && !writing) begin
+        $display ("WB_UART (%g): Sending Main ACK", $time);
         wbs_ack_o <= 1;
       end
     end

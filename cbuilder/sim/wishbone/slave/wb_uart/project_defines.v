@@ -1,8 +1,7 @@
 `ifndef __DEVICE_TABLE_DEFINES__
 `define __DEVICE_TABLE_DEFINES__
 
-
-`timescale 1ns/10ps
+`timescale 1 ns/1 ps
 
 //project_defines.v
 `define DRT_NUM_OF_DEVICES 1
@@ -10,4 +9,5 @@
 `define SIM
 
 `define CLOCK_RATE 50000000
+
 `endif

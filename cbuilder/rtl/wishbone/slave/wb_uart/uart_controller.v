@@ -116,9 +116,6 @@ output wire [31:0]  read_size;
 
 
 //FIFO Registers
-reg         [7:0]   write_fifo[0:255];
-reg         [7:0]   read_fifo[0:255];
-
 
 wire        [31:0]  tx_read_count;
 reg                 tx_read_strobe;
