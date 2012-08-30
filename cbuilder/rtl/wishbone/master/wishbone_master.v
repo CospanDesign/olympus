@@ -281,15 +281,15 @@ always @ (posedge clk) begin
           end
           else if (~mem_stb_o && out_ready) begin
             $display("WBM: local_data_count = %h", local_data_count);
-            if (local_data_count > 0) begin
+            out_data    <= mem_dat_i;
+            out_en      <= 1; 
+            if (local_data_count > 1) begin
               //finished the next double word
               nack_count    <= nack_timeout;
               local_data_count  <= local_data_count -1;
               mem_adr_o   <= mem_adr_o + 4;
               mem_stb_o   <= 1;
-              out_data    <= mem_dat_i;
               //initiate an output transfer
-              out_en      <= 1; 
             end
             else begin
               //finished all the reads de-assert the cycle
@@ -305,17 +305,18 @@ always @ (posedge clk) begin
           end
           else if (~wb_stb_o && out_ready) begin
             $display("WBM: local_data_count = %h", local_data_count);
-            if (local_data_count > 0) begin
+           //put the data in the otput
+           out_data    <= wb_dat_i;
+           //tell the io_handler to send data
+           out_en    <= 1; 
+
+            if (local_data_count > 1) begin
 //the nack count might need to be reset outside of these conditionals becuase
 //at this point we are waiting on the io handler
               nack_count    <= nack_timeout;
               local_data_count  <= local_data_count - 1;
               wb_adr_o    <= wb_adr_o + 1;
               wb_stb_o    <= 1;
-              //put the data in the otput
-              out_data    <= wb_dat_i;
-              //tell the io_handler to send data
-              out_en    <= 1; 
             end
             else begin
               //finished all the reads, put de-assert the cycle
