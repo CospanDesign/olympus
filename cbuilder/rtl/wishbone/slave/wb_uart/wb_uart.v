@@ -43,6 +43,14 @@ SOFTWARE.
 `include "project_defines.v"
 `timescale 1ns/1ps
 
+//Control Flag Defines
+`define CONTROL_RESET           0
+`define CONTROL_FC_CTS_RTS      1
+//XXX: Flow Control Flags
+`define CONTROL_READ_INTERRUPT  2
+`define CONTROL_WRITE_INTERRUPT 3
+
+
 module wb_uart (
   clk,
   rst,
@@ -102,7 +110,7 @@ input               dtr;
 output              dsr;
 
 reg         [7:0]   control;
-wire        [7:0]   status;
+reg         [7:0]   status;
 reg                 status_reset;
 wire        [31:0]  prescaler;
 reg                 set_clock_div;
@@ -147,9 +155,8 @@ uart_controller uc (
   .rts(rts),
 
   //Control/Status
-  .control(control),
-  .status(status),
-  .status_reset(status_reset),
+  .control_reset(control[`CONTROL_RESET]),
+  .cts_rts_flowcontrol(control[`CONTROL_FC_CTS_RTS]),
   .prescaler(prescaler),
   .set_clock_div(set_clock_div),
   .clock_div(clock_div),
@@ -209,6 +216,7 @@ always @ (posedge clk) begin
     write_strobe            <=  0;
     set_clock_div           <=  0;
     read_strobe             <=  0;
+    control[`CONTROL_RESET] <=  0;
 
     //when the master acks our ack, then put our ack down
     if (wbs_ack_o & ~wbs_stb_i)begin
@@ -448,6 +456,33 @@ always @ (posedge clk) begin
         $display ("WB_UART (%g): Sending Main ACK", $time);
         wbs_ack_o <= 1;
       end
+    end
+  end
+end
+
+//status flags
+always @ (posedge clk) begin
+  if (rst) begin
+    wbs_int_o   <=  0;
+    status      <=  0;
+  end
+  else begin
+    if (status_reset) begin
+      status  <=  0;
+    end
+
+    wbs_int_o   <=  0;
+
+    status[`CONTROL_READ_INTERRUPT]     <=  !read_empty;
+    status[`CONTROL_WRITE_INTERRUPT]    <=  !write_full;
+
+    if (control[`CONTROL_READ_INTERRUPT] && !read_empty) begin
+      $display ("WB_UART (%g): READ_INTERRUPT, data is available");
+      wbs_int_o <=  1;
+    end
+    if (control[`CONTROL_WRITE_INTERRUPT] && !write_full) begin
+      $display ("WB_UART (%g): WRITE_INTERRUPT, data is available");
+      wbs_int_o <=  1;
     end
   end
 end

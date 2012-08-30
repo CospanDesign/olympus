@@ -160,6 +160,10 @@ wire  [31:0]      wbs1_dat_i;
 wire  [31:0]      wbs1_adr_o;
 wire              wbs1_int_i;
 
+
+reg               rts;
+wire              cts;
+
 //slave 1
 wb_uart s1 (
 
@@ -540,6 +544,7 @@ end
 
 
 initial begin
+  rts                 <=  0;
   #100
   test_transmit       <=  0;
   test_tx_byte        <=  8'h12;

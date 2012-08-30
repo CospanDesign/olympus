@@ -32,13 +32,6 @@ SOFTWARE.
 */ 
 `timescale 1ns/1ps
 
-//Control Flag Defines
-`define CONTROL_RESET           0
-`define CONTROL_FC_CTS_RTS      1
-//XXX: Flow Control Flags
-`define CONTROL_READ_INTERRUPT  2
-`define CONTROL_WRITE_INTERRUPT 3
-
 //Status Flag Defines
 `define STATUS_RX_AVAILABLE     0
 `define STATUS_TX_READY         1
@@ -58,9 +51,8 @@ module uart_controller (
   cts,
   rts,
 
-  control,
-  status,
-  status_reset,
+  control_reset,
+  cts_rts_flowcontrol,
 
   prescaler,
   set_clock_div,
@@ -92,9 +84,8 @@ output              tx;
 output  reg         cts;
 input               rts;
 
-input       [7:0]   control;
-output reg  [7:0]   status;
-input               status_reset;
+input               control_reset;
+input               cts_rts_flowcontrol;
 
 output      [31:0]  prescaler;
 input               set_clock_div;
@@ -145,11 +136,12 @@ wire                is_transmitting;
 wire                rx_error;
 
 reg                 local_read;
-wire                flowcontrol;
+wire                cts_rts_flowcontrol;
 reg [3:0]           state;
 reg                 test;
 
 
+//CONTROL Flags
 //STATUS FLAGs
 reg                 write_overflow;
 reg                 write_underflow;
@@ -161,7 +153,7 @@ reg                 read_underflow;
 
 uart_fifo uf_tx (
   .clk(clk),
-  .rst(rst),
+  .rst(rst || control_reset),
 
   .size(write_size),
   
@@ -180,7 +172,7 @@ uart_fifo uf_tx (
 
 uart_fifo uf_rx (
   .clk(clk),
-  .rst(rst),
+  .rst(rst || control_reset),
   
   .size(rx_fifo_size),
 
@@ -200,7 +192,7 @@ uart_fifo uf_rx (
 //Low Level UART
 uart_v2 u (
   .clk(clk),
-  .rst(rst),
+  .rst(rst || control_reset),
   .rx(rx),
   .tx(tx),
   .transmit(transmit),
@@ -223,8 +215,8 @@ parameter     READ  = 3'h2;
 
 
 //asynchronous logic
-
-assign        flowcontrol       = control[`CONTROL_FC_CTS_RTS];
+assign  read_empty  = rx_full;
+assign  write_full  = tx_full; 
 
 
 //synchronous logic
@@ -236,20 +228,15 @@ always @ (posedge clk) begin
     state                         <=  IDLE;
     local_read                    <=  0;
     test                          <=  0;
-    status                        <=  0;
     tx_read_strobe                <=  0;
     tx_byte                       <=  0;
+
   end
   else begin
     transmit                      <=  0;
     tx_read_strobe                <=  0;
     local_read                    <=  0;
     cts                           <=  0;
-
-
-    if (status_reset) begin
-      //reset status flags
-    end
 
 
     if (tx_read_strobe) begin
@@ -262,22 +249,22 @@ always @ (posedge clk) begin
 //XXX: The write strobe is here to work around the condition when the user is writing and the UART is reading
 //XXX: at the same time, this can be fixed with more logic
     if (!tx_empty && !is_transmitting && !transmit && !tx_read_strobe && !write_strobe) begin
-      if (flowcontrol) begin
-        if (control[`CONTROL_FC_CTS_RTS]) begin
-          //tell the remote device that we have data to send
-          if (~rts) begin
-            //device is ready to receive data
-            tx_read_strobe    <=  1;
-          end
+      if (cts_rts_flowcontrol) begin
+        if (~rts) begin
+          $display ("WB_UC (%g): RTS is low", $time); 
+          //device is ready to receive data
+          tx_read_strobe    <=  1;
         end
-        //here is where DTR DSR can be put in
       end
+//XXX: here is where DTR DSR can be put in
       else begin
         tx_read_strobe        <=  1;
       end
     end
 
-    if (rx_full && control[`CONTROL_FC_CTS_RTS]) begin
+    if (rx_full && cts_rts_flowcontrol) begin
+      //deassert hardware flow control
+      $display ("WB_UC (%g): CTS high", $time); 
       cts                   <=  1;
     end
   end
