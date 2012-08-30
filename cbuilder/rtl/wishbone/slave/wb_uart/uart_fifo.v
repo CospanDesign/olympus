@@ -124,8 +124,8 @@ always @ (posedge clk) begin
     in_pointer        <=  0;
     out_pointer       <=  0;
 `ifdef SIMULATION
-    read_count        <=  1;
-    in_pointer        <=  1;
+    read_count        <=  8;
+    in_pointer        <=  8;
 `endif
 
     overflow          <=  0;

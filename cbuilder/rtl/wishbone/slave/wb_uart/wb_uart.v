@@ -172,7 +172,7 @@ uart_controller uc (
 
 integer         i;
 
-assign          reading   = (wbs_cyc_i && !wbs_we_i && (read_count > 0) && (wbs_adr_i == REG_READ));
+assign          reading   = ((wbs_cyc_i && !wbs_we_i && (read_count > 0) && (wbs_adr_i == REG_READ)) || read_en);
 assign          writing   = (wbs_cyc_i && wbs_we_i && ((write_count > 0) || (wbs_adr_i == REG_WRITE)));
 
 //blocks
@@ -325,14 +325,13 @@ always @ (posedge clk) begin
               read_delay  <=  read_delay - 1;
             end
             else begin
-              $display ("\n\n");
               $display ("WB_UART (%g): Reading a byte user_read_count == %d, local_read_count == %d", $time, user_read_count, local_read_count);
               $display ("WB_UART: Data: %h", read_data);
               //I can't use a normal shift register because the first value won't be at the end if the user
               //specifies anything below a multiple of 4
               case (local_read_count)
                 0: begin
-                  $display ("WB_UART (%g): putting read data into the top byte", $time);
+                  //$display ("WB_UART (%g): putting read data into the top byte", $time);
                   wbs_dat_o[31:24]  <=  read_data;
                   wbs_dat_o[23:0]   <=  0;
                   read_strobe       <=  1;
@@ -365,7 +364,6 @@ always @ (posedge clk) begin
               if (user_read_count == 0) begin
                 $display ("WB_UART (%g): Finished reading all the user's data", $time);
                 wbs_ack_o         <=  1;
-                read_strobe       <=  0;
               end
               else begin
                 local_read_count  <=  local_read_count + 1;
@@ -426,7 +424,7 @@ always @ (posedge clk) begin
                   local_read_count  <=  0;
                   //decrement the user_read_count because we are requesting a byte right now
                   if (user_read_count >= 2) begin
-                    user_read_count <=  user_read_count - 2;
+                    user_read_count <=  user_read_count - 1;
                   end
                 end
                 else begin
