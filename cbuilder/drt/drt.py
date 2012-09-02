@@ -3,6 +3,7 @@ import sys
 import os
 import json
 import string
+from array import array as Array
 
 #sys.path.append(os.path.join(os.path.dirname(__file__)))
 
@@ -14,8 +15,262 @@ class DRTError(Exception):
   """
   def __init__(self, value):
     self.value = value
+
   def __str__(self):
     return repr(self.value)
+
+class DRTManager():
+
+  def __init__(self):
+    self.drt_lines = []
+    self.drt_string = ""
+    self.drt = Array('B')
+    self.num_of_devices = 0
+
+  def set_drt(self, drt):
+    self.drt = drt
+    self.drt_string = ""
+    self.num_of_devices = get_number_of_devices(drt)
+    display_len = 8 + self.num_of_devices * 8
+    for i in range (0, display_len):
+      self.drt_string += "%02X%02X%02X%02X\n"% (self.drt[i * 4], self.drt[(i * 4) + 1], self.drt[i * 4 + 2], self.drt[i * 4 + 3])
+
+    self.drt_lines = self.drt_string.splitlines()
+    self.num_of_devices = get_number_of_devices(self.drt)
+
+
+  def is_memory_device(self, device_index):
+    """is_memory_device
+    
+    Queries the DRT to see if the device is on the memory bus or the 
+    peripheral bus
+
+    Args:
+      device_index: Index of the device to test
+
+    Returns:
+      True: Device is on the memory bus
+      False: Device is on the peripheral bus
+
+    Raises:
+      Nothing
+    """
+    flags = int(self.drt_lines[((device_index + 1) * 8) + 1], 16)
+
+    if ((flags & 0x00010000) > 0):
+      return True
+
+    return False
+    
+
+  def get_number_of_devices(self):
+    """get_number_of_devices
+
+    Can be used to get the number of devices from the pre-existing DRT stored
+    in this class
+
+    Args:
+      Nothing
+
+    Returns:
+      Number of devices on the DRT
+
+    Raises:
+      DRTError: Device not found 
+    """
+    return self.num_of_devices
+
+  def is_device_attached(self, device_id):
+    """is_device_attached
+
+    Determine if the device with the specified ID exists
+
+    Check if something like a UART is attached to the bus
+
+    Args:
+      device_id: device identification number
+
+    Returns:
+      True: the device is attached to the bus
+      False: the device is not attached to the bus
+    
+    Raises:
+      Nothing
+    """
+    for dev_index in range (0, self.num_of_devices):
+      dev_id = string.atoi(self.drt_lines[((dev_index + 1) * 8)], 16)
+      if (self.dbg):
+        print "dev_id: " + str(dev_id)
+      if (dev_id == device_id):
+        return True
+    return False
+  
+  def get_address_from_index(self, device_index):
+    """get_address_from_index
+
+    From the index within the DRT return the address of where to find this 
+    device
+
+    Args:
+      device_index: index of the device
+
+    Returns:
+      32bit address of the device
+
+    Raises:
+      Nothing
+    """
+    return (string.atoi(self.drt_lines[((device_index + 1) * 8) + 2], 16)) >> 24
+
+
+  def get_id_from_index(self, device_index):
+    """get_id_from_index
+
+    From the index within the DRT return the ID of this device
+
+    Args:
+      device_index: index of the device
+
+    Returns:
+      Standard device ID
+
+    Raises:
+      Nothing
+    """
+    return string.atoi(self.drt_lines[((device_index + 1) * 8)], 16)
+
+
+  def get_size_from_index(self, device_index):
+    """get_size_from_index
+
+    Depending on if this is a memory device or a peripheral device
+    return either the number of registers associated with the peripheral or
+    the size of the memory device
+
+    Args:
+      device_index: index of the device
+
+    Returns:
+      Either the number of registers or the size of the memory device
+
+    Raises:
+      Nothing
+    """
+    return string.atoi(self.drt_lines[((device_index + 1) * 8) + 3], 16)
+
+  def get_device_flags(self, device_index):
+    """get_device_flags
+
+    Identifies the name of the flags with the device at the given
+    device_index
+    """
+    flag_strings = []
+    flags = int(self.drt_lines[((device_index + 1) * 8) + 1], 16)
+    if ((flags & 0x00000001) > 0):
+      flag_strings.append("0x00000001: Standard Device")
+    if ((flags & 0x00010000) > 0):
+      flag_strings.append("0x00010000: Memory Device")
+    return flag_strings
+
+  def pretty_print_drt(self):
+    """pretty_print_drt
+
+    Prints out the DRT in a pretty way
+
+    Args:
+      Nothing
+
+    Returns:
+      Nothing
+
+    Raises:
+      Nothing
+    """
+    num = int(self.drt_lines[1], 16)
+ 
+    #the first line is the version of the DRT and the ID
+    white = '\033[0m'
+    gray = '\033[90m'
+    red   = '\033[91m'
+    green = '\033[92m'
+    yellow = '\033[93m'
+    blue = '\033[94m'
+    purple = '\033[95m'
+    cyan = '\033[96m'
+ 
+    test = '\033[97m'
+ 
+    print red,
+    print "DRT:"
+    print ""
+    print "%s%s:%sVersion: %s ID Word: %s" % (blue, self.drt_lines[0], green, self.drt_lines[0][0:4], self.drt_lines[0][4:8])
+    print "%s%s:%sNumber of Devices: %d" % (blue, self.drt_lines[1], green, int(self.drt_lines[1], 16))
+    print "%s%s:%sString Table Offset (0x0000 == No Table)" % (blue, self.drt_lines[2], green)
+    print "%s%s:%sReserverd for future use" % (blue, self.drt_lines[3], green)
+    print "%s%s:%sReserverd for future use" % (blue, self.drt_lines[4], green)
+    print "%s%s:%sReserverd for future use" % (blue, self.drt_lines[5], green)
+    print "%s%s:%sReserverd for future use" % (blue, self.drt_lines[6], green)
+    print "%s%s:%sReserverd for future use" % (blue, self.drt_lines[7], green)
+ 
+    print red,
+    print "Devices:"
+    for i in range (0, self.num_of_devices):
+      memory_device = False 
+      f = int (self.drt_lines[((i + 1) * 8 + 1)], 16) 
+      if ((f & 0x00010000) > 0):
+        memory_device = True
+      print ""
+      print red,
+      print "Device %d" % i
+      type_value = int(self.drt_lines[(i + 1) * 8], 16)
+      type_name = get_device_type(type_value)
+      print "%s%s:%sDevice Type: %s" % (blue, self.drt_lines[(i + 1) * 8], green, type_name) 
+      print "%s%s:%sDevice Flags:" % (blue, self.drt_lines[((i + 1) * 8) + 1], green)
+      flags = self.get_device_flags(i)
+      for j in flags:
+        print "\t%s%s" % (purple, j)
+ 
+      if memory_device:
+        print "%s%s:%sOffset of Memory Device:      0x%08X" % (blue, self.drt_lines[((i + 1) * 8) + 2], green, int(self.drt_lines[((i + 1) * 8) + 2], 16))
+        print "%s%s:%sSize of Memory device:        0x%08X" % (blue, self.drt_lines[((i + 1) * 8) + 3], green, int (self.drt_lines[((i + 1) * 8) + 3], 16))
+ 
+ 
+      else:
+        print "%s%s:%sOffset of Peripheral Device:  0x%08X" % (blue, self.drt_lines[((i + 1) * 8) + 2], green, int(self.drt_lines[((i + 1) * 8) + 2], 16))
+        print "%s%s:%sNumber of Registers :         0x%08X" % (blue, self.drt_lines[((i + 1) * 8) + 3], green, int(self.drt_lines[((i + 1) * 8) + 3], 16))
+ 
+      print "%s%s:%sReserved for future use" % (blue, self.drt_lines[((i + 1) * 8) + 4], green)
+      print "%s%s:%sReserved for future use" % (blue, self.drt_lines[((i + 1) * 8) + 5], green)
+      print "%s%s:%sReserved for future use" % (blue, self.drt_lines[((i + 1) * 8) + 6], green)
+      print "%s%s:%sReserved for future use" % (blue, self.drt_lines[((i + 1) * 8) + 7], green)
+ 
+ 
+    print white,
+
+
+
+
+""" Utility Functions
+
+Functions that can be called outside of the class
+"""
+def get_number_of_devices(initial_block):
+  """get_number_of_devices
+
+  Determine the number of devices that are available from
+  the initial read (specify the first 8 32 bit words of a DRT in 
+  'initial_block')
+
+  Args:
+    initial_block: Initial block of the drt (if not specified the stored DRT
+      is used
+
+  Returns:
+    Number of devices on the DRT
+  """
+  num_of_devices = (initial_block[4] << 24 | initial_block[5] << 16 | initial_block[6] << 8 | initial_block[7])
+  return num_of_devices
+
 
 
 def get_device_list():
@@ -60,7 +315,7 @@ def get_device_index(name):
 def get_device_type(index):
   """Given a index return the name of the Device"""
   dev_list = get_device_list()
-  return dev_list[i]["name"]
+  return dev_list[index]["name"]
 
 def get_flag_tags():
   """Returns a listing of the Flags"""
@@ -135,7 +390,7 @@ def pretty_print_drt(drt):
     type_name = get_device_type(type_value)
     print "%s%s:%sDevice Type: %s" % (blue, drt_lines[(i + 1) * 8], green, type_name) 
     print "%s%s:%sDevice Flags:" % (blue, drt_lines[((i + 1) * 8) + 1], green)
-    flags = get_device_flags(i)
+    flags = self.get_device_flags(i)
     for j in flags:
       print "\t%s%s" % (purple, j)
 
