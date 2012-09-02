@@ -23,20 +23,17 @@ SOFTWARE.
 */
 
 /*
+  8/31/2012
+    -Changed some of the naming for clarity
 	10/29/2011
 		-added an 'else' statement that so either the
 		reset HDL will be executed or the actual code
 		not both
-*/
-
-/*
 	10/23/2011
 		-fixed the wbs_ack_i to wbs_ack_o
 		-added the default entries for read and write
 			to illustrate the method of communication
 		-added license
-*/
-/*
 	9/10/2011
 		-removed the duplicate wbs_dat_i
 		-added the wbs_sel_i port
@@ -55,7 +52,7 @@ SOFTWARE.
 	a standard device
 	DRT_FLAGS:  1
 
-	number of registers this should be equal to the nubmer of ADDR_???
+	number of registers this should be equal to the nubmer of ???
 	parameters
 	DRT_SIZE:  5
 
@@ -85,8 +82,8 @@ module wb_gpio (
 	gpio_out
 );
 
-parameter INTERRUPT_MASK = 0;
-parameter INTERRUPT_EDGE = 0;
+parameter DEFAULT_INTERRUPT_MASK = 0;
+parameter DEFAULT_INTERRUPT_EDGE = 0;
 
 input 				clk;
 input 				rst;
@@ -108,15 +105,15 @@ input		[31:0]	gpio_in;
 output reg	[31:0]	gpio_out;
 
 
-parameter			ADDR_GPIO			=	32'h00000000;
-parameter			ADDR_GPIO_MASK		=	32'h00000001;
-parameter			ADDR_INTERRUPTS		=	32'h00000002;
-parameter			ADDR_INTERRUPT_EN	=	32'h00000003;
-parameter			ADDR_INTERRUPT_EDGE =	32'h00000004;
+parameter			GPIO			=	32'h00000000;
+parameter			GPIO_OUTPUT_ENABLE		=	32'h00000001;
+parameter			INTERRUPTS		=	32'h00000002;
+parameter			INTERRUPT_ENABLE	=	32'h00000003;
+parameter			INTERRUPT_EDGE =	32'h00000004;
 
 
 //gpio registers
-reg			[31:0]	gpio_mask;
+reg			[31:0]	gpio_enable;
 
 //interrupt registers
 reg			[31:0]	interrupts;
@@ -135,12 +132,12 @@ always @ (posedge clk) begin
 
 		//reset gpio's
 		gpio_out			<= 32'h00000000;
-		gpio_mask			<= 32'h00000000;
+		gpio_enable			<= 32'h00000000;
 
 
 		//reset interrupts
-		interrupt_mask		<= INTERRUPT_MASK;
-		interrupt_edge		<= INTERRUPT_EDGE;
+		interrupt_mask		<= DEFAULT_INTERRUPT_MASK;
+		interrupt_edge		<= DEFAULT_INTERRUPT_EDGE;
 	end
 
 	else begin
@@ -154,23 +151,23 @@ always @ (posedge clk) begin
 			if (wbs_we_i) begin
 				//write request
 				case (wbs_adr_i) 
-					ADDR_GPIO: begin
+					GPIO: begin
 						$display("user wrote %h", wbs_dat_i);
-						gpio_out	<= wbs_dat_i & gpio_mask;
+						gpio_out	<= wbs_dat_i & gpio_enable;
 					end
-					ADDR_GPIO_MASK: begin
-						$display("%h ->gpio_mask", wbs_dat_i);
-						gpio_mask	<= wbs_dat_i;
+					GPIO_OUTPUT_ENABLE: begin
+						$display("%h ->gpio_enable", wbs_dat_i);
+						gpio_enable	<= wbs_dat_i;
 					end
-					ADDR_INTERRUPTS: begin
+					INTERRUPTS: begin
 						$display("trying to write %h to interrupts?!", wbs_dat_i);
 						//can't write to the interrupt
 					end
-					ADDR_INTERRUPT_EN: begin
+					INTERRUPT_ENABLE: begin
 						$display("%h -> interrupt enable", wbs_dat_i);
 						interrupt_mask	<= wbs_dat_i;
 					end
-					ADDR_INTERRUPT_EDGE: begin
+					INTERRUPT_EDGE: begin
 						$display("%h -> interrupt_edge", wbs_dat_i);
 						interrupt_edge	<= wbs_dat_i;
 					end
@@ -182,24 +179,24 @@ always @ (posedge clk) begin
 			else begin 
 				//read request
 				case (wbs_adr_i)
-					ADDR_GPIO: begin
+					GPIO: begin
 						$display("user read %h", wbs_adr_i);
 						wbs_dat_o <= gpio_in;
 					end
-					ADDR_GPIO_MASK: begin
+					GPIO_OUTPUT_ENABLE: begin
 						$display("user read %h", wbs_adr_i);
-						wbs_dat_o <= gpio_mask;
+						wbs_dat_o <= gpio_enable;
 					end
-					ADDR_INTERRUPTS: begin
+					INTERRUPTS: begin
 						$display("user read %h", wbs_adr_i);
 						wbs_dat_o 			<= interrupts;
 						clear_interrupts	<= 1;
 					end
-					ADDR_INTERRUPT_EN: begin
+					INTERRUPT_ENABLE: begin
 						$display("user read %h", wbs_adr_i);
 						wbs_dat_o			<= interrupt_mask;
 					end
-					ADDR_INTERRUPT_EDGE: begin
+					INTERRUPT_EDGE: begin
 						$display("user read %h", wbs_adr_i);
 						wbs_dat_o			<= interrupt_edge;
 					end
