@@ -158,6 +158,11 @@ wire  [31:0]      wbs1_dat_i;
 wire  [31:0]      wbs1_adr_o;
 wire              wbs1_int_i;
 
+wire  [7:0]       ss_pad_o;
+wire              sclk_pad_o;
+wire              mosi_pad_o;
+reg               miso_pad_i;
+
 //slave 1
 wb_spi s1 (
 
@@ -171,7 +176,12 @@ wb_spi s1 (
   .wbs_ack_o(wbs1_ack_i),
   .wbs_dat_o(wbs1_dat_i),
   .wbs_adr_i(wbs1_adr_o),
-  .wbs_int_o(wbs1_int_i)
+  .wbs_int_o(wbs1_int_i),
+
+  .ss_pad_o(ss_pad_o),
+  .sclk_pad_o(sclk_pad_o),
+  .mosi_pad_o(mosi_pad_o),
+  .miso_pad_i(miso_pad_i)
 
 );
 
@@ -306,7 +316,7 @@ initial begin
       end //end read_count == 4
     end //end while ! eof
   end //end not reset
-  #100
+  #10000;
   $fclose (fd_in);
   $fclose (fd_out);
   $finish();
@@ -506,6 +516,34 @@ always @ (posedge clk) begin
       $display("TB:\tdata: %h", out_data);
     end
   end//not reset
+end
+
+
+reg prev_sclk;
+reg [127:0]mosi_data;
+wire pos_edge_sclk;
+reg [7:0] index;
+
+assign pos_edge_sclk    = ~prev_sclk && sclk_pad_o;
+
+always @ (posedge clk) begin
+  if (rst) begin
+    miso_pad_i          <=  0;
+    prev_sclk           <=  0;
+    mosi_data           <=  0;
+    index               <=  0;
+  end
+  else begin
+    if (~ss_pad_o[0]) begin
+      index     <=  0; 
+    end
+    if (pos_edge_sclk) begin
+      miso_pad_i        <=  ~miso_pad_i;
+      mosi_data[index]  <=  mosi_pad_o;
+      index             <=  index + 1;
+    end
+    prev_sclk   <=  sclk_pad_o;
+  end
 end
 
 endmodule

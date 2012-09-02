@@ -44,9 +44,9 @@
 // Use SPI_DIVIDER_LEN for fine tuning theexact number.
 //
 //`define SPI_DIVIDER_LEN_8
-`define SPI_DIVIDER_LEN_16
+//`define SPI_DIVIDER_LEN_16
 //`define SPI_DIVIDER_LEN_24
-//`define SPI_DIVIDER_LEN_32
+`define SPI_DIVIDER_LEN_32
 
 `ifdef SPI_DIVIDER_LEN_8
   `define SPI_DIVIDER_LEN       8    // Can be set from 1 to 8
@@ -124,21 +124,6 @@
 // Bits of WISHBONE address used for partial decoding of SPI registers.
 //
 `define SPI_OFS_BITS	          4:2
-
-//
-// Register offset
-//
-`define SPI_RX_0                0
-`define SPI_RX_1                1
-`define SPI_RX_2                2
-`define SPI_RX_3                3
-`define SPI_TX_0                0
-`define SPI_TX_1                1
-`define SPI_TX_2                2
-`define SPI_TX_3                3
-`define SPI_CTRL                4
-`define SPI_DEVIDE              5
-`define SPI_SS                  6
 
 //
 // Number of bits in ctrl register
