@@ -1,375 +1,84 @@
 #! /usr/bin/python
+
+#Distributed under the MIT licesnse.
+#Copyright (c) 2011 Dave McCoy (dave.mccoy@cospandesign.com)
+
+#Permission is hereby granted, free of charge, to any person obtaining a copy of
+#this software and associated documentation files (the "Software"), to deal in 
+#the Software without restriction, including without limitation the rights to 
+#use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies 
+#of the Software, and to permit persons to whom the Software is furnished to do 
+#so, subject to the following conditions:
+#
+#The above copyright notice and this permission notice shall be included in all 
+#copies or substantial portions of the Software.
+#
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+#AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
+#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE 
+#SOFTWARE.
+
+""" Dionysus
+
+Main userland communication tool with the Dionysus board
+
+"""
+__author__ = 'dave.mccoy@cospandesign.com (Dave McCoy)'
+
+""" Changelog:
+  
+08/30/2012
+  -Initial Commit
+
+"""
+
 import time
 import random
 import sys
 import os
 import string
 import json
+
+from olympus import Olympus
+from olympus import OlympusCommError
 from pyftdi.pyftdi.ftdi import Ftdi
 from array import array as Array
-import getopt 
 
-#put olympus in the system path
-sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, os.pardir, os.pardir, "cbuilder/drt"))
-import drt as drt_controller
+class Dionysus(Olympus):
+  """Dionysus
 
-#MEM_SIZE = 680
-#TEST_MEM_SIZE = 690
-MEM_SIZE = 1100
-TEST_MEM_SIZE = 2097151
+  Concrete Class that implements Dionysus specific communication functions
+  """
 
-
-class Dionysus (object):
-  
-  SYNC_FIFO_INTERFACE = 0
-  SYNC_FIFO_INDEX = 0
-
-  read_timeout = 3
-  drt_string = ""
-  drt_lines = []
-  interrupts = 0
-  interrupt_address = 0
-
-
-  def __init__(self, idVendor, idProduct, dbg = False):
+  def __init__(self, idVendor=0x0403, idProduct=0x8530, debug = False):
+    Olympus.__init__(self, debug)
     self.vendor = idVendor
     self.product = idProduct
-    self.dbg = dbg
-    if self.dbg:
-      print "Debug enabled"
     self.dev = Ftdi()
-    self.open_dev()
-    self.drt = Array('B')
+    self._open_dev()
+
+    self.name = "Dionysus"
 
   def __del__(self):
     self.dev.close()
 
-
-  def set_read_timeout(self, read_timeout):
-    self.read_timeout = read_timeout
-
-  def get_read_timeout(self):
-    return self.read_timeout
-
-  def reset(self):
-    data = Array('B')
-    data.extend([0XCD, 0x03, 0x00, 0x00, 0x00]);
-    print "Sending reset..."
-    self.dev.purge_buffers()
-    self.dev.write_data(data)
-    return True
- 
-
-  def ping(self):
-    data = Array('B')
-    data.extend([0XCD, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
-    print "Sending ping...",
-    #self.dev.purge_buffers()
-    self.dev.write_data(data)
-    rsp = Array('B')
-    temp = Array('B')
-
-    timeout = time.time() + self.read_timeout
-
-    while time.time() < timeout:
-      response = self.dev.read_data(4)
-      print ".",
-      rsp = Array('B')
-      rsp.fromstring(response)
-      temp.extend(rsp)
-      if 0xDC in rsp:
-        print "Got a response"  
-        print "Response: %s" % str(temp)
-        break
-
-    if not 0xDC in rsp:
-      print "ID byte not found in response"  
-      print "temp: " + str(temp)
-      return rsp
-
-    index  = rsp.index(0xDC) + 1
-
-    read_data = Array('B')
-    read_data.extend(rsp[index:])
-
-    num = 3 - index
-    read_data.fromstring(self.dev.read_data(num))
-    return True
-      
-  def write(self, dev_index, offset, data = Array('B'), mem_device = False):
-    length = len(data) / 4
-
-    # ID 01 NN NN NN OO AA AA AA DD DD DD DD
-      # ID = ID BYTE (0xCD)
-      # 01 = Write Command
-      # NN = Size of write (3 bytes)
-      # OO = Offset of device
-      # AA = Address (4 bytes)
-      # DD = Data (4 bytes)
-
-    #create an array with the identification byte (0xCD)
-    #and code for write (0x01)
-
-    data_out = Array('B', [0xCD, 0x01]) 
-    if mem_device:
-      print "memory device"
-      data_out = Array ('B', [0xCD, 0x11])
+  def _open_dev(self):
+    """_open_dev
     
-    #append the length into the frist 32 bits
-    fmt_string = "%06X" % (length) 
-    data_out.fromstring(fmt_string.decode('hex'))
-    offset_string = "00"
-    if not mem_device:
-      offset_string = "%02X" % (dev_index + 1)
-    data_out.fromstring(offset_string.decode('hex'))
-    addr_string = "%06X" % offset
-    data_out.fromstring(addr_string.decode('hex'))
-    
-    data_out.extend(data)
+    Open an FTDI communication channel
 
-    if (self.dbg):
-      print "data write string:\n"
-      print "write command:\n\t" + str(data_out[:9])
-      print "write data:\n" + str(data_out[9:])
+    Args:
+      Nothing
 
-    #avoid the akward stale bug
-    self.dev.purge_buffers()
+    Returns:
+      Nothing
 
-    self.dev.write_data(data_out)
-    rsp = Array('B')
-
-    timeout = time.time() + self.read_timeout
-    while time.time() < timeout:
-      response = self.dev.read_data(1)
-      if len(response) > 0:
-        rsp = Array('B')
-        rsp.fromstring(response)
-        if rsp[0] == 0xDC:
-          print "Got a response"  
-          break
-
-    if (len(rsp) > 0):
-      if rsp[0] != 0xDC:
-        print "Response not found"  
-        return False
-
-    else:
-      print "No Response"
-      return False
-
-    response = self.dev.read_data(8)
-    rsp = Array('B')
-    rsp.fromstring(response)
-
-#   if rsp[0] == 0xFE:
-    print "Response: " + str(rsp)
-    return True
-
-  def read(self, length, device_offset, address, mem_device = False, drt = False):
-    read_data = Array('B')
-
-    write_data = Array('B', [0xCD, 0x02]) 
-    if mem_device:
-      print "memory device"
-      write_data = Array ('B', [0xCD, 0x12])
-  
-    fmt_string = "%06X" % (length) 
-    write_data.fromstring(fmt_string.decode('hex'))
-    offset_string = "00"
-    if drt:
-      offset_string = "%02X" % device_offset
-    elif not mem_device:
-      offset_string = "%02X" % (device_offset + 1)
-
-    write_data.fromstring(offset_string.decode('hex'))
-
-    addr_string = "%06X" % address
-    write_data.fromstring(addr_string.decode('hex'))
-    if (self.dbg):
-      print "data read string: " + str(write_data)
-
-    self.dev.purge_buffers()
-    self.dev.write_data(write_data)
-
-    timeout = time.time() + self.read_timeout
-    rsp = Array('B')
-    while time.time() < timeout:
-      response = self.dev.read_data(1)
-      if len(response) > 0:
-        rsp = Array('B')
-        rsp.fromstring(response)
-        if rsp[0] == 0xDC:
-          print "Got a response"  
-          break
-
-    if len(rsp) > 0:
-      if rsp[0] != 0xDC:
-        print "Response not found"  
-        return read_data
-    else:
-      print "No Response found"
-      return None
-
-    #I need to watch out for the modem status bytes
-    read_count = 0
-    response = Array('B')
-    rsp = Array('B')
-    timeout = time.time() + self.read_timeout
-
-    while (time.time() < timeout) and (read_count < (length * 4 + 8)):
-#      print "Read Count %d, Max Count = %d" % (read_count, (length * 4 + 8))
-      response = self.dev.read_data((length * 4 + 8 ) - read_count)
-#      response = self.dev.read_data(length * 4 + 8 )
-      temp  = Array('B')
-      temp.fromstring(response)
-      if (len(temp) > 0):
-#        print "Length Read: %d" % len(temp)
-        rsp += temp
-        read_count = len(rsp)
-
-    print "read length = %d, total length = %d" % (len(rsp), (length * 4 + 8))
-
-    if self.dbg:
-      print "response length: " + str(length * 4 + 8)
-      print "response status:\n\t" + str(rsp[:8])
-      print "response data:\n" + str(rsp[8:])
-    #read_data.fromstring(read_string.decode('hex'))
-    return rsp[8:]
-    
-
-  def debug(self):
-    #self.dev.set_dtr_rts(True, True)
-    #self.dev.set_dtr(False)
-    print "CTS: " + str(self.dev.get_cts())
-#    print "DSR: " + str(self.dev.get_dsr())
-    s1 = self.dev.modem_status()
-    print "S1: " + str(s1)
-
-
-    print "sending ping...", 
-    data = Array('B')
-    data.extend([0XCD, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
-  # self.dev.set_dtr(True)
-    self.dev.purge_buffers()
-    self.dev.write_data(data)
-    #time.sleep(.01)
-#   response = self.dev.read_data(7)
-    rsp = Array('B')
-#   rsp.fromstring(response)
-#   print "rsp: " + str(rsp) 
-    temp = Array ('B')
-
-    timeout = time.time() + self.read_timeout
-
-    while time.time() < timeout:
-
-#     if not self.dev.get_dsr():
-#       print "DSR low"
-      response = self.dev.read_data(3)
-      rsp = Array('B')
-      rsp.fromstring(response)
-      temp.extend(rsp)
-      if 0xDC in rsp:
-        print "Got a response"  
-        break
-
-    if not 0xDC in rsp:
-      print "Response not found"  
-      print "temp: " + str(temp)
-      return rsp
-
-    index  = rsp.index(0xDC) + 1
-
-    read_data = Array('B')
-    read_data.extend(rsp[index:])
-
-    num = 3 - index
-    read_data.fromstring(self.dev.read_data(num))
-
-    print "read data: " + str(read_data)
-    
-  def wait_for_interrupts(self, wait_time = 1):
-    timeout = time.time() + wait_time
-
-    temp = Array ('B')
-    while time.time() < timeout:
-
-      response = self.dev.read_data(3)
-      rsp = Array('B')
-      rsp.fromstring(response)
-      temp.extend(rsp)
-      if 0xDC in rsp:
-        print "Got a response"  
-        break
-
-    if not 0xDC in rsp:
-      print "Response not found"  
-      return False
-
-    index  = rsp.index(0xDC) + 1
-
-    read_data = Array('B')
-    read_data.extend(rsp[index:])
-
-    num = 3 - index
-    read_data.fromstring(self.dev.read_data(num))
-    if (len (read_data) >= 4):
-      self.interrupts = read_data[0] << 24 | read_data[1] << 16 | read_data[2] << 8 | read_data[3]
-    
-    if (self.dbg):
-      print "interrupts: " + str(self.interrupts)
-    return True
-    
-  def is_device_attached (self, device_id ):
-    for dev_index in range (0, self.num_of_devices):
-      dev_id = string.atoi(self.drt_lines[((dev_index + 1) * 8)], 16)
-      if (self.dbg):
-        print "dev_id: " + str(dev_id)
-      if (dev_id == device_id):
-        return True
-    return False
-  
-  def get_device_index(self, device_id):
-    for dev_index in range(0, self.num_of_devices):
-      dev_id = string.atoi(self.drt_lines[((dev_index + 1) * 8)], 16)
-      address_offset = string.atoi(self.drt_lines[((dev_index + 1) * 8) + 2], 16)
-      if (device_id == device_id):
-        return dev_index
-    return -1
-
-  def is_interrupt_for_slave(self, device_id = 0):
-    device_id += 1
-    if (2**device_id & self.interrupts):
-      return True
-    return False
-
-  def get_address_from_dev_index(self, dev_index):  
-    return string.atoi(self.drt_lines[((dev_index + 1) * 8) + 2], 16)
-    
-  def read_drt(self):
-    data = Array('B')
-    data = self.read(8, 0, 0, drt = True)
-    self.drt.extend(data)
-    self.drt_string = ""
-    self.drt_lines = []
-#    print "drt: " + str(self.drt)
-    self.num_of_devices = (self.drt[4] << 24 | self.drt[5] << 16 | self.drt[6] << 8 | self.drt[7])
-    #print "number of devices: " + str(num_of_devices)
-    len_to_read = self.num_of_devices * 8
-    self.drt.extend(self.read(len_to_read, 0, 8, drt = True))
-#    print "drt: " + str(self.drt)
-    display_len = 8 + self.num_of_devices * 8
-
-    for i in range (0, display_len):
-      self.drt_string += "%02X%02X%02X%02X\n"% (self.drt[i * 4], self.drt[(i * 4) + 1], self.drt[i * 4 + 2], self.drt[i * 4 + 3])
-
-    #print self.drt_string
-    self.drt_lines = self.drt_string.splitlines()
-    #self.pretty_print_drt()
-
-
-
-  def open_dev(self):
+    Raises:
+      Exception
+    """
     frequency = 30.0E6
     latency = 2
     self.dev.open(self.vendor, self.product, 0)
@@ -393,531 +102,344 @@ class Dionysus (object):
     self.dev.purge_buffers()
 
 
-  def pretty_print_drt(self):
-    num_of_devices = int(self.drt_lines[1], 16)
-    #the first line is the version of the DRT and the ID
-    white = '\033[0m'
-    gray = '\033[90m'
-    red   = '\033[91m'
-    green = '\033[92m'
-    yellow = '\033[93m'
-    blue = '\033[94m'
-    purple = '\033[95m'
-    cyan = '\033[96m'
+  def read(self, device_id, address, length = 1, mem_device = False):
+    """read
 
-    test = '\033[97m'
+    read data from the Olympus image
 
-    print red,
-    print "DRT:"
-    print ""
-    print "%s%s:%sVersion: %s ID Word: %s" % (blue, self.drt_lines[0], green, self.drt_lines[0][0:4], self.drt_lines[0][4:8])
-    print "%s%s:%sNumber of Devices: %d" % (blue, self.drt_lines[1], green, int(self.drt_lines[1], 16))
-    print "%s%s:%sString Table Offset (0x0000 == No Table)" % (blue, self.drt_lines[2], green)
-    print "%s%s:%sReserverd for future use" % (blue, self.drt_lines[3], green)
-    print "%s%s:%sReserverd for future use" % (blue, self.drt_lines[4], green)
-    print "%s%s:%sReserverd for future use" % (blue, self.drt_lines[5], green)
-    print "%s%s:%sReserverd for future use" % (blue, self.drt_lines[6], green)
-    print "%s%s:%sReserverd for future use" % (blue, self.drt_lines[7], green)
+    Args:
+      device_id: Device identification number, found in the DRT
+      address: Address of the register/memory to read
+      mem_device: True if the device is on the memory bus
+      length: Number of 32 bit words to read from the FPGA
 
-    print red,
-    print "Devices:"
-    for i in range (0, num_of_devices):
-      memory_device = False 
-      f = int (self.drt_lines[((i + 1) * 8 + 1)], 16) 
-      if ((f & 0x00010000) > 0):
-        memory_device = True
-      print ""
-      print red,
-      print "Device %d" % i
-      print "%s%s:%sDevice Type: %s" % (blue, self.drt_lines[(i + 1) * 8], green, self.get_device_type(i)) 
-      print "%s%s:%sDevice Flags:" % (blue, self.drt_lines[((i + 1) * 8) + 1], green)
-      flags = self.get_device_flags(i)
-      for j in flags:
-        print "\t%s%s" % (purple, j)
+    Returns:
+      A byte array containing the raw data returned from Olympus
 
-      if memory_device:
-        print "%s%s:%sOffset of Memory Device:      0x%08X" % (blue, self.drt_lines[((i + 1) * 8) + 2], green, int(self.drt_lines[((i + 1) * 8) + 2], 16))
-        print "%s%s:%sSize of Memory device:        0x%08X" % (blue, self.drt_lines[((i + 1) * 8) + 3], green, int (self.drt_lines[((i + 1) * 8) + 3], 16))
+    Raises:
+      OlympusCommError
+    """
+    read_data = Array('B')
 
-
-      else:
-        print "%s%s:%sOffset of Peripheral Device:  0x%08X" % (blue, self.drt_lines[((i + 1) * 8) + 2], green, int(self.drt_lines[((i + 1) * 8) + 2], 16))
-        print "%s%s:%sNumber of Registers :         0x%08X" % (blue, self.drt_lines[((i + 1) * 8) + 3], green, int(self.drt_lines[((i + 1) * 8) + 3], 16))
-
-      print "%s%s:%sReserved for future use" % (blue, self.drt_lines[((i + 1) * 8) + 4], green)
-      print "%s%s:%sReserved for future use" % (blue, self.drt_lines[((i + 1) * 8) + 5], green)
-      print "%s%s:%sReserved for future use" % (blue, self.drt_lines[((i + 1) * 8) + 6], green)
-      print "%s%s:%sReserved for future use" % (blue, self.drt_lines[((i + 1) * 8) + 7], green)
-
-
-    print white,
-
-      
-  def get_device_type(self, index):
-    
-    t = int(self.drt_lines[(index + 1) * 8], 16)
- #XXX: This should really be referenced from a file
-    if t == 1:
-      return "GPIO"
-    elif t == 2:
-      return "UART"
-    elif t == 3:
-      return "I2C"
-    elif t == 4:
-      return "SPI"
-    elif t == 5:
-      return "Memory Device"
-    elif t == 6:
-      return "Console"
-    elif t == 7:
-      return "FSMC"
-    elif t == 8:
-      return "LED"
-    elif t == 9:
-      return "Unknown"
-    elif t == 10:
-      return "Frame Buffer"
-    
-    return "Unknown"
-
-  def get_device_flags(self, index):
-    flag_strings = []
-    flags = int(self.drt_lines[((index + 1) * 8) + 1], 16)
-    if ((flags & 0x00000001) > 0):
-      flag_strings.append("0x00000001: Standard Device")
-    if ((flags & 0x00010000) > 0):
-      flag_strings.append("0x00010000: Memory Device")
-    return flag_strings
-
-    
-
-def test_leds(syc, dev_index):
-  print "Found GPIO"
-  print "Enable all Output GPIOs"
-  syc.write(dev_index, 1, Array('B', [0xFF, 0xFF, 0xFF, 0xFF]))
-  print "flash all LED's once"
-  #clear
-  syc.write(dev_index, 0, Array('B', [0x00, 0x00, 0x00, 0x00]))
-  syc.write(dev_index, 0, Array('B', [0xFF, 0xFF, 0xFF, 0xFF]))
-  time.sleep(1)
-  syc.write(dev_index, 0, Array('B', [0x00, 0x00, 0x00, 0x00]))
-  time.sleep(.1)
+    write_data = Array('B', [0xCD, 0x02]) 
+    if mem_device:
+      if self.debug:
+        print "memory device"
+      write_data = Array ('B', [0xCD, 0x12])
   
+    fmt_string = "%06X" % (length) 
+    write_data.fromstring(fmt_string.decode('hex'))
+    offset_string = "00"
+    if not mem_device:
+      offset_string = "%02X" % device_id
 
-def test_buttons(syc, dev_index):
-   print "read buttons in 1 second..."
-   time.sleep(1)
-   grd = syc.read(1, dev_index, 0)
-   if len(grd) > 0:
-     gpio_read = grd[0] << 24 | grd[1] << 16 | grd[2] << 8 | grd[3] 
-     print "gpio read: " + hex(gpio_read)
+    write_data.fromstring(offset_string.decode('hex'))
 
-   print "testing interrupts, setting interrupts up for postivie edge detect"
-   #positive edge detect
-   syc.write(dev_index, 4, Array('B', [0xFF, 0xFF, 0xFF, 0xFF]))
-   #enable all interrupts
-   syc.write(dev_index, 3, Array('B', [0xFF, 0xFF, 0xFF, 0xFF]))
+    addr_string = "%06X" % address
+    write_data.fromstring(addr_string.decode('hex'))
+    if self.debug:
+      print "data read string: " + str(write_data)
 
-   print "testing interrupts, waiting for 5 seconds..."
-     
-   if (syc.wait_for_interrupts(wait_time = 5)):
-     #print "detected interrupts!"
-     #print "interrupts: " + str(syc.interrupts)
-     #print "device index: " + str(dev_index)
-     #print "blah: " + str(2**(dev_index + 1))
-     if (syc.is_interrupt_for_slave(dev_index)):
-       print "interrupt for GPIO!"
-       grd = syc.read(1, dev_index, 0)
-       gpio_read = grd[0] << 24 | grd[1] << 16 | grd[2] << 8 | grd[3] 
-       print "gpio read: " + hex(gpio_read)
+    self.dev.purge_buffers()
+    self.dev.write_data(write_data)
 
+    timeout = time.time() + self.read_timeout
+    rsp = Array('B')
+    while time.time() < timeout:
+      response = self.dev.read_data(1)
+      if len(response) > 0:
+        rsp = Array('B')
+        rsp.fromstring(response)
+        if rsp[0] == 0xDC:
+          if self.debug:
+            print "Got a response"  
+          break
 
-def test_all_memory (syc = None, mem_size=MEM_SIZE):
-  for dev_index in range (0, syc.num_of_devices):
-    device_id = string.atoi(syc.drt_lines[((dev_index + 1) * 8)], 16)
-    flags = string.atoi(syc.drt_lines[((dev_index + 1) * 8) + 1], 16)
-    address_offset = string.atoi(syc.drt_lines[((dev_index + 1) * 8) + 2], 16)
-    num_of_registers = string.atoi(syc.drt_lines[((dev_index + 1) * 8) + 3], 16)
-    data_list = list()
-
-    if (device_id == 5):
-      print "found Memory device"
-      mem_bus = False
-      if ((flags & 0x00010000) > 0):
-        print "Memory slave is on Memory bus"
-        mem_bus = True 
-      else:
-        print "Memory slave is on peripheral bus"
-
-      print "Writing to all memory locations"
-#      n1 = 0x00
-#      n2 = 0x00
-#      n3 = 0x00
-#      n4 = 0x00
-      
-      #rand = int(random.random() * 256.0)
-      rand = 0
-      
-      #Create 1024 * 2 array
-      data_out = Array('B')
-      num = 0
-      try:
-        for i in range (0, 4 * mem_size):
-          num = (i + rand) % 255
-          if (i / 256) % 2 == 1:
-            data_out.append( 255 - (num))
-          else:
-            data_out.append(num)
-
- 
-      except OverflowError as err:
-        print "Overflow Error: %d >= 256" % num
-        sys.exit(1)
- 
-
-      print "Generated a continuous stream of data with a random start"
-#      print "Data: "
-#      for i in range (0, len(data_out)):
-#        print "\t%X" % data_out[i]
-
-#      bank_count = 4
-#      row_count = 12
-#      column_count = 10
-#      data_out = Array('B', [n1, n2, n3, n4])
-      print "Writing %d bytes of data" % (len(data_out))
-      result = syc.write(dev_index, 0, data_out, mem_bus)
-      if result:
-        print "Write Successful!"
-      else:
-        print "Write Failed!"
-
-      
-#      time.sleep(.1)
-      print "Reading %d DWORDS of data" % (len(data_out))
-      data_in = Array('B')
-      data_in = syc.read(len(data_out) / 4, dev_index, 0,  mem_bus)
-
-      print "Comparing values"
-      fail = False
-      fail_count = 0
-      if len(data_out) != len(data_in):
-        print "data_in length not equal to data_out length:"
-        print "\totugoing: %d incomming: %d" % (len(data_out), len(data_in))
-        fail = True
-
-      else:
-        for i in range (0, len(data_out)):
-          if data_in[i] != data_out[i]:
-            fail = True
-            print "Mismatch at %d: READ DATA %d != WRITE DATA %d" % (i, data_in[i], data_out[i])
-            fail_count += 1
- 
-      if not fail:
-        print "Memory test passed!"
-      elif (fail_count == 0):
-        print "Data length of data_in and data_out do not match"
-      else:
-        print "Failed: %d mismatches" % fail_count
-
-"""
-      data_in = Array('B')
-      data_in = syc.read(len(data_out) / 4, dev_index, 0,  mem_bus)
-
-      print "Comparing values"
-      fail = False
-      fail_count = 0
-      if len(data_out) != len(data_in):
-        print "data_in length not equal to data_out length:"
-        print "\totugoing: %d incomming: %d" % (len(data_out), len(data_in))
-        fail = True
-
-      else:
-        for i in range (0, len(data_out)):
-          if data_in[i] != data_out[i]:
-            fail = True
-            print "Mismatch at %d: READ DATA 0x%X != WRITE DATA 0x%X" % (i, data_in[i], data_out[i])
-            fail_count += 1
- 
-      if not fail:
-        print "Memory test passed!"
-      elif (fail_count == 0):
-        print "Data length of data_in and data_out do not match"
-      else:
-        print "Failed: %d mismatches" % fail_count
-"""
-
-#      for b in range (0, bank_count):
-#        for r in range (0, row_count):
-#          syc.write(dev_index, b * (2 ** 22) + r * (2 ** 10), data_out, mem_bus)
-#          print "Wrote To Column at: Bank: 0x%X Row: 0x%X" % (b, r) 
-#             
-#      print "Reading from all memory locations"
-#      data_in = Array('B')
-#      for b in range (0, bank_count):
-#        for r in range (0, row_count):
-#          data_in = syc.read(2048, dev_index,  b * (2 ** 22) + r * (2 ** 10), data_out, mem_bus)
-#          for i in data_in:
-#            if data_in[i] != (i % 256):
-#              print "Error: %X != %X" % (data_in[i], i % 256)
-# 
-#          print "Read from Column at: Bank: 0x%X Row: 0x%X" % (b, r) 
-       
-    
-
-  
-
-def test_memory(syc = None):
-  for dev_index in range (0, syc.num_of_devices):
-    device_id = string.atoi(syc.drt_lines[((dev_index + 1) * 8)], 16)
-    flags = string.atoi(syc.drt_lines[((dev_index + 1) * 8) + 1], 16)
-    address_offset = string.atoi(syc.drt_lines[((dev_index + 1) * 8) + 2], 16)
-    num_of_registers = string.atoi(syc.drt_lines[((dev_index + 1) * 8) + 3], 16)
-    data_list = list()
-
-    if (device_id == 5):
-      print "found Memory device"
-      mem_bus = False
-      if ((flags & 0x00010000) > 0):
-        print "Memory slave is on Memory bus"
-        mem_bus = True 
-      else:
-        print "Memory slave is on peripheral bus"
-
-      data_out  = Array('B', [0xAA, 0xBB, 0xCC, 0xDD, 0x55, 0x66, 0x77, 0x88])
-      #data_out  = Array('B', [0x11, 0x22, 0x33, 0x44])
-      result = syc.write(dev_index, 0, data_out, mem_bus)
-      if result:
-        print "Write Successful!"
-      else:
-        print "Write Failed!"
-
-      print "Read:"
-      #time.sleep(1)
-
-      mem_data = syc.read(1, dev_index, 0, mem_bus)
-      print "mem data: " + str(mem_data);
-      print "hex: "
-      for i in range (0, len(mem_data)):
-        print str(hex(mem_data[i])) + ", ",
-
-      print " "
-      #time.sleep(1)
-
-      #mem_data = syc.read(1, dev_index, 0, mem_bus)
-      mem_data = syc.read(2, dev_index, 0, mem_bus)
-      print "mem data: " + str(mem_data);
-      print "hex: "
-      for i in range (0, len(mem_data)):
-        print str(hex(mem_data[i])) + ", ",
-
-      print " "
-      #time.sleep(1)
-
-      #mem_data = syc.read(1, dev_index, 0, mem_bus)
-      mem_data = syc.read(1, dev_index, 8, mem_bus)
-      print "mem data: " + str(mem_data);
-      print "hex: "
-      for i in range (0, len(mem_data)):
-        print str(hex(mem_data[i])) + ", ",
-
-      print " "
-      #time.sleep(1)
-
-      mem_data = syc.read(1, dev_index, 0, mem_bus)
-      print "mem data: " + str(mem_data);
-      print "hex: "
-      for i in range (0, len(mem_data)):
-        print str(hex(mem_data[i])) + ", ",
-
-      print " "
-
-      data_out  = Array('B', [0xAA, 0xBB, 0xCC, 0xDD])
-      result = syc.write(dev_index, 1, data_out, mem_bus)
-      if result:
-        print "Write Successful!"
-      else:
-        print "Write Failed!"
-
-      data_out  = Array('B', [0x11, 0x22, 0x33, 0x44])
-      result = syc.write(dev_index, 1, data_out, mem_bus)
-      if result:
-        print "Write Successful!"
-      else:
-        print "Write Failed!"
-
-
-      mem_data = syc.read(1, dev_index, 0, mem_bus)
-      print "mem data: " + str(mem_data);
-      print "hex: "
-      for i in range (0, len(mem_data)):
-        print str(hex(mem_data[i])) + ", ",
-
-      print " "
-
-
-def test_uart_config(syc, dev_index):
-  print "testing UART config"
-  data = syc.read(1, dev_index, 2);
-  prescaler = (data[0] << 24) + (data[1] << 16) + (data[2] << 8) + data[3]
-  print "Prescaler: %d" % prescaler
-  data = syc.read(1, dev_index, 3);
-  clock_divider = (data[0] << 24) + (data[1] << 16) + (data[2] << 8) + data[3]
-
-
-  print "Clock Divider: " + str(clock_divider)
-  print "Clock Divider Array: " + str(data)
-  send_address = 3
-  send_data = Array('B', [0x00, 0x00, 0x00, 0x6C])
-  result = syc.write(dev_index, send_address, send_data)
-
-
-def test_uart_send(syc, dev_index):
-  print "testing UART send"
-  size = 1
-  send_address = 5
-  #although I'm only sending 1 byte, I need the second byte for padding
-  send_data = Array('B', [0x00, 0x10, 0x43, 0x6F, 0x73, 0x70, 0x61, 0x6E, 0x20, 0x44, 0x65, 0x73, 0x69, 0x67, 0x6E, 0x0A, 0x0D, 0x00, 0x00, 0x00])
-  result = syc.write(dev_index, send_address, send_data)
-
-
-def test_uart_receive(syc, dev_index):
-  print "\t\tUART TEST: testing UART receive"
-  data = syc.read(1, dev_index, 6)
-  print "read_count = %s" % str(data)
-  read_count = (data[0] << 24) + (data[1] << 16) + (data[2] << 8) + data[3]
-  print "read_count = %d" % read_count
-  result = syc.write(dev_index, 6, data)
-  if read_count > 0:
-    dw_count = 0
-    if read_count <= 2:
-      dw_count = read_count
+    if len(rsp) > 0:
+      if rsp[0] != 0xDC:
+        if self.debug:
+          print "Response not found"  
+        raise OlympusCommError("Did not find identification byte (0xDC): %s" % str(rsp))
     else:
-      dw_count = 1 + (read_count - 2) / 4
-      if (read_count - 2) % 4 > 0:
-        dw_count = dw_count + 1
+      if self.debug:      
+        print "No Response found"
+      raise OlympusCommError("Timeout while waiting for a response")
 
-    data = syc.read(dw_count, dev_index, 7)
-    print "data (raw): %s" % str(data)
-    print "data (string): %s" % str(data.tostring())
+    #I need to watch out for the modem status bytes
+    read_count = 0
+    response = Array('B')
+    rsp = Array('B')
+    timeout = time.time() + self.read_timeout
+
+    while (time.time() < timeout) and (read_count < (length * 4 + 8)):
+      response = self.dev.read_data((length * 4 + 8 ) - read_count)
+      temp  = Array('B')
+      temp.fromstring(response)
+      if (len(temp) > 0):
+        rsp += temp
+        read_count = len(rsp)
+    
+    if self.debug:
+      print "read length = %d, total length = %d" % (len(rsp), (length * 4 + 8))
+
+    if self.debug:
+      print "response length: " + str(length * 4 + 8)
+      print "response status:\n\t" + str(rsp[:8])
+      print "response data:\n" + str(rsp[8:])
+
+    return rsp[8:]
+    
+
+  def write(self, device_id, address, data=None, mem_device = False):
+    """write
+
+    Write data to an Olympus image
+
+    Args:
+      device_id: Device identification number, found in the DRT
+      address: Address of the register/memory to read
+      mem_device: True if the device is on the memory bus
+      data: Array of raw bytes to send to the device
+
+    Returns:
+      Nothing
+
+    Raises:
+      OlympusCommError
+    """
+    length = len(data) / 4
+
+    # ID 01 NN NN NN OO AA AA AA DD DD DD DD
+      # ID = ID BYTE (0xCD)
+      # 01 = Write Command
+      # NN = Size of write (3 bytes)
+      # OO = Offset of device
+      # AA = Address (4 bytes)
+      # DD = Data (4 bytes)
+
+    #create an array with the identification byte (0xCD)
+    #and code for write (0x01)
+
+    data_out = Array('B', [0xCD, 0x01]) 
+    if mem_device:
+      if self.debug:
+        print "memory device"
+      data_out = Array ('B', [0xCD, 0x11])
+    
+    #append the length into the frist 32 bits
+    fmt_string = "%06X" % (length) 
+    data_out.fromstring(fmt_string.decode('hex'))
+    offset_string = "00"
+    if not mem_device:
+      offset_string = "%02X" % device_id
+    data_out.fromstring(offset_string.decode('hex'))
+    addr_string = "%06X" % address
+    data_out.fromstring(addr_string.decode('hex'))
+    
+    data_out.extend(data)
+
+    if (self.debug):
+      print "data write string:\n"
+      print "write command:\n\t" + str(data_out[:9])
+      print "write data:\n" + str(data_out[9:])
+
+    #avoid the akward stale bug
+    self.dev.purge_buffers()
+
+    self.dev.write_data(data_out)
+    rsp = Array('B')
+
+    timeout = time.time() + self.read_timeout
+    while time.time() < timeout:
+      response = self.dev.read_data(1)
+      if len(response) > 0:
+        rsp = Array('B')
+        rsp.fromstring(response)
+        if rsp[0] == 0xDC:
+          if self.debug:
+            print "Got a response"  
+          break
+
+    if (len(rsp) > 0):
+      if rsp[0] != 0xDC:
+        if self.debug:
+          print "Response not found"  
+        raise OlympusCommError("Did not find identification byte (0xDC): %s" % str(rsp))
+
+    else:
+      if self.debug:
+        print "No Response"
+      raise OlympusCommError("Timeout while waiting for a response")
+
+    response = self.dev.read_data(8)
+    rsp = Array('B')
+    rsp.fromstring(response)
+
+    if self.debug:
+      print "Response: " + str(rsp)
+
+  def ping(self):
+    """ping
+
+    Pings the Olympus image
+
+    Args:
+      Nothing
+
+    Returns:
+      Nothing
+
+    Raises:
+      OlympusCommError
+    """
+    data = Array('B')
+    data.extend([0XCD, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+    if self.debug:
+      print "Sending ping...",
+    self.dev.write_data(data)
+    rsp = Array('B')
+    temp = Array('B')
+
+    timeout = time.time() + self.read_timeout
+
+    while time.time() < timeout:
+      response = self.dev.read_data(5)
+      if self.debug:
+        print ".",
+      rsp = Array('B')
+      rsp.fromstring(response)
+      temp.extend(rsp)
+      if 0xDC in rsp:
+        if self.debug:
+          print "Got a response"  
+          print "Response: %s" % str(temp)
+        break
+
+    if not 0xDC in rsp:
+      if self.debug:
+        print "ID byte not found in response"  
+        print "temp: " + str(temp)
+      raise OlympusCommError("Ping response did not contain ID: %s" % str(temp))
+
+    index  = rsp.index(0xDC) + 1
+
+    read_data = Array('B')
+    read_data.extend(rsp[index:])
+    num = 3 - index
+    read_data.fromstring(self.dev.read_data(num))
+    if self.debug:
+      print "Success!"
+    return
 
 
-def dionysus_unit_test(syc = None):
-  print "unit test"
-  print "Found " + str(syc.num_of_devices) + " slave(s)"
-  print "Searching for standard devices..."
-  for dev_index in range (0, (syc.num_of_devices)):
-    device_id = string.atoi(syc.drt_lines[((dev_index + 1) * 8)], 16)
+  def reset(self):
+    """reset
 
-    print "dev id: " + str(device_id)
-    flags = string.atoi(syc.drt_lines[((dev_index + 1) * 8) + 1], 16)
-    address_offset = string.atoi(syc.drt_lines[((dev_index + 1) * 8) + 2], 16)
-    num_of_registers = string.atoi(syc.drt_lines[((dev_index + 1) * 8) + 3], 16)
-    data_list = list()
+    Software reset the Olympus FPGA Master, this may not actually reset the
+    entire FPGA image
 
-#    if (device_id == 5):
-#      test_memory(syc)
-  
-#    if (device_id == 1):
-#      test_leds(syc, dev_index)
-#      test_buttons(syc, dev_index)
+    Args:
+      Nothing
 
-    if (device_id == 2):
-      test_uart_config(syc, dev_index)
-      test_uart_send(syc, dev_index)
-      test_uart_receive(syc, dev_index)
-  
- 
-def usage():
-  """prints out a helpful message to the user"""
-  print ""
-  print "usage: dionysus.py [options]"
-  print ""
-  print "-h\t--help\t\t\t: displays this help"
-  print "-d\t--debug\t\t\t: runs the debug analysis"
-  print "-m\t--memory\t\t\t: test only memory"
-  print "-l\t--long\t\t\t\t: long memory test"
-  print "-t\t--test\t\t\t\t: test"
-  print ""
-  
+    Returns:
+      Nothing
+
+    Raises:
+      OlympusCommError: A failure of communication is detected
+    """
+    data = Array('B')
+    data.extend([0XCD, 0x03, 0x00, 0x00, 0x00]);
+    if self.debug:
+      print "Sending reset..."
+    self.dev.purge_buffers()
+    self.dev.write_data(data)
+
+  def wait_for_interrupts(self, wait_time = 1):
+    """wait_for_interrupts
+    
+    listen for interrupts for the specified amount of time
+
+    Args:
+      wait_time: the amount of time in seconds to wait for an interrupt
+
+    Returns:
+      True: Interrupts were detected
+      False: No interrupts detected
+
+    Raises:
+      Nothing
+    """
+    timeout = time.time() + wait_time
+
+    temp = Array ('B')
+    while time.time() < timeout:
+
+      response = self.dev.read_data(3)
+      rsp = Array('B')
+      rsp.fromstring(response)
+      temp.extend(rsp)
+      if 0xDC in rsp:
+        if self.debug:
+          print "Got a response"  
+        break
+
+    if not 0xDC in rsp:
+      if self.debug:
+        print "Response not found"  
+      return False
+
+    index  = rsp.index(0xDC) + 1
+
+    read_data = Array('B')
+    read_data.extend(rsp[index:])
+
+    num = 3 - index
+    read_data.fromstring(self.dev.read_data(num))
+    if (len (read_data) >= 4):
+      self.interrupts = read_data[0] << 24 | read_data[1] << 16 | read_data[2] << 8 | read_data[3]
+    
+    if self.debug:
+      print "interrupts: " + str(self.interrupts)
+    return True
+
+
+  def comm_debug(self):
+    """comm_debug
+
+    A function that the end user will probably not interract with
+    This is here to simply debug a communication medium
+
+    Args:
+      Nothing
+
+    Returns:
+      Nothing
+
+    Raises:
+      Nothing
+    """
+    #self.dev.set_dtr_rts(True, True)
+    #self.dev.set_dtr(False)
+    print "CTS: " + str(self.dev.get_cts())
+#    print "DSR: " + str(self.dev.get_dsr())
+    s1 = self.dev.modem_status()
+    print "S1: " + str(s1)
+
+
+  # self.dev.set_dtr(True)
+    #time.sleep(.01)
+#   response = self.dev.read_data(7)
+#   rsp.fromstring(response)
+#   print "rsp: " + str(rsp) 
+#     if not self.dev.get_dsr():
+#       print "DSR low"
+
 
 if __name__ == '__main__':
-  print "starting..."
-  argv = sys.argv[1:]
-  mem_only = False
-  long_mem_test = False
-  test = False
-  drt_path = "olympus/cbuilder/drt"
-
-  try:
-    syc = Dionysus(0x0403, 0x8530)
-    if (len(argv) > 0):
-      opts = None
-      opts, args = getopt.getopt(argv, "hdmlt", ["help", "debug", "memory", "long", "test"])
-      for opt, arg in opts:
-        if opt in ("-h", "--help"):
-          usage()
-          sys.exit()
-        elif opt in ("-d", "--debug"):
-          print "Debug mode"
-          syc = Dionysus(0x0403, 0x8530, dbg=True)
-          syc.debug()
-        elif opt in ("-m", "--memory"):
-          mem_only = True
-        elif opt in ("-l", "--long"):
-          long_mem_test = True
-        elif opt in ("-t", "--test"):
-          test = True
-
-
-    #syc.reset()
-
-    if test:
-      print "Performing Test:"
-      print "Ping"
-      syc.ping()
-      print "Read DRT"
-      syc.read_drt()
-      #print ""
-      #print "Printing DRT:"
-      #syc.pretty_print_drt()
-
-      test_all_memory(syc, TEST_MEM_SIZE) 
-      sys.exit()
-
-    else:
-      if (syc.ping()):
-        print "Ping responded successfully"
-        print "Retrieving DRT"
-        syc.read_drt()
-        print "Printing DRT:"
-        syc.pretty_print_drt()
-        if (syc.dbg):
-          print "testing if device is attached..." + str(syc.is_device_attached(1))
-          print "testing get_device_index..." + str(syc.get_device_index(1) == 0)
-          print "testing get_address_from_index..." + str(syc.get_address_from_dev_index(0) == 0x01000000)
- 
-        if long_mem_test:
-          test_all_memory(syc) 
- 
-        elif mem_only:
-          test_memory(syc)
- 
-        else:
-          dionysus_unit_test(syc)
-
-      
-
-
-  except IOError, ex:
-    print "PyFtdi IOError: " + str(ex)
-  except AttributeError, ex:
-    print "PyFtdi AttributeError: " + str(ex)
-  except getopt.GetoptError, err:
-    print (err)
-    usage()
-"""
-  except ex:
-    print "PyFtdi Unknown Error: " + str(ex)
-
-"""
+  print "Dionysus: Run through low level comm test"
+  dionysus = Dionysus(debug = True)
+  dionysus.reset()
+  dionysus.ping()
+  #dionysus.read(0, 0, 0)
+  #dionysus.write(0, 0)
 
