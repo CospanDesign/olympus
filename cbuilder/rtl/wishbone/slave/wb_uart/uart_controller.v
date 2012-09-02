@@ -65,12 +65,14 @@ module uart_controller (
   write_full,
   write_available,
   write_size,
+  write_overflow,
 
   read_strobe,
   read_empty,
   read_data,
   read_count,
-  read_size
+  read_size,
+  read_overflow
 );
 
 
@@ -98,12 +100,14 @@ input       [7:0]   write_data;
 output              write_full;
 output      [31:0]  write_available;
 output wire [31:0]  write_size;
+output wire         write_overflow;
 
 output      [7:0]   read_data;
 input               read_strobe;
 output              read_empty;
 output wire [31:0]  read_count;
 output wire [31:0]  read_size;
+output wire         read_overflow;
 
 
 //FIFO Registers
@@ -111,14 +115,12 @@ output wire [31:0]  read_size;
 wire        [31:0]  tx_read_count;
 reg                 tx_read_strobe;
 wire        [7:0]   tx_fifo_read_data;
-wire                tx_overflow;
 wire                tx_underflow;
 wire                tx_full;
 wire                tx_empty;
 
 wire        [31:0]  rx_fifo_size;
 wire        [31:0]  rx_write_available;
-wire                rx_overflow;
 wire                rx_underflow;
 wire                rx_full;
 wire                rx_empty;
@@ -143,11 +145,6 @@ reg                 test;
 
 //CONTROL Flags
 //STATUS FLAGs
-reg                 write_overflow;
-reg                 write_underflow;
-
-reg                 read_overflow;
-reg                 read_underflow;
 
 
 
@@ -164,7 +161,7 @@ uart_fifo uf_tx (
   .read_strobe(tx_read_strobe),
   .read_count(tx_read_count),
   .read_data(tx_fifo_read_data),
-  .overflow(tx_overflow),
+  .overflow(write_overflow),
   .underflow(tx_underflow),
   .full(tx_full),
   .empty(tx_empty)
@@ -183,7 +180,7 @@ uart_fifo uf_rx (
   .read_strobe(read_strobe),
   .read_count(read_count),
   .read_data(read_data),
-  .overflow(rx_overflow),
+  .overflow(read_overflow),
   .underflow(rx_underflow),
   .full(rx_full),
   .empty(rx_empty)

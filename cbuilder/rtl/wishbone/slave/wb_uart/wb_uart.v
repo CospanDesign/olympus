@@ -44,11 +44,18 @@ SOFTWARE.
 `timescale 1ns/1ps
 
 //Control Flag Defines
-`define CONTROL_RESET           0
-`define CONTROL_FC_CTS_RTS      1
-//XXX: Flow Control Flags
-`define CONTROL_READ_INTERRUPT  2
-`define CONTROL_WRITE_INTERRUPT 3
+`define CONTROL_RESET             0
+`define CONTROL_FC_CTS_RTS        1
+`define CONTROL_FC_DTS_DSR        2
+`define CONTROL_READ_INTERRUPT    3
+`define CONTROL_WRITE_INTERRUPT   4
+
+//Status
+`define STATUS_TRANSMIT_OVERFLOW  0
+`define STATUS_READ_OVERFLOW      1
+`define STATUS_READ_UNDERFLOW     2
+`define STATUS_READ_INTERRUPT     3
+`define STATUS_WRITE_INTERRUPT    4
 
 
 module wb_uart (
@@ -109,9 +116,10 @@ output              cts;
 input               dtr;
 output              dsr;
 
+
+//Registers / Wires
 reg         [7:0]   control;
 reg         [7:0]   status;
-reg                 status_reset;
 wire        [31:0]  prescaler;
 reg                 set_clock_div;
 reg         [31:0]  clock_div;
@@ -132,6 +140,11 @@ wire        [7:0]   read_data;
 wire                read_empty;
 wire        [31:0]  read_count;
 wire        [31:0]  read_size;
+
+//Status
+wire                read_overflow;
+wire                write_overflow;
+
 
 //write_data
 reg                 write_en;
@@ -157,6 +170,7 @@ uart_controller uc (
   //Control/Status
   .control_reset(control[`CONTROL_RESET]),
   .cts_rts_flowcontrol(control[`CONTROL_FC_CTS_RTS]),
+  .read_overflow(read_overflow),
   .prescaler(prescaler),
   .set_clock_div(set_clock_div),
   .clock_div(clock_div),
@@ -185,13 +199,13 @@ assign          writing   = (wbs_cyc_i && wbs_we_i && ((write_count > 0) || (wbs
 //blocks
 always @ (posedge clk) begin
   if (rst) begin
-    wbs_dat_o               <= 32'h0;
-    wbs_ack_o               <= 0;
-    wbs_int_o               <= 0;
+    wbs_dat_o               <=  32'h0;
+    wbs_ack_o               <=  0;
+    wbs_int_o               <=  0;
 
     control                 <=  8'h0;
     write_strobe            <=  0;
-    read_strobe              <=  0;
+    read_strobe             <=  0;
     read_delay              <=  0;
 
     user_read_count         <=  0;
@@ -205,27 +219,53 @@ always @ (posedge clk) begin
     write_data              <=  0;
 
     //status
-    status_reset            <=  0;
+    status                  <=  0;
     set_clock_div           <=  0;
     clock_div               <=  0;
+
+    wbs_int_o               <=  0;
 
   end
 
   else begin
-    status_reset            <=  0;
     write_strobe            <=  0;
     set_clock_div           <=  0;
     read_strobe             <=  0;
     control[`CONTROL_RESET] <=  0;
 
+
+    //status
+    if(write_overflow) begin
+      status[`STATUS_TRANSMIT_OVERFLOW]   <=  1;
+    end
+    if(read_overflow) begin
+      status[`STATUS_READ_OVERFLOW]       <=  1;
+    end
+    if (!read_empty) begin
+      status[`STATUS_READ_INTERRUPT]      <=  1;
+    end
+    if (!write_full) begin
+      status[`STATUS_WRITE_INTERRUPT]     <=  1;
+    end
+
+    if (control[`CONTROL_READ_INTERRUPT] && !read_empty) begin
+      $display ("\tWB_UART: READ INTERRUPT!");
+      wbs_int_o                           <=  1;
+    end
+    if (control[`CONTROL_WRITE_INTERRUPT] && !write_full) begin
+      $display ("\tWB_UART: WRITE INTERRUPT!");
+      wbs_int_o                           <=  1;
+    end
+
+
     //when the master acks our ack, then put our ack down
     if (wbs_ack_o & ~wbs_stb_i)begin
-      wbs_ack_o             <= 0;
+      wbs_ack_o                         <= 0;
     end
     if (wbs_cyc_i == 0) begin
       //at the end of a cycle disable the special case of writing to the UART FIFO
-      write_en              <=  0;
-      read_en               <=  0;
+      write_en                          <=  0;
+      read_en                           <=  0;
     end
 
     if (wbs_stb_i & wbs_cyc_i) begin
@@ -268,8 +308,7 @@ always @ (posedge clk) begin
             end
           end
         end
- 
-        //not a continuation of a write
+ //not a continuation of a write
         else begin
           case (wbs_adr_i) 
             REG_CONTROL: begin
@@ -393,28 +432,33 @@ always @ (posedge clk) begin
             end
             REG_STATUS: begin
               //reset all status flags on a READ
-              status_reset      <=  1;
-              wbs_dat_o         <= status;
+              status[`STATUS_TRANSMIT_OVERFLOW]          <=  0;
+              status[`STATUS_READ_OVERFLOW]              <=  0;
+              status[`STATUS_READ_UNDERFLOW]             <=  0;
+              status[`STATUS_READ_INTERRUPT]             <=  0;
+              status[`STATUS_WRITE_INTERRUPT]            <=  0;
+              wbs_dat_o                                 <= status;
+              wbs_int_o                                 <=  0;
             end
             REG_PRESCALER: begin
-              wbs_dat_o <= prescaler;
+              wbs_dat_o           <= prescaler;
             end
             REG_CLOCK_DIV: begin
               if (clock_div ==  0) begin
-                wbs_dat_o <=  default_clock_div;
+                wbs_dat_o         <=  default_clock_div;
               end
               else begin
-                wbs_dat_o <= clock_div;
+                wbs_dat_o         <= clock_div;
               end
             end
             REG_WRITE_COUNT: begin
-              wbs_dat_o <=  write_available;
+              wbs_dat_o           <=  write_available;
             end
             REG_WRITE: begin
-              wbs_dat_o <=  32'h00000000;
+              wbs_dat_o           <=  32'h00000000;
             end
             REG_READ_COUNT: begin
-              wbs_dat_o <=  read_count;
+              wbs_dat_o           <=  read_count;
             end
             REG_READ: begin
               $display ("User requested data");
@@ -444,6 +488,7 @@ always @ (posedge clk) begin
               else begin
                 //no data just return 0
                 wbs_dat_o <=  32'h00000000;
+                status[`STATUS_READ_UNDERFLOW]  <=  1;
               end
             end
             default: begin
@@ -459,33 +504,5 @@ always @ (posedge clk) begin
     end
   end
 end
-
-//status flags
-always @ (posedge clk) begin
-  if (rst) begin
-    wbs_int_o   <=  0;
-    status      <=  0;
-  end
-  else begin
-    if (status_reset) begin
-      status  <=  0;
-    end
-
-    wbs_int_o   <=  0;
-
-    status[`CONTROL_READ_INTERRUPT]     <=  !read_empty;
-    status[`CONTROL_WRITE_INTERRUPT]    <=  !write_full;
-
-    if (control[`CONTROL_READ_INTERRUPT] && !read_empty) begin
-      $display ("WB_UART (%g): READ_INTERRUPT, data is available");
-      wbs_int_o <=  1;
-    end
-    if (control[`CONTROL_WRITE_INTERRUPT] && !write_full) begin
-      $display ("WB_UART (%g): WRITE_INTERRUPT, data is available");
-      wbs_int_o <=  1;
-    end
-  end
-end
-
 
 endmodule

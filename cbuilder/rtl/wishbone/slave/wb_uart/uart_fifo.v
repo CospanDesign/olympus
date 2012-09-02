@@ -51,7 +51,6 @@ module uart_fifo (
 
 //parameters
 parameter           FIFO_SIZE       = 10; 
-parameter           ALLOW_OVERFLOW  = 1;
 
 
 input                           clk;
@@ -82,13 +81,13 @@ reg         [FIFO_SIZE - 1: 0]  out_pointer;
 dual_port_bram #(
   .DATA_WIDTH(8),
   .ADDR_WIDTH(FIFO_SIZE),
-`ifdef SIMULATION
-  .MEM_FILE("mem_file.txt"),
-  .MEM_FILE_LENGTH(8)
-`else
+//`ifdef SIMULATION
+//  .MEM_FILE("mem_file.txt"),
+//  .MEM_FILE_LENGTH(8)
+//`else
   .MEM_FILE("NOTHING"),
   .MEM_FILE_LENGTH(0)
-`endif
+//`endif
 ) mem (
   .a_clk(clk),
   .a_wr(write_strobe),
@@ -105,14 +104,12 @@ dual_port_bram #(
 
 //synthesis attribute ram_style of mem is block
 wire        [FIFO_SIZE - 1: 0]  last;
-wire                            allow_overflow;
 
 //Asynchronous Logic
 assign                          size            =  1 << FIFO_SIZE; 
 assign                          last            = (out_pointer - 1);
 assign                          full            = (in_pointer == last);
 assign                          empty           = (read_count == 0);
-assign                          allow_overflow  = ALLOW_OVERFLOW;
 assign                          write_available = size - read_count;
 
 integer                         i;
@@ -123,10 +120,10 @@ always @ (posedge clk) begin
     read_count        <=  0;
     in_pointer        <=  0;
     out_pointer       <=  0;
-`ifdef SIMULATION
-    read_count        <=  8;
-    in_pointer        <=  8;
-`endif
+//`ifdef SIMULATION
+//    read_count        <=  8;
+//    in_pointer        <=  8;
+//`endif
 
     overflow          <=  0;
     underflow         <=  0;
