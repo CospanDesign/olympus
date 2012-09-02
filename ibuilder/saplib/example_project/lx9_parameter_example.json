@@ -20,8 +20,8 @@
 		"gpio1":{
 			"filename":"wb_gpio.v",
 			"PARAMETERS":{
-				"INTERRUPT_MASK":"1",
-				"INTERRUPT_EDGE":"2"
+				"DEFAULT_INTERRUPT_MASK":"1",
+				"DEFAULT_INTERRUPT_EDGE":"2"
 			},
 			"bind":{
 				"gpio_out[3:0]":{
