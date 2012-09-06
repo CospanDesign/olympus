@@ -50,6 +50,7 @@ class Test (unittest.TestCase):
     result = (self.sapfile.buf.find(project_name) == 0)
     self.assertEqual(result, True)
 
+
   def test_set_tags(self):
     """test to see if a tag file was loaded correctly"""
     tag_file = os.getenv("SAPLIB_BASE") +  "/tags/README.json"

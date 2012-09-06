@@ -54,6 +54,15 @@ class Test (unittest.TestCase):
     result = self.project.generate_project(file_name, debug=self.dbg)
     self.assertEqual(result, True)
 
+  def test_generate_spi_project(self):
+    """test if a project can be generated with version 2"""
+    file_name = os.getenv("SAPLIB_BASE") + "/example_project/dionysus_pmod_oled.json"
+    save_debug = self.dbg
+    self.dbg = True
+    result = self.project.generate_project(file_name, debug=self.dbg)
+    self.dbg = save_debug
+    self.assertEqual(result, True)
+
   def test_generate_ddr_project(self):
     """test if the ddr project can be generated with version 2"""
     file_name = os.getenv("SAPLIB_BASE") + "/example_project/gpio_example.json"
