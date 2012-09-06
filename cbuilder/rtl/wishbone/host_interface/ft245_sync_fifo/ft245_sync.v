@@ -62,40 +62,40 @@ output wire     ftdi_siwu;
 input           ftdi_suspend_n;
 
 
-output wire [15:0]  debug;
+output wire [15:0]          debug;
 
 
-reg [15:0] debug_r;
-wire [15:0]  debug_w;
+reg [15:0]                  debug_r;
+wire [15:0]                 debug_w;
 
 //assign debug = {debug_w[5:0], debug_r[1:0]};
-assign debug = debug_w; 
+assign                      debug = debug_w; 
 //assign  debug = debug_r;
 
 
-wire    [7:0]   data_out;
+wire    [7:0]               data_out;
 
-assign          ftdi_data  = ftdi_oe_n ? data_out : 8'hZ;
+assign                      ftdi_data  = ftdi_oe_n ? data_out : 8'hZ;
 //assign          ftdi_data  = (ftdi_oe_n) ? data_out : 8'hZ;
 
 //wires
 
-reg             start_of_frame;
-reg             in_fifo_wr;
-wire            in_fifo_full;
+reg                         start_of_frame;
+reg                         in_fifo_wr;
+wire                        in_fifo_full;
 
-wire            out_fifo_full;
-wire            out_fifo_empty;
-reg             out_fifo_rd;
-wire            out_fifo_wr;
+wire                        out_fifo_full;
+wire                        out_fifo_empty;
+reg                         out_fifo_rd;
+wire                        out_fifo_wr;
 
 
 
-reg     [7:0]   data_in;
-reg     [7:0]   out_cache;
-reg             out_cache_valid;
-reg             local_sof;
-//reg             finish_flag;
+reg     [7:0]               data_in;
+reg     [7:0]               out_cache;
+reg                         out_cache_valid;
+reg                         local_sof;
+//reg                         finish_flag;
 
 
 reg [2:0]                   rstate; 
@@ -172,12 +172,12 @@ parameter                   READ            = 4'h2;
 parameter                   SEND_TO_FIFO    = 4'h3;
 
 
-assign debug_w[2:0] = rstate;
-assign debug_w[3] = in_fifo_wr;
-assign debug_w[4] = in_fifo_full;
-assign debug_w[5] = in_fifo_rd;
-assign debug_w[6] = in_fifo_empty;
-assign debug_w[7] = sof;
+assign debug_w[2:0]   = rstate;
+assign debug_w[3]     = in_fifo_wr;
+assign debug_w[4]     = in_fifo_full;
+assign debug_w[5]     = in_fifo_rd;
+assign debug_w[6]     = in_fifo_empty;
+assign debug_w[7]     = sof;
 assign debug_w[15:8]  = data_in;
 
 //assign debug_w[2] = out_fifo_empty;
@@ -196,12 +196,12 @@ reg [8:0]       fifo_read_data;
 always @ (posedge ftdi_clk) begin
 
   if (rst) begin
-    output_enable         <=  0;
-    read_enable           <=  0;
-    rstate                 <=  IDLE;
-    start_of_frame        <=  0;
-    ftdi_buffer           <=  8'h00;
-    read_available        <=  0;
+    output_enable             <=  0;
+    read_enable               <=  0;
+    rstate                    <=  IDLE;
+    start_of_frame            <=  0;
+    ftdi_buffer               <=  8'h00;
+    read_available            <=  0;
   end
   else begin
     case (rstate)
@@ -211,7 +211,7 @@ always @ (posedge ftdi_clk) begin
 
         start_of_frame        <=  0;
 
-        if (receive_available &&!write_busy) begin
+        if (receive_available && !write_busy) begin
           //Reading from the host
           if (!prev_receive_available) begin
             start_of_frame    <=  1;
@@ -222,7 +222,7 @@ always @ (posedge ftdi_clk) begin
         end
       end
       ENABLE_READING: begin
-        read_enable         <=  1;
+        read_enable          <=  1;
         rstate               <=  READ;
       end
       READ: begin
@@ -236,14 +236,14 @@ always @ (posedge ftdi_clk) begin
       end
       SEND_TO_FIFO: begin
         if (read) begin
-          read_available  <=  0;
+          read_available      <=  0;
           if (!receive_available) begin
-            read_enable     <=  0;
-            rstate        <=  IDLE;
+            read_enable       <=  0;
+            rstate            <=  IDLE;
           end
           else begin
-            read_enable     <=  1;
-            rstate        <=  READ;
+            read_enable       <=  1;
+            rstate            <=  READ;
           end
         end
       end
@@ -265,31 +265,31 @@ parameter                   WRITE_TO_FIFO   = 4'h1;
 
 always @ (posedge ftdi_clk) begin
   if (rst) begin
-    in_fifo_wr    <=  0;
-    read          <=  0;
-    data_in       <=  8'h00;
-    fifo_buffer   <=  9'h000;
+    in_fifo_wr            <=  0;
+    read                  <=  0;
+    data_in               <=  8'h00;
+    fifo_buffer           <=  9'h000;
     local_sof             <=  0;
   end
   else begin
-    in_fifo_wr  <=  0;
-    read        <=  0;
+    in_fifo_wr            <=  0;
+    read                  <=  0;
     case (fstate)
       IDLE: begin
         if (!in_fifo_full && read_available) begin
-          read        <=  1;
-          fifo_buffer <=  fifo_read_data;
-          fstate      <=  WRITE_TO_FIFO;
+          read            <=  1;
+          fifo_buffer     <=  fifo_read_data;
+          fstate          <=  WRITE_TO_FIFO;
         end
       end
       WRITE_TO_FIFO: begin
-        local_sof     <=  fifo_buffer[8];
-        data_in       <=  fifo_buffer[7:0];
-        in_fifo_wr    <=  1;
-        fstate        <=  IDLE;
+        local_sof         <=  fifo_buffer[8];
+        data_in           <=  fifo_buffer[7:0];
+        in_fifo_wr        <=  1;
+        fstate            <=  IDLE;
       end
       default: begin
-        fstate        <=  IDLE;
+        fstate            <=  IDLE;
       end
     endcase
   end
@@ -306,15 +306,15 @@ parameter                   SLEEP               = 4'h3;
 
 always @ (posedge ftdi_clk) begin
   if (rst) begin
-    wstate             <=  IDLE;
-    write_enable      <=  0;
-    send_immediately  <=  0;
-    out_fifo_rd       <=  0;
+    wstate                    <=  IDLE;
+    write_enable              <=  0;
+    send_immediately          <=  0;
+    out_fifo_rd               <=  0;
   end
   else begin
-    write_enable      <=  0;
-    send_immediately  <=  0;
-    out_fifo_rd       <=  0;
+    write_enable              <=  0;
+    send_immediately          <=  0;
+    out_fifo_rd               <=  0;
     case (wstate)
       IDLE: begin
         if (!read_busy && !out_fifo_empty && transmit_ready) begin
@@ -323,11 +323,15 @@ always @ (posedge ftdi_clk) begin
         end
       end
       GET_WRITE_DATA: begin
-        wstate                <=  WRITE;
+        if (transmit_ready) begin
+          wstate                <=  WRITE;
+        end
       end
       WRITE: begin
-        write_enable           <=  1;
-        wstate                  <= SLEEP;
+        if (transmit_ready) begin
+          write_enable          <=  1;
+          wstate                <= SLEEP;
+        end
       end
       SLEEP: begin
         wstate                <=  IDLE;
