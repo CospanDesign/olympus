@@ -161,8 +161,9 @@ class SapFile:
     if (filename.endswith(".v")):
       self.verilog_file_list.append(filename)
 
-    if (debug):
+    if debug:
       print "in process file"
+      print "\t%s" % filename
     #maybe load a tags??
 
     #using the location value in the file_dict find the file and
