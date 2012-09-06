@@ -47,7 +47,8 @@ from array import array as Array
 from olympus import OlympusCommError
 from dionysus import Dionysus
 from uart import UART
-from gpio import GPIO
+import gpio
+import spi
 
 #TEST CONSTANTS
 MEM_SIZE = 1100
@@ -134,8 +135,7 @@ def unit_test_devices(dyn):
     if (device_id == 1):
       print "Found GPIO"
       print "testing GPIO @ %d" % dev_offset
-      gpio = GPIO(dyn, dev_offset)
-      gpio.unit_test()
+      gpio.unit_test(dyn, dev_offset)
 
 #    if (device_id == 5):
 #      print "Found a memory device"
@@ -146,6 +146,12 @@ def unit_test_devices(dyn):
       print "testing UART @ %d" % dev_offset
       uart = UART(dyn, dev_offset)
       uart.unit_test()
+
+    if (device_id == 4):
+      print "Found SPI device"
+      print "testing SPI @ %d" % dev_offset
+      spi.unit_test(dyn, dev_offset)
+
  
 def usage():
   """prints out a helpful message to the user"""
