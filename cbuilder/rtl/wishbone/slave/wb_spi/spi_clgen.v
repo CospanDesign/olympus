@@ -43,8 +43,6 @@
 
 module spi_clgen (clk_in, rst, go, enable, last_clk, divider, clk_out, pos_edge, neg_edge); 
 
-  parameter Tp = 1;
-  
   input                            clk_in;   // input clock (system clock)
   input                            rst;      // reset
   input                            enable;   // clock enable
@@ -64,20 +62,20 @@ module spi_clgen (clk_in, rst, go, enable, last_clk, divider, clk_out, pos_edge,
   wire                             cnt_one;  // conter is equal to one
   
   
-  assign cnt_zero = cnt == {`SPI_DIVIDER_LEN{1'b0}};
-  assign cnt_one  = cnt == {{`SPI_DIVIDER_LEN-1{1'b0}}, 1'b1};
+  assign cnt_zero = cnt == 32'h0;
+  assign cnt_one  = cnt == 32'h00000001;
   
   // Counter counts half period
   always @(posedge clk_in or posedge rst)
   begin
     if(rst)
-      cnt <= #Tp {`SPI_DIVIDER_LEN{1'b1}};
+      cnt <= 32'h00000001;
     else
       begin
         if(!enable || cnt_zero)
-          cnt <= #Tp divider;
+          cnt <= divider;
         else
-          cnt <= #Tp cnt - {{`SPI_DIVIDER_LEN-1{1'b0}}, 1'b1};
+          cnt <=  cnt - 32'h00000001;
       end
   end
   
@@ -85,9 +83,9 @@ module spi_clgen (clk_in, rst, go, enable, last_clk, divider, clk_out, pos_edge,
   always @(posedge clk_in or posedge rst)
   begin
     if(rst)
-      clk_out <= #Tp 1'b0;
+      clk_out <=  1'b0;
     else
-      clk_out <= #Tp (enable && cnt_zero && (!last_clk || clk_out)) ? ~clk_out : clk_out;
+      clk_out <=  (enable && cnt_zero && (!last_clk || clk_out)) ? ~clk_out : clk_out;
   end
    
   // Pos and neg edge signals
@@ -95,13 +93,13 @@ module spi_clgen (clk_in, rst, go, enable, last_clk, divider, clk_out, pos_edge,
   begin
     if(rst)
       begin
-        pos_edge  <= #Tp 1'b0;
-        neg_edge  <= #Tp 1'b0;
+        pos_edge  <=  1'b0;
+        neg_edge  <=  1'b0;
       end
     else
       begin
-        pos_edge  <= #Tp (enable && !clk_out && cnt_one) || (!(|divider) && clk_out) || (!(|divider) && go && !enable);
-        neg_edge  <= #Tp (enable && clk_out && cnt_one) || (!(|divider) && !clk_out && enable);
+        pos_edge  <=  (enable && !clk_out && cnt_one) || (!(|divider) && clk_out) || (!(|divider) && go && !enable);
+        neg_edge  <=  (enable && clk_out && cnt_one) || (!(|divider) && !clk_out && enable);
       end
   end
 endmodule

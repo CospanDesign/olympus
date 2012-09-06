@@ -145,18 +145,19 @@ parameter SPI_TX_2        = 4'hA;
 parameter SPI_TX_3        = 4'hB;
 
 // Address decoder
-assign spi_tx_sel[0]   = wbs_cyc_i & wbs_stb_i & (wbs_adr_i[3:0] == SPI_TX_0);
-assign spi_tx_sel[1]   = wbs_cyc_i & wbs_stb_i & (wbs_adr_i[3:0] == SPI_TX_1);
-assign spi_tx_sel[2]   = wbs_cyc_i & wbs_stb_i & (wbs_adr_i[3:0] == SPI_TX_2);
-assign spi_tx_sel[3]   = wbs_cyc_i & wbs_stb_i & (wbs_adr_i[3:0] == SPI_TX_3);
+assign spi_tx_sel[0]   = wbs_cyc_i & wbs_stb_i & wbs_we_i & (wbs_adr_i[3:0] == SPI_TX_0);
+assign spi_tx_sel[1]   = wbs_cyc_i & wbs_stb_i & wbs_we_i & (wbs_adr_i[3:0] == SPI_TX_1);
+assign spi_tx_sel[2]   = wbs_cyc_i & wbs_stb_i & wbs_we_i & (wbs_adr_i[3:0] == SPI_TX_2);
+assign spi_tx_sel[3]   = wbs_cyc_i & wbs_stb_i & wbs_we_i & (wbs_adr_i[3:0] == SPI_TX_3);
  
 
-always @ (posedge clk, negedge tip) begin
+always @ (posedge clk) begin
 	if (rst) begin
 		wbs_dat_o	        <=  32'h00000000;
 		wbs_ack_o	        <=  0;
     ctrl              <=  0;
-    divider           <=  0;
+    divider           <=  100;
+    ss                <=  0;
 	end
 
 	else begin
@@ -172,7 +173,7 @@ always @ (posedge clk, negedge tip) begin
 			wbs_ack_o   <= 0;
 		end
     
-    if (go && !tip) begin
+    if (go && last_bit && pos_edge) begin
       ctrl[8]     <=  0;
 
     end
@@ -182,29 +183,16 @@ always @ (posedge clk, negedge tip) begin
 			if (wbs_we_i && !tip) begin
 				//write request
 				case (wbs_adr_i) 
-//					SPI_TX_0: begin
-//            spi_tx_sel[0]  <=  1;
-//					end
-//					SPI_TX_1: begin
-//            spi_tx_sel[1]  <=  1;
-//					end
-//					SPI_TX_2: begin
-//            spi_tx_sel[2]  <=  1;
-//					end
-//					SPI_TX_3: begin
-//            spi_tx_sel[3]  <=  1;
-//					end
 					SPI_CTRL: begin
             ctrl      <=  wbs_dat_i[15:0];
 					end
 					SPI_DIVIDER: begin
-            divider <=  wbs_dat_i[`SPI_DIVIDER_LEN-1:0];
+            divider <=  wbs_dat_i[31:0];
 					end
 					SPI_SS: begin
             ss      <=  wbs_dat_i[`SPI_SS_NB - 1: 0];
 					end
 					default: begin
-            //user should write here
 					end
 				endcase
 			end
@@ -213,47 +201,22 @@ always @ (posedge clk, negedge tip) begin
 				//read request
 				case (wbs_adr_i)
 					SPI_RX_0: begin
-`ifdef SPI_MAX_CHAR_128
             wbs_dat_o <= rx[31:0];
-`else
-`ifdef SPI_MAX_CHAR_64
-            wbs_dat_o <= rx[31:0];
-`else
-            wbs_dat_o <= {{32-`SPI_MAX_CHAR{1'b0}}, rx[`SPI_MAX_CHAR-1:0]};
-`endif
-`endif
 					end
 					SPI_RX_1: begin
-`ifdef SPI_MAX_CHAR_128
             wbs_dat_o <= rx[63:32];
-`else
-`ifdef SPI_MAX_CHAR_64
-            wbs_dat_o <= {{64-`SPI_MAX_CHAR{1'b0}}, rx[`SPI_MAX_CHAR-1:32]};
-`else
-            wbs_dat_o <= 32'b0;
-`endif
-`endif
-
 					end
 					SPI_RX_2: begin
-`ifdef SPI_MAX_CHAR_128
             wbs_dat_o <= rx[95:64];
-`else
-            wbs_dat_o <= 32'b0;
-`endif
 					end
 					SPI_RX_3: begin
-`ifdef SPI_MAX_CHAR_128
-            wbs_dat_o <= {{128-`SPI_MAX_CHAR{1'b0}}, rx[`SPI_MAX_CHAR-1:96]};
-`else
-            wbs_dat_o <= 32'b0;
-`endif
+            wbs_dat_o <= rx[`SPI_MAX_CHAR-1:96];
 					end
 					SPI_CTRL: begin
             wbs_dat_o <= {{32-`SPI_CTRL_BIT_NB{1'b0}}, ctrl};
 					end
 					SPI_DIVIDER: begin
-            wbs_dat_o <= {{32-`SPI_DIVIDER_LEN{1'b0}}, divider};
+            wbs_dat_o <=  divider;
 					end
 					SPI_SS: begin
             wbs_dat_o <= {{32-`SPI_SS_NB{1'b0}}, ss};
@@ -269,11 +232,6 @@ always @ (posedge clk, negedge tip) begin
 			end
 			wbs_ack_o <= 1;
 		end
-
-    //handle the busy bit deassertion
-    if ((wbs_adr_i != SPI_CTRL) && tip && last_bit && pos_edge) begin
-      ctrl[`SPI_CTRL_GO]  <=  0;
-    end
 	end
 end
 
@@ -303,8 +261,8 @@ spi_clgen clgen (
 spi_shift shift (
   .clk(clk), 
   .rst(rst), 
-  .len(char_len[`SPI_CHAR_LEN_BITS-1:0]),
-  .latch(spi_tx_sel[3:0] & {4{wbs_we_i}}), 
+  .len(char_len[`SPI_CHAR_LEN_BITS - 1:0]),
+  .latch(spi_tx_sel[3:0]), 
   .byte_sel(4'hF), 
   .lsb(lsb), 
   .go(go), 
