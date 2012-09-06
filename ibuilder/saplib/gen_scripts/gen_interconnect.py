@@ -83,7 +83,7 @@ class GenInterconnect(Gen):
 		data_block_buf = data_block_buf + "always @ (slave_select"
 		for i in range (0, num_slaves):
 			data_block_buf = data_block_buf + " or s" + str(i) + "_dat_i"
-		data_block_buf = data_block_buf + ") begin\n\tcase (slave_select)\n"
+		data_block_buf = data_block_buf + " or interrupts) begin\n\tcase (slave_select)\n"
 		for i in range (0, num_slaves):
 			data_block_buf = data_block_buf + "\t\tADDR_" + str(i) + ": begin\n\t\t\tm_dat_o <= s" + str(i) + "_dat_i;\n\t\tend\n";
 		data_block_buf = data_block_buf + "\t\tdefault: begin\n\t\t\tm_dat_o <= interrupts;\n\t\tend\n\tendcase\nend\n\n"
