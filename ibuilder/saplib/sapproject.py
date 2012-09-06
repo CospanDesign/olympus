@@ -266,7 +266,7 @@ class SapProject:
       file_dest = self.project_tags["BASE_DIR"] + "/rtl/bus/slave"
       fn = self.project_tags["SLAVES"][slave]["filename"]
       try:
-        self.filegen.process_file(filename = fn, file_dict = fdict, directory=file_dest)
+        self.filegen.process_file(filename = fn, file_dict = fdict, directory=file_dest, debug=debug)
       except ModuleFactoryError as err:
         print "ModuleFactoryError while generating a slave: %s" % str(err) 
 
