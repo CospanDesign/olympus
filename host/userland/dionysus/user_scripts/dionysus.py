@@ -80,7 +80,8 @@ class Dionysus(Olympus):
       Exception
     """
     frequency = 30.0E6
-    latency = 2
+#Latency can go down t 2 but when set there is a small chance that there is a crash
+    latency = 4
     self.dev.open(self.vendor, self.product, 0)
     # Drain input buffer
     self.dev.purge_buffers()
@@ -98,7 +99,6 @@ class Dionysus(Olympus):
     self.dev.read_data_set_chunksize(0x10000)
 
     self.dev.set_flowctrl('hw')
-    #self.dev.set_flowctrl('hw2')
     self.dev.purge_buffers()
 
 
@@ -175,12 +175,14 @@ class Dionysus(Olympus):
       response = self.dev.read_data((length * 4 + 8 ) - read_count)
       temp  = Array('B')
       temp.fromstring(response)
+      #print "temp: %s", str(temp)
       if (len(temp) > 0):
         rsp += temp
         read_count = len(rsp)
     
     if self.debug:
       print "read length = %d, total length = %d" % (len(rsp), (length * 4 + 8))
+      print "time left on timeout: %d" % (timeout - time.time())
 
     if self.debug:
       print "response length: " + str(length * 4 + 8)
