@@ -52,7 +52,7 @@
 					"port":"led[1:0]",
 					"direction":"output"
 				},
-				"gpio_in[1:0]":{
+				"gpio_in[3:2]":{
 					"port":"button[1:0]",
 					"direction":"input"
 				}
