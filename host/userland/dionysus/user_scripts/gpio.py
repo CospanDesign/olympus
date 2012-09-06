@@ -157,13 +157,23 @@ class GPIO:
 
     port_raw = self.get_port_raw()
     
+    bit_shifted = 0x00000000
     bit_shifted = 1 << bit
 
-    if value:
+    if self.debug:
+      print "Value: %d" % value
+      print "Bit: %d" % bit
+      print "bit shift value %X" % bit_shifted
+      print "port value: %X" % port_raw
+
+    if value > 0:
       port_raw = port_raw | bit_shifted
 
     else:
       port_raw = port_raw & (~bit_shifted)
+
+    if self.debug:
+      print "New port value: %X" % port_raw
 
     self.set_port_raw(port_raw)
 
@@ -302,49 +312,56 @@ class GPIO:
     interrupts = interrupt_array[0] << 24 | interrupt_array[1] << 16 | interrupt_array[2] << 8 | interrupt_array[3]
     return interrupts
 
-  def unit_test(self):
-    """unit_test
 
-    Run the unit test of the GPIO
-    """
+def unit_test(oly, dev_index):
+  """unit_test
 
-    print "Testing output ports (like LEDs)"
+  Run the unit test of the GPIO
+  """
+  gpio = GPIO(oly, dev_index)
 
-    print "Flashing all the outputs for one second"
+  print "Testing output ports (like LEDs)"
 
-    print "Set all the ports to outputs"
-    self.set_port_direction(0xFFFFFFFF)
+  print "Flashing all the outputs for one second"
 
-    print "Set all the values to 0"
-    self.set_port_raw(0xFFFFFFFF)
-    time.sleep(1)
-    self.set_port_raw(0x00000000)
+  print "Set all the ports to outputs"
+  gpio.set_port_direction(0xFFFFFFFF)
 
-    print "flash only one bit"
-    period = .1
-    for i in range (0, 10):
-      self.set_bit_value(0, 1)
-      time.sleep( (i + 1) * (period / 10.0))
-      self.set_bit_value(0, 0)
-      time.sleep(period - ((i + 1) * (period / 10.0)))
+  print "Set all the values to 0"
+  gpio.set_port_raw(0xFFFFFFFF)
+  time.sleep(1)
+  gpio.set_port_raw(0x00000000)
+
+  """
+  print "flash only one bit"
+  period = .1
+  for i in range (0, 10):
+    gpio.set_bit_value(0, 1)
+    time.sleep( (i + 1) * (period / 10.0))
+    gpio.set_bit_value(0, 0)
+    time.sleep(period - ((i + 1) * (period / 10.0)))
+  """
+
+  print "Reading inputs (Like buttons) in 2 second"
+  gpio.set_port_direction(0x00000000)
+  
+  time.sleep(2)
+  print "Read value: " + hex(gpio.get_port_raw())
+  print "Reading inputs (Like buttons) in 2 second"
+  time.sleep(2)
+  print "Read value: " + hex(gpio.get_port_raw())
 
 
-    print "Reading inputs (Like buttons) in 1 second"
-    self.set_port_direction(0x00000000)
-    
-    time.sleep(1)
-    print "Read value: " + hex(self.get_port_raw())
+  print "Testing Interrupts, setting interrupts up for positive edge detect"
+  gpio.set_interrupt_edge(0xFFFFFFFF)
+  gpio.set_interrupt_enable(0xFFFFFFFF)
 
-    print "Testing Interrupts, setting interrupts up for positive edge detect"
-    self.set_interrupt_edge(0xFFFFFFFF)
-    self.set_interrupt_enable(0xFFFFFFFF)
-
-    print "Waiting for 5 seconds for the interrupts to fire"
-    if (self.o.wait_for_interrupts(5)):
-      if (self.o.is_interrupt_for_slave(self.dev_id)):
-        print "Interrupt for GPIO detected!"
-        print "Interrupts: " + hex(self.get_interrupts())
-        print "Read value: " + hex(self.get_port_raw())
+  print "Waiting for 5 seconds for the interrupts to fire"
+  if (gpio.o.wait_for_interrupts(5)):
+    if (gpio.o.is_interrupt_for_slave(gpio.dev_id)):
+      print "Interrupt for GPIO detected!"
+      print "Interrupts: " + hex(gpio.get_interrupts())
+      print "Read value: " + hex(gpio.get_port_raw())
 
     
 
