@@ -78,66 +78,76 @@ module wb_gpio (
 	wbs_adr_i,
 	wbs_int_o,
 
-	gpio_in,
-	gpio_out
+  gpio_out,
+  gpio_in
+
 );
 
 parameter DEFAULT_INTERRUPT_MASK = 0;
 parameter DEFAULT_INTERRUPT_EDGE = 0;
 
-input 				clk;
-input 				rst;
+input 				      clk;
+input 				      rst;
 
 //wishbone slave signals
-input 				wbs_we_i;
-input 				wbs_stb_i;
-input 				wbs_cyc_i;
-input		[3:0]	wbs_sel_i;
-input		[31:0]	wbs_adr_i;
-input  		[31:0]	wbs_dat_i;
+input 				      wbs_we_i;
+input 				      wbs_stb_i;
+input 				      wbs_cyc_i;
+input		    [3:0]	  wbs_sel_i;
+input		    [31:0]	wbs_adr_i;
+input  		  [31:0]	wbs_dat_i;
 output reg  [31:0]	wbs_dat_o;
-output reg			wbs_ack_o;
-output reg			wbs_int_o;
+output reg			    wbs_ack_o;
+output reg			    wbs_int_o;
 
 
 //gpio
-input		[31:0]	gpio_in;
-output reg	[31:0]	gpio_out;
+output  reg  [31:0]	gpio_out;
+input        [31:0]	gpio_in;
 
 
-parameter			GPIO			=	32'h00000000;
+parameter			GPIO			            =	32'h00000000;
 parameter			GPIO_OUTPUT_ENABLE		=	32'h00000001;
-parameter			INTERRUPTS		=	32'h00000002;
-parameter			INTERRUPT_ENABLE	=	32'h00000003;
-parameter			INTERRUPT_EDGE =	32'h00000004;
+parameter			INTERRUPTS		        =	32'h00000002;
+parameter			INTERRUPT_ENABLE	    =	32'h00000003;
+parameter			INTERRUPT_EDGE        =	32'h00000004;
 
 
 //gpio registers
-reg			[31:0]	gpio_enable;
+reg			[31:0]	gpio_direction;
+wire    [31:0]  gpio;
 
 //interrupt registers
 reg			[31:0]	interrupts;
 reg			[31:0]	interrupt_mask;
 reg			[31:0]	interrupt_edge;
-reg					clear_interrupts;
+reg					    clear_interrupts;
+
+
+genvar i;
+generate
+  for (i = 0; i < 32; i = i + 1) begin : tsbuf
+    assign gpio[i] = gpio_direction[i] ? gpio_out[i] : gpio_in[i];
+  end
+endgenerate
 
 //blocks
 always @ (posedge clk) begin
 
-	clear_interrupts 	<= 0;
+	clear_interrupts 	    <= 0;
 
 	if (rst) begin
-		wbs_dat_o	<= 32'h00000000;
-		wbs_ack_o	<= 0;
+		wbs_dat_o	          <= 32'h00000000;
+		wbs_ack_o	          <= 0;
 
 		//reset gpio's
-		gpio_out			<= 32'h00000000;
-		gpio_enable			<= 32'h00000000;
+		gpio_out			      <= 32'h00000000;
+		gpio_direction			<= 32'h00000000;
 
 
 		//reset interrupts
-		interrupt_mask		<= DEFAULT_INTERRUPT_MASK;
-		interrupt_edge		<= DEFAULT_INTERRUPT_EDGE;
+		interrupt_mask		  <= DEFAULT_INTERRUPT_MASK;
+		interrupt_edge		  <= DEFAULT_INTERRUPT_EDGE;
 	end
 
 	else begin
@@ -153,11 +163,11 @@ always @ (posedge clk) begin
 				case (wbs_adr_i) 
 					GPIO: begin
 						$display("user wrote %h", wbs_dat_i);
-						gpio_out	<= wbs_dat_i & gpio_enable;
+						gpio_out	<= wbs_dat_i & gpio_direction;
 					end
 					GPIO_OUTPUT_ENABLE: begin
-						$display("%h ->gpio_enable", wbs_dat_i);
-						gpio_enable	<= wbs_dat_i;
+						$display("%h ->gpio_direction", wbs_dat_i);
+						gpio_direction	<= wbs_dat_i;
 					end
 					INTERRUPTS: begin
 						$display("trying to write %h to interrupts?!", wbs_dat_i);
@@ -181,11 +191,11 @@ always @ (posedge clk) begin
 				case (wbs_adr_i)
 					GPIO: begin
 						$display("user read %h", wbs_adr_i);
-						wbs_dat_o <= gpio_in;
+						wbs_dat_o <= gpio;
 					end
 					GPIO_OUTPUT_ENABLE: begin
 						$display("user read %h", wbs_adr_i);
-						wbs_dat_o <= gpio_enable;
+						wbs_dat_o <= gpio_direction;
 					end
 					INTERRUPTS: begin
 						$display("user read %h", wbs_adr_i);
