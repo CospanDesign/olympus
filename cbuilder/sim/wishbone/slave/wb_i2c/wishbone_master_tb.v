@@ -103,7 +103,7 @@ wire [31:0]       wbm_adr_o;
 wire [31:0]       wbm_dat_i;
 wire [31:0]       wbm_dat_o;
 wire              wbm_ack_o;
-wire              wbm_int_o;
+wire              wbm_int_i;
 
 
 
@@ -132,7 +132,8 @@ wishbone_master wm (
   .wb_we_o(wbm_we_o),
   .wb_msk_o(wbm_msk_o),
   .wb_sel_o(wbm_sel_o),
-  .wb_ack_i(wbm_ack_i)
+  .wb_ack_i(wbm_ack_i),
+  .wb_int_i(wbm_int_i)
 );
 
 //Wishbone Slave 0 (DRT) signals
@@ -172,6 +173,8 @@ pullup(sda);
 
 assign            scl = scl_out_en_tb ? 1'hZ : scl_out;
 assign            sda = sda_out_en_tb ? 1'hZ : sda_out;
+
+assign            wbs0_int_i  = 0;
 
 //slave 1
 wb_i2c s1 (
