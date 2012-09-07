@@ -496,19 +496,19 @@ always @ (posedge clk) begin
           //hack for getting the in_data_count before the io_handler decrements it
             //local_data_count  <= in_data_count;
             //work around to add a delay
-            wb_adr_o <= local_address;
+            wb_adr_o              <= local_address;
             //handle input
-            local_address   <= 32'hFFFFFFFF;        
+            local_address         <= 32'hFFFFFFFF;        
           //check if there is an interrupt
-          //if the wb_int_i goes positive then send a nortifiaction to the user
+          //if the wb_int_i goes positive then send a nortifiction to the user
           if ((~prev_int) & wb_int_i) begin 
-            debug_out[8]  <= ~debug_out[8];
+            debug_out[8]          <= ~debug_out[8];
             $display("WBM: found an interrupt!");
-            out_status      <= `PERIPH_INTERRUPT; 
+            out_status            <= `PERIPH_INTERRUPT; 
             //only supporting interrupts on slave 0 - 31
-            out_address     <= 32'h00000000;
-            out_data      <= wb_dat_i;
-            out_en        <= 1;
+            out_address           <= 32'h00000000;
+            out_data              <= wb_dat_i;
+            out_en                <= 1;
           end
           prev_int  <= wb_int_i;
         end
