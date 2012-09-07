@@ -120,6 +120,26 @@ class Olympus:
     """
     return self.timeout
 
+  def read_register(self, device_id, address):
+    """read_register
+
+    Reads a single register from the read command and then converts it to an
+    integer
+
+    Args:
+      device_id:  Device identification number, this number is found in the DRT
+      address:  Address of the register/memory to read
+
+    Returns:
+      32-bit unsigned integer
+
+    Raises:
+      OlympusCommError: Error in communication
+    """
+    register_array = self.read(device_id, address, 1) 
+    return register_array[0] << 24 | register_array[1] << 16 | register_array[2] << 8 | register_array[3]
+
+
   def read(self, device_id, address, length = 1, mem_device = False):
     """read
 
@@ -145,6 +165,29 @@ class Olympus:
       implementation
     """
     raise AssertionError("read function is not implemented")
+
+  def write_register(self, device_id, address, value):
+    """write_register
+
+    Writes a single register from a 32-bit unsingned integer
+
+    Args:
+      device_id:  Device identification number, this number is found in the DRT
+      address:  Address of the register/memory to read
+      value:  32-bit unsigned integer to be written into the register
+
+    Return: Nothing
+
+    Raises:
+      OlympusCommError: Error in communication
+    """
+    register_array = Array('B', [0x00, 0x00, 0x00, 0x00])
+    register_array[0]  = (value >> 24) & 0xFF
+    register_array[1]  = (value >> 16) & 0xFF
+    register_array[2]  = (value >> 8) & 0xFF
+    register_array[3]  = (value) & 0xFF
+    self.write(device_id, address, register_array)
+
 
 
   def write(self, device_id, address, data = None, mem_device = False):
@@ -362,6 +405,7 @@ class Olympus:
     Raises:
       Nothing
     """
+    #print "interrupts: %X" % self.interrupts
     if ( (1 << device_id) & self.interrupts) > 0:
       return True
     return False
