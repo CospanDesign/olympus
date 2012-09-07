@@ -60,13 +60,13 @@ SOFTWARE.
 `define COMMAND_NACK_TO_RD  32'h0000000B
 
 //conditions
-`define PERIPH_INTERRUPT    32'h10000000
-`define NACK_TIMEOUT        32'h20000000
+`define PERIPH_INTERRUPT    32'h00000010
+`define NACK_TIMEOUT        32'h00000020
 
 //flags
 `define FLAG_MEM_BUS        16'h0001
 
 //default variables
-`define DEF_NACK_TIMEOUT    32'h00000020
+`define DEF_NACK_TIMEOUT    32'h00000030
 
 `endif //__MG_DEFINES__
