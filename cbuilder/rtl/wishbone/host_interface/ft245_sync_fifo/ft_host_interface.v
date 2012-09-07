@@ -522,7 +522,7 @@ always @ (posedge clk) begin
             $display ("FT_WRITE: Sending ILLEAGLE COMMAND TO HOST %h", master_status[3:0] & PING);
 //XXX: Should I send illeagle commands to the host?
             output_dw         <=  {master_status[7:0], 24'h0};
-            wstate            <=  IDLE;
+            wstate            <=  SEND_DATA;
           end
           new_output_data     <=  1;
         end
