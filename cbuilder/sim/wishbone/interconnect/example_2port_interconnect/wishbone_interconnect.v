@@ -138,7 +138,7 @@ end
 
 
 //data
-always @ (slave_select or s0_dat_i or s1_dat_i) begin
+always @ (slave_select or s0_dat_i or s1_dat_i or interrupts) begin
     case (slave_select)
         ADDR_0: begin
             m_dat_o <= s0_dat_i;
@@ -147,7 +147,7 @@ always @ (slave_select or s0_dat_i or s1_dat_i) begin
             m_dat_o <= s1_dat_i;
         end
         default: begin
-			$display("WBI: interrupt address selected");
+			  $display("WBI: interrupt address selected");
             m_dat_o <= interrupts;
         end
     endcase
