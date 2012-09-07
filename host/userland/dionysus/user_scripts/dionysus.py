@@ -375,8 +375,7 @@ class Dionysus(Olympus):
 
     temp = Array ('B')
     while time.time() < timeout:
-
-      response = self.dev.read_data(3)
+      response = self.dev.read_data(1)
       rsp = Array('B')
       rsp.fromstring(response)
       temp.extend(rsp)
@@ -390,15 +389,29 @@ class Dionysus(Olympus):
         print "Response not found"  
       return False
 
+    read_total = 9
+    read_count = len(rsp)
+
+    #print "read_count: %s" % str(rsp)
+    while (time.time() < timeout) and (read_count < read_total):
+      response = self.dev.read_data(read_total - read_count)
+      temp  = Array('B')
+      temp.fromstring(response)
+      #print "temp: %s", str(temp)
+      if (len(temp) > 0):
+        rsp += temp
+        read_count = len(rsp)
+
+    #print "read_count: %s" % str(rsp)
+   
+
     index  = rsp.index(0xDC) + 1
 
     read_data = Array('B')
     read_data.extend(rsp[index:])
+    #print "read_data: " + str(rsp)
 
-    num = 3 - index
-    read_data.fromstring(self.dev.read_data(num))
-    if (len (read_data) >= 4):
-      self.interrupts = read_data[0] << 24 | read_data[1] << 16 | read_data[2] << 8 | read_data[3]
+    self.interrupts = read_data[-4] << 24 | read_data[-3] << 16 | read_data[-2] << 8 | read_data[-1]
     
     if self.debug:
       print "interrupts: " + str(self.interrupts)
