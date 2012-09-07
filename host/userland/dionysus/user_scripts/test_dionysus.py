@@ -49,6 +49,7 @@ from dionysus import Dionysus
 from uart import UART
 import gpio
 import spi
+import i2c
 
 #TEST CONSTANTS
 MEM_SIZE = 1100
@@ -56,8 +57,8 @@ TEST_MEM_SIZE = 2097151
 
    
 
-def test_memory(dyn, dev_index):
-  print "testing memory @ %d" % dev_index
+def test_memory(dyn, dev_index, dev_offset):
+  print "testing memory @ %d" % dev_offset
   mem_bus = dyn.is_memory_device(dev_index)
   if mem_bus:
     print "Memory is on Memory bus"
@@ -132,14 +133,10 @@ def unit_test_devices(dyn):
     dev_size = dyn.get_device_size(dev_index)
     device_id = dyn.get_device_id(dev_index)
 
-    if (device_id == 1):
-      print "Found GPIO"
-      print "testing GPIO @ %d" % dev_offset
-      gpio.unit_test(dyn, dev_offset)
-
-#    if (device_id == 5):
-#      print "Found a memory device"
-#      test_memory(dyn, dev_offset)
+#    if (device_id == 1):
+#      print "Found GPIO"
+#      print "testing GPIO @ %d" % dev_offset
+#      gpio.unit_test(dyn, dev_offset)
 
     if (device_id == 2):
       print "Found UART device"
@@ -147,10 +144,20 @@ def unit_test_devices(dyn):
       uart = UART(dyn, dev_offset)
       uart.unit_test()
 
+#    if (device_id == 3):
+#      print "Fond I2C device"
+#      print "testing I2C @ %d" % dev_offset
+#      i2c.unit_test(dyn, dev_offset)
+
     if (device_id == 4):
       print "Found SPI device"
       print "testing SPI @ %d" % dev_offset
       spi.unit_test(dyn, dev_offset)
+
+    if (device_id == 5):
+      print "Found a memory device"
+      test_memory(dyn, dev_index, dev_offset)
+
 
  
 def usage():
