@@ -65,8 +65,8 @@
 `include "project_defines.v"
 `include "timescale.v"
 
-`define PRESCALE_100KHZ (`CLOCK_RATE/(5 * 100000) - 1)
-`define PRESCALE_400KHZ (`CLOCK_RATE/(5 * 400000) - 1)
+`define CLK_DIVIDE_100KHZ (`CLOCK_RATE/(5 * 100000) - 1)
+`define CLK_DIVIDE_400KHZ (`CLOCK_RATE/(5 * 400000) - 1)
 
 
 module wb_i2c (
@@ -109,10 +109,10 @@ inout               sda;
 parameter           ADDR_CONTROL        = 32'h00000000;
 parameter           ADDR_STATUS         = 32'h00000001;
 parameter           ADDR_CLOCK_RATE     = 32'h00000002;
-parameter           ADDR_PRESCALER      = 32'h00000003;
+parameter           ADDR_CLOCK_DIVIDER  = 32'h00000003;
 parameter           ADDR_COMMAND        = 32'h00000004;
 parameter           ADDR_TRANSMIT       = 32'h00000005;
-parameter           ADDR_READ           = 32'h00000006;
+parameter           ADDR_RECEIVE        = 32'h00000006;
 
 
 //Registers/Wires
@@ -136,7 +136,7 @@ wire                stop;
 wire                read;
 wire                write;
 wire                ack;
-wire                iack;
+reg                 iack;
 
 
 //Status Register
@@ -207,8 +207,8 @@ always @ (posedge clk) begin
     wbs_ack_o         <= 0;
     wbs_int_o         <= 0;
 
-    clock_divider         <=  `PRESCALE_100KHZ;
-    control           <=  8'h00;
+    clock_divider     <=  `CLK_DIVIDE_100KHZ;
+    control           <=  8'h01;
     transmit          <=  8'h00;
     command           <=  8'h00;
 
@@ -216,9 +216,11 @@ always @ (posedge clk) begin
     rxack             <=  0;
     tip               <=  0;
     irq_flag          <=  0;
+    iack              <=  0;
 
   end
   else begin
+    iack                      <=  0;
     
     //when the master acks our ack, then put our ack down
     if (wbs_ack_o & ~ wbs_stb_i)begin
@@ -228,15 +230,17 @@ always @ (posedge clk) begin
     end
 
     if (wbs_stb_i & wbs_cyc_i) begin
-      //master is requesting somethign
-      wbs_int_o               <=  0;
+      //master is requesting something
+      wbs_int_o         <=  0;
+      //acknowledge an interrupt
+      iack              <=  1;
       if (wbs_we_i) begin
         //write request
         case (wbs_adr_i) 
           ADDR_CONTROL: begin
             control           <=  wbs_dat_i[7:0];
           end
-          ADDR_PRESCALER: begin
+          ADDR_CLOCK_DIVIDER: begin
             clock_divider         <=  wbs_dat_i[15:0];
           end
           ADDR_COMMAND: begin
@@ -263,7 +267,7 @@ always @ (posedge clk) begin
           ADDR_CLOCK_RATE: begin
             wbs_dat_o         <=  `CLOCK_RATE;
           end
-          ADDR_PRESCALER: begin
+          ADDR_CLOCK_DIVIDER: begin
             wbs_dat_o         <=  {16'h0000, clock_divider};
           end
           ADDR_COMMAND: begin
@@ -272,7 +276,7 @@ always @ (posedge clk) begin
           ADDR_TRANSMIT: begin
             wbs_dat_o         <=  {24'h000000, transmit};
           end
-          ADDR_READ: begin
+          ADDR_RECEIVE: begin
             wbs_dat_o         <=  {24'h000000, receive};
           end
           default: begin
@@ -287,15 +291,15 @@ always @ (posedge clk) begin
     command[7:5]              <=  2'b00; 
 
     if (set_100khz) begin
-      clock_divider     <= `PRESCALE_100KHZ; 
+      clock_divider     <= `CLK_DIVIDE_100KHZ; 
       //reset the control so they don't keep firing off
-      control[4]    <=  0; 
+      control[2]    <=  0; 
       control[3]    <=  0;
     end
-    else if (set_400khz) begin
+    if (set_400khz) begin
       //reset the control so they don't keep firing off
-      clock_divider     <= `PRESCALE_400KHZ;
-      control[4]    <=  0; 
+      clock_divider     <= `CLK_DIVIDE_400KHZ;
+      control[2]    <=  0; 
       control[3]    <=  0;
     end
 
@@ -306,7 +310,7 @@ always @ (posedge clk) begin
     rxack                     <=  irxack;
     tip                       <=  (read | write);
 
-	  irq_flag <= #1 (done | i2c_al | irq_flag) & ~iack; // interrupt request flag is always generated
+	  irq_flag <= (done | i2c_al | irq_flag) & ~iack; // interrupt request flag is always generated
 
     if (irq_flag && ien) begin
       //interrupt enable and irq_flag fired off
