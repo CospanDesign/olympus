@@ -35,18 +35,19 @@ http://wiki.cospandesign.com/index.php?title=Wb_spi
 __author__ = 'dave.mccoy@cospandesign.com (Dave McCoy)'
 
 import time
+import sys
+import os
 
 from array import array as Array
 
+sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir))
+
 from userland import olympus
 from userland.dionysus import dionysus
-
 from userland.drivers import spi
-import sys
 
 SLAVE_SELECT_BIT = 0
 COMMAND_LENGTH = 64
-
 
 #COMMANDS
 CMD_RESET       = Array('B', [0x40, 0x00, 0x00, 0x00, 0x00])
