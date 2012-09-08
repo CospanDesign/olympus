@@ -137,6 +137,7 @@ wire                read;
 wire                write;
 wire                ack;
 reg                 iack;
+wire                core_reset;
 
 
 //Status Register
@@ -162,6 +163,8 @@ assign  core_en             = control[0];
 assign  ien                 = control[1];
 assign  set_100khz          = control[2];
 assign  set_400khz          = control[3];
+assign  core_reset          = control[7];
+
 
 // assign status register bits
 assign status[7]            = rxack;
@@ -177,7 +180,7 @@ assign  sda                 = sda_oen ? 1'hZ : sda_out;
 
 i2c_master_byte_ctrl byte_controller (
   .clk      (clk),
-  .rst      (rst),
+  .rst      (rst | core_reset),
   .nReset   (1),
   .ena      (core_en),
   .clk_cnt  (clock_divider),
@@ -301,6 +304,9 @@ always @ (posedge clk) begin
       clock_divider     <= `CLK_DIVIDE_400KHZ;
       control[2]    <=  0; 
       control[3]    <=  0;
+    end
+    if (core_reset) begin
+      control[7]    <=  0;
     end
 
 
