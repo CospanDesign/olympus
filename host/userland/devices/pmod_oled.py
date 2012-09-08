@@ -38,11 +38,11 @@ import time
 
 from array import array as Array
 
-import olympus
-import dionysus
+from userland import olympus
+from userland.dionysus import dionysus
 
-import spi
-import gpio
+from userland.devices import spi
+from userland.devices import gpio
 import sys
 
 #GPIOs

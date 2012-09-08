@@ -44,18 +44,24 @@ import json
 import getopt 
 from array import array as Array
 
-from olympus import OlympusCommError
-from dionysus import Dionysus
-from uart import UART
-import gpio
-import spi
-import i2c
+from userland import olympus
+from userland.olympus import OlympusCommError
+from userland.dionysus.dionysus import Dionysus
+from userland.drivers import uart
+from userland.drivers import gpio
+from userland.drivers import spi
+from userland.drivers import i2c
 
 #TEST CONSTANTS
 MEM_SIZE = 1100
 TEST_MEM_SIZE = 2097151
 
    
+TEST_GPIO = False
+TEST_UART = False
+TEST_I2C = True
+TEST_SPI = False
+TEST_MEMORY = False
 
 def test_memory(dyn, dev_index, dev_offset):
   print "testing memory @ %d" % dev_offset
@@ -133,30 +139,35 @@ def unit_test_devices(dyn):
     dev_size = dyn.get_device_size(dev_index)
     device_id = dyn.get_device_id(dev_index)
 
-#    if (device_id == 1):
-#      print "Found GPIO"
-#      print "testing GPIO @ %d" % dev_offset
-#      gpio.unit_test(dyn, dev_offset)
+    if TEST_GPIO:
+      if (device_id == 1):
+        print "Found GPIO"
+        print "testing GPIO @ %d" % dev_offset
+        gpio.unit_test(dyn, dev_offset)
 
-    if (device_id == 2):
-      print "Found UART device"
-      print "testing UART @ %d" % dev_offset
-      uart = UART(dyn, dev_offset)
-      uart.unit_test()
+    if TEST_UART:
+      if (device_id == 2):
+        print "Found UART device"
+        print "testing UART @ %d" % dev_offset
+        uart = UART(dyn, dev_offset)
+        uart.unit_test()
 
-#    if (device_id == 3):
-#      print "Fond I2C device"
-#      print "testing I2C @ %d" % dev_offset
-#      i2c.unit_test(dyn, dev_offset)
+    if TEST_I2C:
+      if (device_id == 3):
+        print "Fond I2C device"
+        print "testing I2C @ %d" % dev_offset
+        i2c.unit_test(dyn, dev_offset)
 
-    if (device_id == 4):
-      print "Found SPI device"
-      print "testing SPI @ %d" % dev_offset
-      spi.unit_test(dyn, dev_offset)
-
-    if (device_id == 5):
-      print "Found a memory device"
-      test_memory(dyn, dev_index, dev_offset)
+    if TEST_SPI:
+      if (device_id == 4):
+        print "Found SPI device"
+        print "testing SPI @ %d" % dev_offset
+        spi.unit_test(dyn, dev_offset)
+    
+    if TEST_MEMORY:
+      if (device_id == 5):
+        print "Found a memory device"
+        test_memory(dyn, dev_index, dev_offset)
 
 
  

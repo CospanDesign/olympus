@@ -1,14 +1,14 @@
 #! /usr/bin/python
 
 """
-Sycamore: the main front interface to the Sycamore bus system on the FPGA	
+UART_HOST: the main front interface to the UART_HOST bus system on the FPGA	
 """
 
 """
 Changes:
 11/12/2011
 	-Changed read_data and read_mem_data to return a list of double words
-	read from sycamore
+	read from urtamore
 11/07/2011
 	-Added the capability to detect interrupts and read find out if a slave was the one that
 		generated the interrupt
@@ -27,7 +27,7 @@ import string
 import time
 
 
-class Sycamore:
+class UART_HOST:
 
 	drt_string = ""
 	drt_lines = []
@@ -360,18 +360,18 @@ class Sycamore:
 	
 if __name__ == '__main__':
 	print "starting..."
-	syc = Sycamore()
-	ping_result = syc.ping()
+	urt = UART_HOST()
+	ping_result = urt.ping()
 	#ping 
 	if (not ping_result):
 		print "ping fail :("
 
-	syc.drt_string
-	if (len(syc.drt_string) == 0):
+	urt.drt_string
+	if (len(urt.drt_string) == 0):
 		print "nothing read from DRT"
 	else:
-		print "drt table: \n" + syc.drt_string
-		syc.slave_unit_test()
+		print "drt table: \n" + urt.drt_string
+		urt.slave_unit_test()
 
 	
 

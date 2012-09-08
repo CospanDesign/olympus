@@ -36,7 +36,7 @@ import time
 
 from array import array as Array
 
-import olympus
+from userland import olympus
 
 #Register Constants
 CONTROL             = 0

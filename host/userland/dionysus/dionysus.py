@@ -42,8 +42,8 @@ import os
 import string
 import json
 
-from olympus import Olympus
-from olympus import OlympusCommError
+from userland.olympus import Olympus
+from userland.olympus import OlympusCommError
 from pyftdi.pyftdi.ftdi import Ftdi
 from array import array as Array
 

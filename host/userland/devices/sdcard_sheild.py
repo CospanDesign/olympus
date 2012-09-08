@@ -38,10 +38,10 @@ import time
 
 from array import array as Array
 
-import olympus
-import dionysus
+from userland import olympus
+from userland.dionysus import dionysus
 
-import spi
+from userland.drivers import spi
 import sys
 
 SLAVE_SELECT_BIT = 0

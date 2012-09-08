@@ -36,9 +36,8 @@ __author__ = 'dave.mccoy@cospandesign.com (Dave McCoy)'
 import time
 from array import array as Array
 
-import olympus
-from olympus import OlympusCommError
-
+from userland import olympus
+from userland.olympus import OlympusCommError
 
 #Register Constants
 GPIO_PORT           = 0

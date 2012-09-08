@@ -40,7 +40,7 @@ import json
 from array import array as Array
 
 #put olympus in the system path
-sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, os.pardir, os.pardir, "cbuilder/drt"))
+sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, "cbuilder/drt"))
 import drt as drt_controller
 from drt import DRTManager
 
