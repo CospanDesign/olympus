@@ -1,0 +1,49 @@
+Host Side communication with an olympus image
+
+The host side communication is broken up into two directores:
+
+  kernelland: drivers that are installed in the kernel. Accessing devices 
+              through this method will create native devices that are
+              indestiguishable from devices that are truely connected
+              to your computer. These devices will show up in your
+              /dev directory as well as your /sys directory.
+
+
+  userland:   all drivers are written in userland, devices will not show
+              up in your /dev or your /sys. The only way to interface
+              with these devices are with scripts/programs specifically
+              written for a olympus
+
+
+
+  using kernalland vs userland drivers:
+
+    kernelland pros:
+
+    Native applications that are designed to work with existing 
+    devices will work with olympus devices.
+
+    For example:
+      using a usb serial device inside of Linux simply requires
+      'screen', 'kermit' or other well defined application. If 
+      a the user uses the kernelland drivers then those same
+      programs can be used to interact with olympus based UART
+      as though it was natively attached to the host computer
+
+    kernelland cons:
+
+    Very difficult to debug a new device/driver/core kernelland drivers
+    should only be used for devices/drivers/cores that are well defined
+    and have been 'vetted' through the userland drivers
+
+    userland pros:
+
+    very unlikely that users can crash their Linux box with a userland
+    driver
+
+    great for debugging a core and prototyping. For the most part many
+    users can use the userland drivers
+
+    userland cons:
+
+    scripts/programs must be written to interface with the olympus cores
