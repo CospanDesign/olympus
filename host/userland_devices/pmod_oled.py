@@ -35,15 +35,17 @@ http://wiki.cospandesign.com/index.php?title=Wb_spi
 __author__ = 'dave.mccoy@cospandesign.com (Dave McCoy)'
 
 import time
+import sys
+import os
 
 from array import array as Array
 
+sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir))
+
 from userland import olympus
 from userland.dionysus import dionysus
-
-from userland.devices import spi
-from userland.devices import gpio
-import sys
+from userland.drivers import spi
+from userland.drivers import gpio
 
 #GPIOs
 DATA_COMMAND_MODE = 2
@@ -332,15 +334,15 @@ class OLED:
       
 
 if __name__ == "__main__":
-  dyn = dionysus.Dionysus()
-  dyn.ping()
-  dyn.read_drt()
+  oly = dionysus.Dionysus()
+  oly.ping()
+  oly.read_drt()
   gpio_index = 0
   spi_index = 0
-  num_devices = dyn.get_number_of_devices()
+  num_devices = oly.get_number_of_devices()
   for dev_index in range (0, num_devices):
-    device_id = dyn.get_device_id(dev_index)
-    dev_offset = dyn.get_device_address(dev_index)
+    device_id = oly.get_device_id(dev_index)
+    dev_offset = oly.get_device_address(dev_index)
 
     if device_id == 1:
       gpio_index = dev_offset
@@ -348,14 +350,14 @@ if __name__ == "__main__":
     if device_id == 4:
       spi_index = dev_offset
 
-  if (gpio_index == 0) and (spi_index == 0):
+  if (gpio_index == 0) or (spi_index == 0):
     print "Couldn't find the ID of both devices"
     sys.exit(1)
 
   print "Found both devices, starting OLED"
   print "GPIO Index: %d" % gpio_index
   print "SPI index: %d" % spi_index
-  oled = OLED(dyn, spi_index, gpio_index)
+  oled = OLED(oly, spi_index, gpio_index)
 
   oled.power_up()
 
