@@ -515,34 +515,41 @@ class I2C:
 
     
     command = COMMAND_START | COMMAND_WRITE
-    self.print_command(command)
+    if self.debug:
+      self.print_command(command)
     #send the command to the I2C command register to initiate a transfer
     self.o.write_register(self.dev_id, COMMAND, command)
 
     #wait 1 second for interrupt
     if self.o.wait_for_interrupts(wait_time = 1):
-      print "got interrupt for start"
+      if self.debug:
+        print "got interrupt for start"
       if self.o.is_interrupt_for_slave(self.dev_id):
         status = self.get_status()
-        self.print_status(status)
+        if self.debug:
+          self.print_status(status)
         if (status & STATUS_READ_ACK_N) > 0:
           raise I2CError("Did not recieve an ACK while writing I2C ID")
  
     else:
-      self.print_status(self.get_status())
+      if self.debug:
+        self.print_status(self.get_status())
       raise I2CError("Timed out while waiting for interrupt durring a start")
     
     #send the data
     count = 0
-    print "total data to write: %d" % len(i2c_data)
+    if self.debug:
+      print "total data to write: %d" % len(i2c_data)
     if len(i2c_data) > 1:
       while count < len(i2c_data) - 1:
-        print "Writing %d" % count
+        if self.debug:
+          print "Writing %d" % count
         data = i2c_data[count]
         self.o.write_register(self.dev_id, TRANSMIT, data)
         self.o.write_register(self.dev_id, COMMAND, COMMAND_WRITE)
         if self.o.wait_for_interrupts(wait_time = 1):
-          print "got interrupt for data"
+          if self.debug:
+            print "got interrupt for data"
           if self.o.is_interrupt_for_slave(self.dev_id):
             status = self.get_status()
             if (status & STATUS_READ_ACK_N) > 0:
@@ -558,7 +565,8 @@ class I2C:
     self.o.write_register(self.dev_id, TRANSMIT, data)
     self.o.write_register(self.dev_id, COMMAND, COMMAND_WRITE | COMMAND_STOP)
     if self.o.wait_for_interrupts(wait_time = 1):
-      print "got interrupt for the last byte"
+      if self.debug:
+        print "got interrupt for the last byte"
       if self.o.is_interrupt_for_slave(self.dev_id):
         status = self.get_status()
         if (status & STATUS_READ_ACK_N) > 0:
@@ -602,37 +610,44 @@ class I2C:
 
     
     command = COMMAND_START | COMMAND_WRITE
-    self.print_command(command)
+    if self.debug:
+      self.print_command(command)
     #send the command to the I2C command register to initiate a transfer
     self.o.write_register(self.dev_id, COMMAND, command)
 
     #wait 1 second for interrupt
     if self.o.wait_for_interrupts(wait_time = 1):
-      print "got interrupt for start"
+      if self.debug:
+        print "got interrupt for start"
       if self.o.is_interrupt_for_slave(self.dev_id):
         status = self.get_status()
-        self.print_status(status)
+        if self.debug:
+          self.print_status(status)
         if (status & STATUS_READ_ACK_N) > 0:
           raise I2CError("Did not recieve an ACK while writing I2C ID")
  
     else:
-      self.print_status(self.get_status())
+      if self.debug:
+        self.print_status(self.get_status())
       raise I2CError("Timed out while waiting for interrupt durring a start")
     
     #send the data
     count = 0
     if read_length > 1:
       while count < read_length - 1:
-        print "\tReading %d" % count
+        if self.debug:
+          print "\tReading %d" % count
         self.o.write_register(self.dev_id, COMMAND, COMMAND_READ)
         if self.o.wait_for_interrupts(wait_time = 1):
-          print "got interrupt for data"
+          if self.debug:
+            print "got interrupt for data"
           if self.o.is_interrupt_for_slave(self.dev_id):
             status = self.get_status()
             #if (status & STATUS_READ_ACK_N) > 0:
             #  raise I2CError("Did not receive an ACK while reading data")
             value = self.o.read_register(self.dev_id, RECEIVE)
-            print "value: %d"
+            if self.debug:
+              print "value: %d"
             read_data.append((value & 0xFF))
             
 
@@ -644,14 +659,16 @@ class I2C:
     #read the last peice of data 
     self.o.write_register(self.dev_id, COMMAND, COMMAND_READ | COMMAND_NACK | COMMAND_STOP)
     if self.o.wait_for_interrupts(wait_time = 1):
-      print "got interrupt for the last byte"
+      if self.debug:
+        print "got interrupt for the last byte"
       if self.o.is_interrupt_for_slave(self.dev_id):
         status = self.get_status()
         #if (status & STATUS_READ_ACK_N) > 0:
         #  raise I2CError("Did not receive an ACK while writing data")
 
         value = self.o.read_register(self.dev_id, RECEIVE)
-        print "value: %d" % value
+        if self.debug:
+          print "value: %d" % value
         read_data.append(value & 0xFF)
     else:
       raise I2CError("Timed out while waiting for interrupt while sending the last byte")
@@ -665,7 +682,6 @@ def unit_test(oly, dev_id):
   print "Unit test!"
   i2c = I2C(oly, dev_id)
 
-  """
   print "Check if core is enabled"
   print "enabled: " + str(i2c.is_i2c_enabled())
 
@@ -681,8 +697,6 @@ def unit_test(oly, dev_id):
 
   print "Check if core is enabled"
   print "enabled: " + str(i2c.is_i2c_enabled())
-
-
 
   print "Check if interrupt is enabled"
   print "enabled: " + str(i2c.is_interrupt_enabled())
@@ -727,7 +741,7 @@ def unit_test(oly, dev_id):
 
   print "Resetting I2C device"
   #i2c.reset_i2c_device()
-  """
+
   i2c_id = 0x21
   data   = Array('B', [0x47, 0x7F, 0x55])
 
