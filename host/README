@@ -48,3 +48,31 @@ The host side communication is broken up into two directores:
     userland cons:
 
     scripts/programs must be written to interface with the olympus cores
+
+
+Directory Structure:
+  
+  kernelland: base directory for drivers that are installed within the kernel
+              this portion is VERY experimental
+
+  userland: base directory for drivers that are used in userland
+    drivers: peripheral drivers used to control a specific core that is found
+             on an olympus image. some of the current drivers include
+                -GPIO
+                -SPI
+                -UART
+                -I2C
+
+    dionysus: contains the concrete implementation of the olympus driver for 
+              dionysus board
+
+  userland_devices: scripts to exercise devices that are controlled through
+    userland drivers. Some of the devices that are included are
+      -pmod_led: PMOD organic LED
+      -sdcard_shield: control the SD card sheild from seeed studio
+
+
+To run an userland_device script:
+  1. Load a core with the specified core into the olympus board
+  2. run userland_devices/<script_name> host_interface
+    -the host interface can be 'dionysus' or 'uart'
