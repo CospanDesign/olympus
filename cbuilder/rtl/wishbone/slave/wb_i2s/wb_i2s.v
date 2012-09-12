@@ -23,26 +23,6 @@ SOFTWARE.
 */
 
 /*
-	10/29/2011
-		-added an 'else' statement that so either the
-		reset HDL will be executed or the actual code
-		not both
-*/
-
-/*
-	10/23/2011
-		-fixed the wbs_ack_i to wbs_ack_o
-		-added the default entries for read and write
-			to illustrate the method of communication
-		-added license
-*/
-/*
-	9/10/2011
-		-removed the duplicate wbs_dat_i
-		-added the wbs_sel_i port
-*/
-
-/*
 	Use this to tell sycamore how to populate the Device ROM table
 	so that users can interact with your slave
 
@@ -248,7 +228,7 @@ always @ (posedge clk) begin
 			mem_cyc_o	<= 0;
 		end
 		if (enable_mem_read) begin
-			$display("enable a host write! of %h", local_data);
+			$display("enable a host write! of %h");
 			mem_stb_o <= 1;
 			mem_cyc_o <= 1;
 			mem_sel_o <= 4'b1111;

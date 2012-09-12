@@ -1,4 +1,5 @@
 ../../interconnect/example_2port_interconnect/wishbone_interconnect.v
+rtl/i2s_mem_controller.v
 rtl/i2s_controller.v
 rtl/wb_i2s.v
 ../../../../rtl/wishbone/slave/device_rom_table/device_rom_table.v
