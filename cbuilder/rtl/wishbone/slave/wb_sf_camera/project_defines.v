@@ -1,0 +1,1 @@
+../../../../sim/wishbone/slave/wb_sf_camera/project_defines.v
