@@ -62,7 +62,7 @@ CONTROL_INTERRUPT_ENABLE  = 1 << 12
 CONTROL_AUTO_SLAVE_SEL    = 1 << 13
 
 class SPIError(Exception):
-  """OlympusCommError
+  """SPIError
     
     Errors associated with SPI
       SPI bus busy
