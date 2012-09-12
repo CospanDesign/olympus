@@ -889,8 +889,9 @@ class GenTop(Gen):
       
         wbm_name = ""
 
-        #first master is always from the interconnect
-        if (mi == 0):
+        #last master is always from the interconnect
+#XXX: This should really be a parameter, but this will alow slaves to take over a peripheral
+        if (mi == master_count - 1):
           if debug:
             print "mi: " + str(mi)
           on_periph_bus = False
@@ -933,11 +934,11 @@ class GenTop(Gen):
 
 
 
-        #not the first index
+        #not the last index
         else:
           if debug:
             print "mi: " + str(mi)
-          master_name = arb_tags[arb_slave].keys()[mi - 1]
+          master_name = arb_tags[arb_slave].keys()[mi]
           bus_name = arb_tags[arb_slave][master_name]
           wbm_name = master_name + "_" + bus_name 
 

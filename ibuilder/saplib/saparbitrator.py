@@ -214,6 +214,7 @@ def generate_arbitrator_buffer(master_count, debug = False):
 
   port_buf = ""
   port_def_buf = ""
+  priority_sel_buf = ""
   master_sel_buf = ""
   write_buf = ""
   strobe_buf = ""
@@ -258,6 +259,7 @@ def generate_arbitrator_buffer(master_count, debug = False):
   if (debug):
     print "port define buf: \n\n" + port_def_buf
 
+
   #generate the master_select logic
   master_sel_buf = "//master select block\n"
   master_sel_buf += "parameter MASTER_NO_SEL = 8'hFF;\n"
@@ -300,8 +302,68 @@ def generate_arbitrator_buffer(master_count, debug = False):
     master_sel_buf += "\t\t\t\tend\n"
   master_sel_buf += "\t\t\tend\n"
   master_sel_buf += "\t\tendcase\n"
+  master_sel_buf += "\t\tif ((priority_select < master_select) && ~s_stb_o)begin\n"
+  master_sel_buf += "\n"
+
+  first_if_flag = True
+  for i in range(master_count):
+    if (first_if_flag):
+      first_if_flag = False
+      master_sel_buf += "\t\t\t\tif (m" + str(i) + "_stb_i) begin\n"
+    else:
+      master_sel_buf += "\t\t\t\telse if (m" + str(i) + "_stb_i) begin\n"
+
+    master_sel_buf += "\t\t\t\t\tmaster_select <= MASTER_" + str(i) + ";\n"
+    master_sel_buf += "\t\t\t\tend\n"
+
+  master_sel_buf += "\t\tend\n"
   master_sel_buf += "\tend\n"
   master_sel_buf += "end\n"
+
+  if debug:
+    print "master select buffer:\n\n" + master_sel_buf
+
+
+  #generate the priority_select logic
+  prirotiy_sel_buf = "//priority select block"
+
+  priority_sel_buf += "\n\n"
+  priority_sel_buf += "parameter PRIORITY_NO_SEL = 8'hFF;\n"
+  first_if_fag = True
+  for i in range (master_count):
+    priority_sel_buf += "parameter PRIORITY_" + str(i) + " = " + str(i) + ";\n"
+
+  priority_sel_buf += "\n\n"
+  priority_sel_buf += "always @(rst or master_select "
+  for i in range (master_count):
+    priority_sel_buf += "or m" + str(i) + "_cyc_i "
+
+  priority_sel_buf += ") begin\n" 
+  priority_sel_buf += "\tif (rst) begin\n"
+  priority_sel_buf += "\t\tpriority_select <= PRIORITY_NO_SEL;\n"
+  priority_sel_buf += "\tend\n"
+  priority_sel_buf += "\telse begin\n"
+  priority_sel_buf += "\t\t//find the highest priority\n"
+  first_if_flag = True
+  for i in range (master_count):
+    if first_if_flag:
+      first_if_flag = False
+      priority_sel_buf += "\t\tif (m" + str(i) + "_cyc_i) begin\n"
+    else:
+      priority_sel_buf += "\t\telse if (m" + str(i) + "_cyc_i) begin\n"
+    
+    priority_sel_buf += "\t\t\tpriority_select  <= PRIORITY_" + str(i) + ";\n"
+    priority_sel_buf += "\t\tend\n"
+
+  priority_sel_buf += "\t\telse begin\n"
+  priority_sel_buf += "\t\t\tpriority_select  <= PRIORITY_NO_SEL;\n"
+  priority_sel_buf += "\t\tend\n"
+  priority_sel_buf += "\tend\n"
+  priority_sel_buf += "end\n"
+
+  if debug:
+    print "priority_sel_buf: \n\n" + priority_sel_buf
+
 
 
   #generate the write logic
@@ -425,6 +487,7 @@ def generate_arbitrator_buffer(master_count, debug = False):
   buf = template.substitute ( ARBITRATOR_NAME=arbitrator_name,
                 PORTS=port_buf,
                 PORT_DEFINES=port_def_buf,
+                PRIORITY_SELECT=priority_sel_buf,
                 MASTER_SELECT=master_sel_buf,
                 WRITE=write_buf,
                 STROBE=strobe_buf,
