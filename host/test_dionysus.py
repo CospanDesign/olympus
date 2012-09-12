@@ -51,6 +51,7 @@ from userland.drivers import uart
 from userland.drivers import gpio
 from userland.drivers import spi
 from userland.drivers import i2c
+from userland.drivers import console
 
 #TEST CONSTANTS
 MEM_SIZE = 1100
@@ -59,12 +60,13 @@ TEST_MEM_SIZE = 2097151
    
 TEST_GPIO = False
 TEST_UART = False
-TEST_I2C = True
+TEST_I2C = False
 TEST_SPI = False
-TEST_MEMORY = False
+TEST_MEMORY = True
+TEST_CONSOLE = False
 
-def test_memory(dyn, dev_index, dev_offset):
-  print "testing memory @ %d" % dev_offset
+def test_memory(dyn, dev_index):
+  print "testing memory @ %d" % dev_index
   mem_bus = dyn.is_memory_device(dev_index)
   if mem_bus:
     print "Memory is on Memory bus"
@@ -73,10 +75,17 @@ def test_memory(dyn, dev_index, dev_offset):
 
   print "Testing short write"
   data_out  = Array('B', [0xAA, 0xBB, 0xCC, 0xDD, 0x55, 0x66, 0x77, 0x88])
+  print "out data: %s" % str(data_out)
+  print "hex: "
+  for i in range (0, len(data_out)):
+    print str(hex(data_out[i])) + ", ",
+  print " "
+
   dyn.write(dev_index, 0, data_out, mem_bus)
 
   print "Testing short read"
-  data_in = dyn.read(dev_index, 0, 1, mem_bus)
+  data_in = dyn.read(dev_index, 0, 2, mem_bus)
+
   print "mem data: %s" % str(data_in)
   print "hex: "
   for i in range (0, len(data_in)):
@@ -84,6 +93,7 @@ def test_memory(dyn, dev_index, dev_offset):
   print " "
 
   dev_size = (dyn.get_device_size(dev_index) / 4)
+  print "Memory size: 0x%X" % (dyn.get_device_size(dev_index))
   
   data_out = Array('B')
   num = 0
@@ -128,6 +138,7 @@ def test_memory(dyn, dev_index, dev_offset):
     print "Failed: %d mismatches" % fail_count
 
 
+
 def unit_test_devices(dyn):
   num_devices = dyn.get_number_of_devices()
   print "Unit Test"
@@ -167,7 +178,12 @@ def unit_test_devices(dyn):
     if TEST_MEMORY:
       if (device_id == 5):
         print "Found a memory device"
-        test_memory(dyn, dev_index, dev_offset)
+        test_memory(dyn, dev_index)
+
+    if TEST_CONSOLE:
+      if (device_id == 6):
+        print "Found a console device"
+        console.unit_test(dyn, dev_offset)
 
 
  
