@@ -46,6 +46,8 @@ SOFTWARE.
 
 */
 
+`define CONTROL_ENABLE          0 
+`define CONTROL_ENABLE_TIMEOUT  1
 
 module wb_console (
 	clk,
@@ -85,89 +87,90 @@ module wb_console (
 
 );
 
-input 				clk;
-input 				rst;
+input 				      clk;
+input 				      rst;
 
 //wishbone slave signals
-input 				wbs_we_i;
-input 				wbs_stb_i;
-input 				wbs_cyc_i;
-input		[3:0]	wbs_sel_i;
-input		[31:0]	wbs_adr_i;
-input  		[31:0]	wbs_dat_i;
+input 				      wbs_we_i;
+input 				      wbs_stb_i;
+input 				      wbs_cyc_i;
+input		    [3:0]	  wbs_sel_i;
+input		    [31:0]	wbs_adr_i;
+input  		  [31:0]	wbs_dat_i;
 output reg  [31:0]	wbs_dat_o;
-output reg			wbs_ack_o;
-output reg			wbs_int_o;
+output reg			    wbs_ack_o;
+output reg			    wbs_int_o;
 
 //master control signal for memory arbitration
-output reg			fb_we_o;
-output reg			fb_stb_o;
-output reg			fb_cyc_o;
-output reg	[3:0]	fb_sel_o;
+output reg			    fb_we_o;
+output reg			    fb_stb_o;
+output reg			    fb_cyc_o;
+output reg	[3:0]	  fb_sel_o;
 output reg	[31:0]	fb_adr_o;
 output reg	[31:0]	fb_dat_o;
-input		[31:0]	fb_dat_i;
-input				fb_ack_i;
-input				fb_int_i;
+input		    [31:0]	fb_dat_i;
+input				        fb_ack_i;
+input				        fb_int_i;
 
 //master control signal for lcd arbitration
-output reg			lcd_we_o;
-output reg			lcd_stb_o;
-output reg			lcd_cyc_o;
-output reg	[3:0]	lcd_sel_o;
+output reg			    lcd_we_o;
+output reg			    lcd_stb_o;
+output reg			    lcd_cyc_o;
+output reg	[3:0]	  lcd_sel_o;
 output reg	[31:0]	lcd_adr_o;
 output reg	[31:0]	lcd_dat_o;
-input		[31:0]	lcd_dat_i;
-input				lcd_ack_i;
-input				lcd_int_i;
+input		    [31:0]	lcd_dat_i;
+input				        lcd_ack_i;
+input				        lcd_int_i;
 
 
 
-parameter			TIMEOUT				=	32'd10;
+parameter			TIMEOUT				      =	32'd10;
 //30 times a second
-//parameter			TIMEOUT				=	32'd1666666;
+//parameter			TIMEOUT				    =	32'd1666666;
 //60 times a second
-//parameter			TIMEOUT				=	32'd833333;
+//parameter			TIMEOUT				    =	32'd833333;
 
-parameter			ADDR_CONTROL		=	32'h00000000;
-parameter			ADDR_TIMEOUT		=	32'h00000001;
-parameter			ADDR_UPDATE_RATE	=	32'h00000002;
-parameter			ADDR_SCREEN_WIDTH	=	32'h00000003;
+parameter			ADDR_CONTROL		    =	32'h00000000;
+parameter			ADDR_TIMEOUT		    =	32'h00000001;
+parameter			ADDR_UPDATE_RATE	  =	32'h00000002;
+parameter			ADDR_SCREEN_WIDTH	  =	32'h00000003;
 parameter			ADDR_SCREEN_HEIGHT	=	32'h00000004;
-parameter			ADDR_FONT_ADDRESS	=	32'h00000005;
-parameter			ADDR_FRONT			=	32'h00000006;
-parameter			ADDR_BACK			=	32'h00000007;
+parameter			ADDR_FONT_ADDRESS	  =	32'h00000005;
+parameter			ADDR_FRONT			    =	32'h00000006;
+parameter			ADDR_BACK			      =	32'h00000007;
 
 
-reg			[31:0]	local_data;
-reg			[31:0]	timeout;
+reg			    [31:0]	local_data;
+reg			    [31:0]	timeout;
 
-reg			[31:0]	screen_width;
-reg			[31:0]	screen_height;
+reg			    [31:0]	screen_width;
+reg			    [31:0]	screen_height;
 
-reg			[31:0]	buffer_pointer;
-reg			[31:0]	front;
-reg			[31:0]	back;
-reg			[31:0]	font_address;
+reg			    [31:0]	buffer_pointer;
+reg			    [31:0]	front;
+reg			    [31:0]	back;
+reg			    [31:0]	font_address;
 
-wire		[31:0]	status;
+reg         [31:0]  control;
 
-reg					timeout_elapsed;
+reg					        timeout_elapsed;
 
 //flags
-reg					console_ready;
-reg					enable_console;
-reg					enable_timeout;
+reg					        console_ready;
 
-assign	status[0]	=	console_ready;
-assign	status[1]	=	enable_console;
-assign 	status[2]	=	enable_timeout;
+wire                enable_console;
+wire                enable_timeout;
+
+assign  enable_console  = control[`CONTROL_ENABLE];
+assign  enable_timeout  = control[`CONTROL_ENABLE_TIMEOUT];
+
+reg                 oneshot;
 
 
 
 //blocks
 always @ (posedge clk) begin
-	enable_console			<= 0;
 	if (rst) begin
 		wbs_dat_o			<= 32'h0;
 		wbs_ack_o			<= 0;
@@ -178,13 +181,10 @@ always @ (posedge clk) begin
 		timeout				<= TIMEOUT;
 		timeout_elapsed			<= 0;
 
-		enable_console		<= 0;
-//		enable_timeout		<= 0;
-		enable_timeout		<= 1;
-		
 	end
 
 	else begin
+    control[`CONTROL_ENABLE]  <=  0;
 		//when the master acks our ack, then put our ack down
 		if (wbs_ack_o & ~ wbs_stb_i)begin
 			wbs_ack_o <= 0;
@@ -201,9 +201,7 @@ always @ (posedge clk) begin
 	
 						//NOTE THE FOLLOWING LINE IS AN EXAMPLE
 						//	THIS IS WHAT THE USER WILL READ FROM ADDRESS 0
-						$display("user wrote %h", wbs_dat_i);
-						enable_console	<= wbs_dat_i[0];
-						enable_timeout	<= wbs_dat_i[1];
+            control   <=  wbs_dat_i;
 						local_data <= wbs_dat_i;
 					end
 					ADDR_TIMEOUT: begin
@@ -235,7 +233,7 @@ always @ (posedge clk) begin
 					ADDR_CONTROL: begin
 						//read the control and status flags
 						$display("user read %h", ADDR_CONTROL);
-						wbs_dat_o <= status;
+            wbs_dat_o <=  control;
 					end
 					ADDR_TIMEOUT: begin
 						//read the timeout value
