@@ -44,6 +44,18 @@
     "Frame Buffer":{
       "description": "Generic Frame Buffer",
       "ID":"0x000A"
+    },
+    "I2S":{
+      "description": "Generic Inter IC Sount",
+      "ID":"0x000B"
+    },
+    "Logic Analyzer":{
+      "description": "Logic Analyzer",
+      "ID":"0x000C"
+    },
+    "Camera":{
+      "description":"Camera",
+      "ID":"0x000D"
     }
   },
   "flags":{
