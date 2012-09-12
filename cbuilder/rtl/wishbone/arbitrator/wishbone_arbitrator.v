@@ -24,17 +24,17 @@ SOFTWARE.
 
 
 module ${ARBITRATOR_NAME} (
-	clk,
-	rst,
+  clk,
+  rst,
 
-	//master ports
+  //master ports
 ${PORTS}
 
-	//slave port
+  //slave port
     s_we_o,
     s_cyc_o,
     s_stb_o,
-	s_sel_o,
+    s_sel_o,
     s_ack_i,
     s_dat_o,
     s_dat_i,
@@ -45,28 +45,33 @@ ${PORTS}
 
 
 //control signals
-input 				clk;
-input 				rst;
+input               clk;
+input               rst;
 
 //wishbone slave signals
-output reg			s_we_o;
-output reg			s_stb_o;
-output reg 			s_cyc_o;
-output reg	[3:0]	s_sel_o;
-output reg	[31:0]	s_adr_o;
-output reg  [31:0]	s_dat_o;
-input  		[31:0]	s_dat_i;
-input      			s_ack_i;
-input 				s_int_i;
+output reg          s_we_o;
+output reg          s_stb_o;
+output reg          s_cyc_o;
+output reg  [3:0]   s_sel_o;
+output reg  [31:0]  s_adr_o;
+output reg  [31:0]  s_dat_o;
+input       [31:0]  s_dat_i;
+input               s_ack_i;
+input               s_int_i;
 
 
 //wishbone master signals
 ${PORT_DEFINES}
 
+//registers/wires
 //this should be parameterized
-reg [7:0]master_select;
+reg [7:0]           master_select;
+reg [7:0]           priority_select;
 
 ${MASTER_SELECT}
+
+//priority select
+${PRIORITY_SELECT}
 
 ${WRITE}
 
