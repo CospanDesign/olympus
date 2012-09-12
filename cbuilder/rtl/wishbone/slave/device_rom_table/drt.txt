@@ -56,6 +56,8 @@ THIS IS NOT BY ANY MEANS FINAL, BUT MAKING DEVICE IDENTIFICATION NUMBER
 0008	: LEDs
 0009	: Buttons
 000A	: Frame Buffer
+000B  : I2S
+000C  : Logic Analyzer
 
 
 Strings (Tentative)
