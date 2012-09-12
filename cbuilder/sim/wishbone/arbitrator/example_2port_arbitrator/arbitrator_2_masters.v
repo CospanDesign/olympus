@@ -24,10 +24,10 @@ SOFTWARE.
 
 
 module arbitrator_2_masters (
-	clk,
-	rst,
+  clk,
+  rst,
 
-	//master ports
+  //master ports
 	m0_we_i,
 	m0_cyc_i,
 	m0_stb_i,
@@ -52,11 +52,11 @@ module arbitrator_2_masters (
 
 
 
-	//slave port
+  //slave port
     s_we_o,
     s_cyc_o,
     s_stb_o,
-	s_sel_o,
+    s_sel_o,
     s_ack_i,
     s_dat_o,
     s_dat_i,
@@ -67,19 +67,19 @@ module arbitrator_2_masters (
 
 
 //control signals
-input 				clk;
-input 				rst;
+input               clk;
+input               rst;
 
 //wishbone slave signals
-output reg			s_we_o;
-output reg			s_stb_o;
-output reg 			s_cyc_o;
-output reg	[3:0]	s_sel_o;
-output reg	[31:0]	s_adr_o;
-output reg  [31:0]	s_dat_o;
-input  		[31:0]	s_dat_i;
-input      			s_ack_i;
-input 				s_int_i;
+output reg          s_we_o;
+output reg          s_stb_o;
+output reg          s_cyc_o;
+output reg  [3:0]   s_sel_o;
+output reg  [31:0]  s_adr_o;
+output reg  [31:0]  s_dat_o;
+input       [31:0]  s_dat_i;
+input               s_ack_i;
+input               s_int_i;
 
 
 //wishbone master signals
@@ -107,8 +107,10 @@ output			m1_int_o;
 
 
 
+//registers/wires
 //this should be parameterized
-reg [7:0]master_select;
+reg [7:0]           master_select;
+reg [7:0]           priority_select;
 
 //master select block
 parameter MASTER_NO_SEL = 8'hFF;
@@ -142,6 +144,42 @@ always @(rst or master_select or m0_stb_i or m1_stb_i ) begin
 				end
 			end
 		endcase
+		if ((priority_select < master_select) && ~s_stb_o)begin
+
+				if (m0_stb_i) begin
+					master_select <= MASTER_0;
+				end
+				else if (m1_stb_i) begin
+					master_select <= MASTER_1;
+				end
+		end
+	end
+end
+
+
+//priority select
+
+
+parameter PRIORITY_NO_SEL = 8'hFF;
+parameter PRIORITY_0 = 0;
+parameter PRIORITY_1 = 1;
+
+
+always @(rst or master_select or m0_cyc_i or m1_cyc_i ) begin
+	if (rst) begin
+		priority_select <= PRIORITY_NO_SEL;
+	end
+	else begin
+		//find the highest priority
+		if (m0_cyc_i) begin
+			priority_select  <= PRIORITY_0;
+		end
+		else if (m1_cyc_i) begin
+			priority_select  <= PRIORITY_1;
+		end
+		else begin
+			priority_select  <= PRIORITY_NO_SEL;
+		end
 	end
 end
 
