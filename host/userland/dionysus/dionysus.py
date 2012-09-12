@@ -228,6 +228,15 @@ class Dionysus(Olympus):
         print "memory device"
       data_out = Array ('B', [0xCD, 0x11])
     
+    """
+    print "write command:\n\t" + str(data_out[:9])
+    for i in range (0, len(data_out)):
+      print str(hex(data_out[i])) + ", ",
+    print " "
+    """
+
+ 
+
     #append the length into the frist 32 bits
     fmt_string = "%06X" % (length) 
     data_out.fromstring(fmt_string.decode('hex'))
@@ -240,10 +249,17 @@ class Dionysus(Olympus):
     
     data_out.extend(data)
 
-    if (self.debug):
-      print "data write string:\n"
-      print "write command:\n\t" + str(data_out[:9])
-      print "write data:\n" + str(data_out[9:])
+    """
+    #if (self.debug):
+    print "data write string:\n"
+    print "write command:\n\t" + str(data_out[:9])
+    for i in range (0, 9):
+      print str(hex(data_out[i])) + ", ",
+    print " "
+    """
+
+
+    #print "write data:\n" + str(data_out[9:])
 
     #avoid the akward stale bug
     self.dev.purge_buffers()
