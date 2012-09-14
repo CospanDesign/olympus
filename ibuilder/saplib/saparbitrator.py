@@ -268,11 +268,12 @@ def generate_arbitrator_buffer(master_count, debug = False):
 
   master_sel_buf += "\n\n"
 
-  master_sel_buf += "always @(rst or master_select "
-  for i in range(master_count):
-    master_sel_buf += "or m" + str(i) + "_stb_i "
+  #master_sel_buf += "always @(rst or master_select or priority_select or s_ack_i or s_stb_o "
+  #for i in range(master_count):
+  #  master_sel_buf += "or m" +str(i) + "_cyc_i or m" + str(i) + "_stb_i "
 
-  master_sel_buf += ") begin\n"
+  #master_sel_buf += ") begin\n"
+  master_sel_buf += "always @ (posedge clk) begin\n"
   master_sel_buf += "\tif (rst) begin\n"
   master_sel_buf += "\t\tmaster_select <= MASTER_NO_SEL;\n"
   master_sel_buf += "\tend\n"
@@ -282,7 +283,7 @@ def generate_arbitrator_buffer(master_count, debug = False):
 
   for i in range(master_count):
     master_sel_buf += "\t\t\tMASTER_" + str(i) + ": begin\n"
-    master_sel_buf += "\t\t\t\tif (~m" + str(i) + "_stb_i) begin\n"
+    master_sel_buf += "\t\t\t\tif (~m" + str(i) + "_cyc_i && ~s_ack_i) begin\n"
     master_sel_buf += "\t\t\t\t\tmaster_select <= MASTER_NO_SEL;\n"
     master_sel_buf += "\t\t\t\tend\n"
     master_sel_buf += "\t\t\tend\n"
@@ -294,24 +295,24 @@ def generate_arbitrator_buffer(master_count, debug = False):
   for i in range(master_count):
     if (first_if_flag):
       first_if_flag = False
-      master_sel_buf += "\t\t\t\tif (m" + str(i) + "_stb_i) begin\n"
+      master_sel_buf += "\t\t\t\tif (m" + str(i) + "_cyc_i) begin\n"
     else:
-      master_sel_buf += "\t\t\t\telse if (m" + str(i) + "_stb_i) begin\n"
+      master_sel_buf += "\t\t\t\telse if (m" + str(i) + "_cyc_i) begin\n"
 
     master_sel_buf += "\t\t\t\t\tmaster_select <= MASTER_" + str(i) + ";\n"
     master_sel_buf += "\t\t\t\tend\n"
   master_sel_buf += "\t\t\tend\n"
   master_sel_buf += "\t\tendcase\n"
-  master_sel_buf += "\t\tif ((priority_select < master_select) && ~s_stb_o)begin\n"
+  master_sel_buf += "\t\tif ((priority_select < master_select) && (~s_stb_o && ~s_ack_i))begin\n"
   master_sel_buf += "\n"
 
   first_if_flag = True
   for i in range(master_count):
     if (first_if_flag):
       first_if_flag = False
-      master_sel_buf += "\t\t\t\tif (m" + str(i) + "_stb_i) begin\n"
+      master_sel_buf += "\t\t\t\tif (m" + str(i) + "_cyc_i) begin\n"
     else:
-      master_sel_buf += "\t\t\t\telse if (m" + str(i) + "_stb_i) begin\n"
+      master_sel_buf += "\t\t\t\telse if (m" + str(i) + "_cyc_i) begin\n"
 
     master_sel_buf += "\t\t\t\t\tmaster_select <= MASTER_" + str(i) + ";\n"
     master_sel_buf += "\t\t\t\tend\n"
@@ -334,11 +335,12 @@ def generate_arbitrator_buffer(master_count, debug = False):
     priority_sel_buf += "parameter PRIORITY_" + str(i) + " = " + str(i) + ";\n"
 
   priority_sel_buf += "\n\n"
-  priority_sel_buf += "always @(rst or master_select "
-  for i in range (master_count):
-    priority_sel_buf += "or m" + str(i) + "_cyc_i "
+  #priority_sel_buf += "always @(rst or master_select "
+  #for i in range (master_count):
+  #  priority_sel_buf += "or m" + str(i) + "_cyc_i "
 
-  priority_sel_buf += ") begin\n" 
+  #priority_sel_buf += ") begin\n" 
+  priority_sel_buf += "always @ (posedge clk) begin\n"
   priority_sel_buf += "\tif (rst) begin\n"
   priority_sel_buf += "\t\tpriority_select <= PRIORITY_NO_SEL;\n"
   priority_sel_buf += "\tend\n"
@@ -388,7 +390,7 @@ def generate_arbitrator_buffer(master_count, debug = False):
   strobe_buf = "//strobe select block\n"
   strobe_buf += "always @(master_select"
   for i in range(master_count):
-    strobe_buf += " or m" + str(i) + "_we_i"
+    strobe_buf += " or m" + str(i) + "_stb_i"
   strobe_buf += ") begin\n"
   strobe_buf += "\tcase (master_select)\n"
   for i in range(master_count):
@@ -478,7 +480,9 @@ def generate_arbitrator_buffer(master_count, debug = False):
   assign_buf = "//assign block\n"
   for i in range(master_count):
     assign_buf += "assign m" + str(i) + "_ack_o = (master_select == MASTER_" + str(i) + ") ? s_ack_i : 0;\n"
-    assign_buf += "assign m" + str(i) + "_dat_o = (master_select == MASTER_" + str(i) + ") ? s_dat_i : 0;\n"
+    #assign_buf += "assign m" + str(i) + "_dat_o = (master_select == MASTER_" + str(i) + ") ? s_dat_i : 0;\n"
+#XXX: This is a little messy
+    assign_buf += "assign m" + str(i) + "_dat_o = s_dat_i;\n"
     assign_buf += "assign m" + str(i) + "_int_o = (master_select == MASTER_" + str(i) + ") ? s_int_i : 0;\n"
     assign_buf += "\n"
 
