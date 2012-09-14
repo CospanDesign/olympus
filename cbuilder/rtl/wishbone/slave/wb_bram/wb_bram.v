@@ -102,7 +102,10 @@ reg en_ram;
 
 reg [3:0] ram_sleep;
 
-bram br (
+bram#(
+  .DATA_WIDTH(32),
+  .ADDR_WIDTH(12)
+)br(
 	.clk(clk),
 	.rst(rst),
 	.en(en_ram),
