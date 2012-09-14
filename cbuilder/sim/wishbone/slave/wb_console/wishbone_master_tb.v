@@ -58,6 +58,17 @@ wire [31:0]       wbm_dat_o;
 wire              wbm_ack_o;
 wire              wbm_int_i;
 
+//wishbone signals
+wire              mem_we_o;
+wire              mem_cyc_o;
+wire              mem_stb_o;
+wire [3:0]        mem_sel_o;
+wire [31:0]       mem_adr_o;
+wire [31:0]       mem_dat_i;
+wire [31:0]       mem_dat_o;
+wire              mem_ack_o;
+wire              mem_int_i;
+
 
 
 
@@ -87,7 +98,20 @@ wishbone_master wm (
   .wb_msk_o(wbm_msk_o),
   .wb_sel_o(wbm_sel_o),
   .wb_ack_i(wbm_ack_i),
-  .wb_int_i(wbm_int_i)
+  .wb_int_i(wbm_int_i),
+
+  //memory bus
+  .mem_adr_o(mem_adr_o),
+  .mem_dat_o(mem_dat_o),
+  .mem_dat_i(mem_dat_i),
+  .mem_stb_o(mem_stb_o),
+  .mem_cyc_o(mem_cyc_o),
+  .mem_we_o(mem_we_o),
+  .mem_msk_o(mem_msk_o),
+  .mem_sel_o(mem_sel_o),
+  .mem_ack_i(mem_ack_i),
+  .mem_int_i(mem_int_i)
+
 );
 
 //wishbone slave 0 signals
@@ -136,9 +160,21 @@ wire [31:0]	fb_dat_i;
 wire [31:0]	fb_adr_o;
 wire		fb_int_i;
 
+//wishbone slave 0 signals
+wire		mem0_we_o;
+wire		mem0_cyc_o;
+wire[31:0]	mem0_dat_o;
+wire		mem0_stb_o;
+wire [3:0]	mem0_sel_o;
+wire		mem0_ack_i;
+wire [31:0]	mem0_dat_i;
+wire [31:0]	mem0_adr_o;
+wire		mem0_int_i;
 
-//slave 0
-wb_bram s0 (
+
+
+//mem 0
+wb_bram m0 (
 
 	.clk(clk),
 	.rst(rst),
@@ -151,8 +187,6 @@ wb_bram s0 (
 	.wbs_dat_o(arb_dat_i),
 	.wbs_adr_i(arb_adr_o),
 	.wbs_int_o(arb_int_i)
-
-
 );
 
 
@@ -189,15 +223,15 @@ arbitrator_2_masters arb (
 	.clk(clk),
 	.rst(rst),
 
-	.m0_we_i(wbs0_we_o),
-	.m0_cyc_i(wbs0_cyc_o),
-	.m0_stb_i(wbs0_stb_o),
-	.m0_sel_i(wbs0_sel_o),
-	.m0_ack_o(wbs0_ack_i),
-	.m0_dat_i(wbs0_dat_o),
-	.m0_dat_o(wbs0_dat_i),
-	.m0_adr_i(wbs0_adr_o),
-	.m0_int_o(wbs0_int_i),
+	.m0_we_i(mem0_we_o),
+	.m0_cyc_i(mem0_cyc_o),
+	.m0_stb_i(mem0_stb_o),
+	.m0_sel_i(mem0_sel_o),
+	.m0_ack_o(mem0_ack_i),
+	.m0_dat_i(mem0_dat_o),
+	.m0_dat_o(mem0_dat_i),
+	.m0_adr_i(mem0_adr_o),
+	.m0_int_o(mem0_int_i),
 
 	.m1_we_i(fb_we_o),
 	.m1_cyc_i(fb_cyc_o),
@@ -253,6 +287,30 @@ wishbone_interconnect wi (
     .s1_adr_o(wbs1_adr_o),
     .s1_int_i(wbs1_int_i)
 
+
+);
+
+wishbone_mem_interconnect wmi (
+    .clk(clk),
+    .rst(rst),
+
+    .m_we_i(mem_we_o),
+    .m_cyc_i(mem_cyc_o),
+    .m_stb_i(mem_stb_o),
+    .m_ack_o(mem_ack_i),
+    .m_dat_i(mem_dat_o),
+    .m_dat_o(mem_dat_i),
+    .m_adr_i(mem_adr_o),
+    .m_int_o(mem_int_i),
+
+    .s0_we_o(mem0_we_o),
+    .s0_cyc_o(mem0_cyc_o),
+    .s0_stb_o(mem0_stb_o),
+    .s0_ack_i(mem0_ack_i),
+    .s0_dat_o(mem0_dat_o),
+    .s0_dat_i(mem0_dat_i),
+    .s0_adr_o(mem0_adr_o),
+    .s0_int_i(mem0_int_i)
 
 );
 
@@ -352,7 +410,7 @@ initial begin
       end //end read_count == 4
     end //end while ! eof
   end //end not reset
-  #100
+  #100;
   $fclose (fd_in);
   $fclose (fd_out);
   $finish();

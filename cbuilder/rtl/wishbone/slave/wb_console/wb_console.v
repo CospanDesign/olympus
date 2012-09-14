@@ -172,14 +172,14 @@ reg                 oneshot;
 //blocks
 always @ (posedge clk) begin
 	if (rst) begin
-		wbs_dat_o			<= 32'h0;
-		wbs_ack_o			<= 0;
-		wbs_int_o			<= 0;
+		wbs_dat_o			      <= 32'h0;
+		wbs_ack_o			      <= 0;
+		wbs_int_o			      <= 0;
 
-		local_data			<= 32'h00000000;
-		console_ready		<= 0;
-		timeout				<= TIMEOUT;
-		timeout_elapsed			<= 0;
+		local_data			    <= 32'h00000000;
+		console_ready		    <= 0;
+		timeout				      <= TIMEOUT;
+    control             <=  0;
 
 	end
 
@@ -272,17 +272,19 @@ always @ (posedge clk) begin
 		end
 		if (fb_ack_i) begin
 			$display ("got an ack!");
-			fb_stb_o	<= 0;
-			fb_cyc_o	<= 0;
+			fb_stb_o	<=  0;
+			fb_cyc_o	<=  0;
+      fb_we_o   <=  0;
+		  fb_sel_o 	<=  4'h0;
 		end
 		if (enable_console) begin
 			$display("enable a host write! of %h", local_data);
-			fb_stb_o <= 1;
-			fb_cyc_o <= 1;
-			fb_sel_o <= 4'b1111;
-			fb_we_o	<= 1;
-			fb_adr_o <= 0;
-			fb_dat_o <= 32'h0000000F;  
+			fb_stb_o  <= 1;
+			fb_cyc_o  <= 1;
+			fb_sel_o  <= 4'b1111;
+			fb_we_o	  <= 1;
+			fb_adr_o  <= 0;
+			fb_dat_o  <= 32'h1234567;  
 		end
 	end
 end
