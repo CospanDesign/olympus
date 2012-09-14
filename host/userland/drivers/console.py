@@ -41,7 +41,7 @@ CONTROL                     = 0
 STATUS                      = 1
 
 #Control bit values
-CONTROL_EN                  = 1 << 1
+CONTROL_EN                  = 1 << 0
 
 class ConsoleError(Exception):
   """ConsoleError
@@ -166,6 +166,8 @@ def unit_test(oly, dev_id):
 
   print "Check to see if the memory has the correct data"
   num_devices = oly.get_number_of_devices()
+  mem_bus = False
+  mem_index = 0
   for dev_index in range (0, num_devices):
     memory_device = oly.is_memory_device(dev_index)
     dev_offset = oly.get_device_address(dev_index)
@@ -177,12 +179,21 @@ def unit_test(oly, dev_id):
       print "Found a memory device"
       print "Read address 0"
 
-    mem_bus = oly.is_memory_device(dev_index)
-    if mem_bus:
-      print "Memory is on Memory bus"
-    else:
-      print "Memory is on Peripheral bus"
+      mem_bus = oly.is_memory_device(dev_index)
+      mem_index = dev_index
+      if mem_bus:
+        print "Memory is on Memory bus"
+      else:
+        print "Memory is on Peripheral bus"
 
-    data_in = oly.read(dev_index, 0, 1, mem_bus)
-    print "data read: %s" % str(data_in)
+
+      data_in = oly.read(mem_index, 0, 1, mem_bus)
+      print "\tMemory Data: %s" % str(data_in)
+      print "hex: "
+      for i in range (0, len(data_in)):
+        print str(hex(data_in[i])) + ", ",
+      print " "
+
+
+      break
 
