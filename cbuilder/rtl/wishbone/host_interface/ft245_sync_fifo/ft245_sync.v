@@ -30,7 +30,7 @@ module ft245_sync_fifo (
   ftdi_suspend_n,
   ftdi_siwu,
 
-  debug,
+  debug
 
 
 );
@@ -295,10 +295,6 @@ always @ (posedge ftdi_clk) begin
   end
 end
 
-
-reg                         prev_transmit_ready;
-wire t_ready_sync;
-assign  t_ready_sync      =  (transmit_ready && prev_transmit_ready);
 
 parameter                   WRITE               = 4'h1;
 parameter                   GET_WRITE_DATA      = 4'h2;
