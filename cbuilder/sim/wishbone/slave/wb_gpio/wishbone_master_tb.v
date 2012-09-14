@@ -64,8 +64,8 @@ SOFTWARE.
  *		the flags were written to
  */
 `define TIMEOUT_COUNT 20
-`define INPUT_FILE "master_input_test_data.txt"  
-`define OUTPUT_FILE "master_output_test_data.txt"
+`define INPUT_FILE "command_in"  
+`define OUTPUT_FILE "status_out"
 
 module wishbone_master_tb (
 );
@@ -230,8 +230,6 @@ initial begin
 	$dumpfile ("design.vcd");
 	$dumpvars (0, wishbone_master_tb);
 	$dumpvars (0, wm);
-	fd_in = $fopen(`INPUT_FILE, "r");
-	fd_out = $fopen(`OUTPUT_FILE, "w");
 
 		rst				<= 0;
 	#4
@@ -250,44 +248,51 @@ initial begin
 		rst				<= 0;
 		out_ready 		<= 1;
 
-	if (fd_in == 0) begin
-		$display ("input stimulus file was not found");
-	end
-	else begin
-		while (!$feof(fd_in)) begin
-			//read in a command
-			read_count = $fscanf (fd_in, "%h:%h:%h\n", in_command, in_address, in_data);
-			$display ("read %d items", read_count);
-			$display ("read: C:A:D = %h:%h:%h", in_command, in_address, in_data);
-			#4
-			//just send the command normally
-			in_ready 		<= 1;
-			timeout_count	= `TIMEOUT_COUNT;
-			#2
-			in_ready		<= 0;
-			out_ready 		<= 1;
-			#2
-			$fwrite (fd_out, "command: %h:%h:%h response: ", in_command, in_address, in_data);
-			while (timeout_count > 0) begin
-				if (out_en) begin
-					//got a response before timeout
-					$display ("read: S:A:D = %h:%h:%h\n", out_status, out_address, out_data);
-					$fwrite (fd_out, "%h:%h:%h\n", out_status, out_address, out_data);
-					timeout_count	= -1;
-				end
-				else begin
-					#2
-					timeout_count 	= timeout_count - 1;
-				end
+  $display ("ready\n");
+  while (1) begin
+    #4;
+    $stop();
+	  fd_in = $fopen(`INPUT_FILE, "r");
+	  //read in a command
+    read_count              = $fscanf (fd_in, "%h:%h:%h:%h\n", in_data_count, in_command, in_address, in_data);
+		$display ("read %d items", read_count);
+		$display ("read: C:A:D = %h:%h:%h", in_command, in_address, in_data);
+    case (in_command)
+      0: $display ("TB: Executing PING commad");
+      1: $display ("TB: Executing WRITE command");
+      2: $display ("TB: Executing READ command");
+      3: $display ("TB: Executing RESET command");
+    endcase
+		#4;
+		//just send the command normally
+		in_ready 		<= 1;
+		timeout_count	= `TIMEOUT_COUNT;
+		#2;
+		in_ready		<= 0;
+		out_ready 		<= 1;
+		#2;
+		while (timeout_count > 0) begin
+			if (out_en) begin
+				//got a response before timeout
+				timeout_count	= -1;
 			end
-			if (timeout_count == 0) begin
-				$display ("Wishbone master timed out while executing command: %h", in_command);
+			else begin
+				#2
+				timeout_count 	= timeout_count - 1;
 			end
 		end
-	end
-	#200
-	$fclose (fd_in);
-	$fclose (fd_out);
+		if (timeout_count == 0) begin
+      $display("Command Timed Out");
+		end
+
+	  $fclose (fd_in);
+    if (timeout_count == -1) begin
+      fd_out = $fopen (`OUTPUT_FILE, "w");
+      $fwrite (fd_out, "%h:%h:%h\n", out_status, out_address, out_data);
+      $fclose(fd_out);
+      $display("Command Finished");
+    end
+  end
 	$finish();
 end
 
