@@ -61,7 +61,13 @@ SOFTWARE.
 */
 
 
-module wb_bram (
+module wb_bram #(
+  parameter DATA_WIDTH = 32,
+  parameter ADDR_WIDTH = 10,
+  parameter MEM_FILE  = "NOTHING",
+  parameter MEM_FILE_LENGTH = 0
+
+)(
 	clk,
 	rst,
 
@@ -92,7 +98,7 @@ output reg  [31:0]	wbs_dat_o;
 output reg			wbs_ack_o;
 output reg			wbs_int_o;
 
-parameter			RAM_SIZE = 31;
+parameter			RAM_SIZE = DATA_WIDTH - 1;
 parameter			SLEEP_COUNT = 4;
 
 wire [31:0] read_data;
@@ -103,8 +109,10 @@ reg en_ram;
 reg [3:0] ram_sleep;
 
 bram#(
-  .DATA_WIDTH(32),
-  .ADDR_WIDTH(12)
+  .DATA_WIDTH(DATA_WIDTH),
+  .ADDR_WIDTH(ADDR_WIDTH),
+  .MEM_FILE(MEM_FILE),
+  .MEM_FILE_LENGTH(MEM_FILE_LENGTH)
 )br(
 	.clk(clk),
 	.rst(rst),

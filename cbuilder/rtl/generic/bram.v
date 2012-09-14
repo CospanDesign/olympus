@@ -31,7 +31,10 @@ SOFTWARE.
 
 module bram #(
   parameter DATA_WIDTH = 32,
-  parameter ADDR_WIDTH = 10
+  parameter ADDR_WIDTH = 10,
+  parameter MEM_FILE  = "NOTHING",
+  parameter MEM_FILE_LENGTH = 0
+
 )(
 	clk,
 	rst,
@@ -64,6 +67,11 @@ initial begin
 	$monitor ("%t: wa: %h, ra: %h, di: %h, do: %h", $time, write_address, read_address, data_in, data_out); 
 end
 */
+initial begin
+  if (MEM_FILE != "NOTHING") begin
+    $readmemh(MEM_FILE, mem, 0, MEM_FILE_LENGTH - 1);
+  end
+end
 
 always @ (posedge clk) begin
 	if (rst) begin
