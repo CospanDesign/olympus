@@ -63,7 +63,7 @@ TEST_UART = False
 TEST_I2C = False
 TEST_SPI = False
 TEST_MEMORY = True
-TEST_CONSOLE = False
+TEST_CONSOLE = True
 
 def test_memory(dyn, dev_index):
   print "testing memory @ %d" % dev_index
@@ -127,7 +127,7 @@ def test_memory(dyn, dev_index):
     for i in range (0, len(data_out)):
       if data_in[i] != data_out[i]:
         fail = True
-        print "Mismatch at %d: READ DATA %d != WRITE DATA %d" % (i, data_in[i], data_out[i])
+        #print "Mismatch at %d: READ DATA %d != WRITE DATA %d" % (i, data_in[i], data_out[i])
         fail_count += 1
 
   if not fail:
