@@ -156,7 +156,7 @@ class GenMemInterconnect(Gen):
     ack_block_buf = ack_block_buf + ") begin\n\tcase (mem_select)\n"
     for i in range (0, num_mems):
       ack_block_buf = ack_block_buf + "\t\tMEM_SEL_" + str(i) + ": begin\n\t\t\tm_ack_o <= s" + str(i) + "_ack_i;\n\t\tend\n";
-    ack_block_buf = ack_block_buf + "\t\tdefault: begin\n\t\t\tm_ack_o <= 1\'h1;\n\t\tend\n\tendcase\nend\n\n"
+    ack_block_buf = ack_block_buf + "\t\tdefault: begin\n\t\t\tm_ack_o <= 1\'h0;\n\t\tend\n\tendcase\nend\n\n"
 
 
     #int in block
