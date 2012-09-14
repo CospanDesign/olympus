@@ -118,38 +118,38 @@ parameter MASTER_0 = 0;
 parameter MASTER_1 = 1;
 
 
-always @(rst or master_select or m0_stb_i or m1_stb_i ) begin
+always @ (posedge clk) begin
 	if (rst) begin
 		master_select <= MASTER_NO_SEL;
 	end
 	else begin
 		case (master_select)
 			MASTER_0: begin
-				if (~m0_stb_i) begin
+				if (~m0_cyc_i && ~s_ack_i) begin
 					master_select <= MASTER_NO_SEL;
 				end
 			end
 			MASTER_1: begin
-				if (~m1_stb_i) begin
+				if (~m1_cyc_i && ~s_ack_i) begin
 					master_select <= MASTER_NO_SEL;
 				end
 			end
 			default: begin
 				//nothing selected
-				if (m0_stb_i) begin
+				if (m0_cyc_i) begin
 					master_select <= MASTER_0;
 				end
-				else if (m1_stb_i) begin
+				else if (m1_cyc_i) begin
 					master_select <= MASTER_1;
 				end
 			end
 		endcase
-		if ((priority_select < master_select) && ~s_stb_o)begin
+		if ((priority_select < master_select) && (~s_stb_o && ~s_ack_i))begin
 
-				if (m0_stb_i) begin
+				if (m0_cyc_i) begin
 					master_select <= MASTER_0;
 				end
-				else if (m1_stb_i) begin
+				else if (m1_cyc_i) begin
 					master_select <= MASTER_1;
 				end
 		end
@@ -165,7 +165,7 @@ parameter PRIORITY_0 = 0;
 parameter PRIORITY_1 = 1;
 
 
-always @(rst or master_select or m0_cyc_i or m1_cyc_i ) begin
+always @ (posedge clk) begin
 	if (rst) begin
 		priority_select <= PRIORITY_NO_SEL;
 	end
@@ -201,7 +201,7 @@ end
 
 
 //strobe select block
-always @(master_select or m0_we_i or m1_we_i) begin
+always @(master_select or m0_stb_i or m1_stb_i) begin
 	case (master_select)
 		MASTER_0: begin
 			s_stb_o <= m0_stb_i;
@@ -282,11 +282,11 @@ end
 
 //assign block
 assign m0_ack_o = (master_select == MASTER_0) ? s_ack_i : 0;
-assign m0_dat_o = (master_select == MASTER_0) ? s_dat_i : 0;
+assign m0_dat_o = s_dat_i;
 assign m0_int_o = (master_select == MASTER_0) ? s_int_i : 0;
 
 assign m1_ack_o = (master_select == MASTER_1) ? s_ack_i : 0;
-assign m1_dat_o = (master_select == MASTER_1) ? s_dat_i : 0;
+assign m1_dat_o = s_dat_i;
 assign m1_int_o = (master_select == MASTER_1) ? s_int_i : 0;
 
 
