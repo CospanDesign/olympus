@@ -105,6 +105,17 @@ wire [31:0]       wbm_dat_o;
 wire              wbm_ack_o;
 wire              wbm_int_i;
 
+//wishbone signals
+wire              mem_we_o;
+wire              mem_cyc_o;
+wire              mem_stb_o;
+wire [3:0]        mem_sel_o;
+wire [31:0]       mem_adr_o;
+wire [31:0]       mem_dat_i;
+wire [31:0]       mem_dat_o;
+wire              mem_ack_o;
+wire              mem_int_i;
+
 
 
 wishbone_master wm (
@@ -133,7 +144,20 @@ wishbone_master wm (
   .wb_msk_o(wbm_msk_o),
   .wb_sel_o(wbm_sel_o),
   .wb_ack_i(wbm_ack_i),
-  .wb_int_i(wbm_int_i)
+  .wb_int_i(wbm_int_i),
+
+  //memory bus
+  .mem_adr_o(mem_adr_o),
+  .mem_dat_o(mem_dat_o),
+  .mem_dat_i(mem_dat_i),
+  .mem_stb_o(mem_stb_o),
+  .mem_cyc_o(mem_cyc_o),
+  .mem_we_o(mem_we_o),
+  .mem_msk_o(mem_msk_o),
+  .mem_sel_o(mem_sel_o),
+  .mem_ack_i(mem_ack_i),
+  .mem_int_i(mem_int_i)
+
 );
 
 //Wishbone Slave 0 (DRT) signals
@@ -159,6 +183,67 @@ wire  [31:0]      wbs1_dat_i;
 wire  [31:0]      wbs1_adr_o;
 wire              wbs1_int_i;
 
+//arbitrator signals
+wire		          arb_we_o;
+wire		          arb_cyc_o;
+wire  [31:0]	    arb_dat_o;
+wire		          arb_stb_o;
+wire  [3:0]	      arb_sel_o;
+wire		          arb_ack_i;
+wire  [31:0]	    arb_dat_i;
+wire  [31:0]	    arb_adr_o;
+wire		          arb_int_i;
+
+
+//audio buffer master bus
+wire		          audio_we_o;
+wire		          audio_cyc_o;
+wire  [31:0]	    audio_dat_o;
+wire		          audio_stb_o;
+wire  [3:0]	      audio_sel_o;
+wire		          audio_ack_i;
+wire  [31:0]	    audio_dat_i;
+wire  [31:0]	    audio_adr_o;
+wire		          audio_int_i;
+
+//wishbone slave 0 signals
+wire		          mem0_we_o;
+wire		          mem0_cyc_o;
+wire  [31:0]	    mem0_dat_o;
+wire		          mem0_stb_o;
+wire  [3:0]	      mem0_sel_o;
+wire		          mem0_ack_i;
+wire  [31:0]	    mem0_dat_i;
+wire  [31:0]	    mem0_adr_o;
+wire		          mem0_int_i;
+
+
+wire              i2s_clock;
+wire              i2s_data;
+wire              i2s_lr;
+
+//mem 0
+wb_bram #(
+  .DATA_WIDTH(32),
+  .ADDR_WIDTH(12),
+  .MEM_FILE("mem_file.txt"),
+  .MEM_FILE_LENGTH(10)
+)m0 (
+
+	.clk(clk),
+	.rst(rst),
+	
+	.wbs_we_i(arb_we_o),
+	.wbs_cyc_i(arb_cyc_o),
+	.wbs_dat_i(arb_dat_o),
+	.wbs_stb_i(arb_stb_o),
+	.wbs_ack_o(arb_ack_i),
+	.wbs_dat_o(arb_dat_i),
+	.wbs_adr_i(arb_adr_o),
+	.wbs_int_o(arb_int_i)
+);
+
+
 //slave 1
 wb_i2s s1 (
 
@@ -172,9 +257,61 @@ wb_i2s s1 (
   .wbs_ack_o(wbs1_ack_i),
   .wbs_dat_o(wbs1_dat_i),
   .wbs_adr_i(wbs1_adr_o),
-  .wbs_int_o(wbs1_int_i)
+  .wbs_int_o(wbs1_int_i),
+
+  //memory bus
+  .mem_adr_o(audio_adr_o),
+  .mem_dat_o(audio_dat_o),
+  .mem_dat_i(audio_dat_i),
+  .mem_stb_o(audio_stb_o),
+  .mem_cyc_o(audio_cyc_o),
+  .mem_we_o(audio_we_o),
+  .mem_sel_o(audio_sel_o),
+  .mem_ack_i(audio_ack_i),
+  .mem_int_i(audio_int_i),
+
+  .i2s_clock(i2s_clock),
+  .i2s_data(i2s_data),
+  .i2s_lr(i2s_lr)
 
 );
+
+//arbitrator
+arbitrator_2_masters arb (
+	.clk(clk),
+	.rst(rst),
+
+	.m0_we_i(mem0_we_o),
+	.m0_cyc_i(mem0_cyc_o),
+	.m0_stb_i(mem0_stb_o),
+	.m0_sel_i(mem0_sel_o),
+	.m0_ack_o(mem0_ack_i),
+	.m0_dat_i(mem0_dat_o),
+	.m0_dat_o(mem0_dat_i),
+	.m0_adr_i(mem0_adr_o),
+	.m0_int_o(mem0_int_i),
+
+	.m1_we_i(audio_we_o),
+	.m1_cyc_i(audio_cyc_o),
+	.m1_stb_i(audio_stb_o),
+	.m1_sel_i(audio_sel_o),
+	.m1_ack_o(audio_ack_i),
+	.m1_dat_i(audio_dat_o),
+	.m1_dat_o(audio_dat_i),
+	.m1_adr_i(audio_adr_o),
+	.m1_int_o(audio_int_1),
+
+	.s_we_o(arb_we_o),
+	.s_cyc_o(arb_cyc_o),
+	.s_stb_o(arb_stb_o),
+	.s_sel_o(arb_sel_o),
+	.s_ack_i(arb_ack_i),
+	.s_dat_o(arb_dat_o),
+	.s_dat_i(arb_dat_i),
+	.s_adr_o(arb_adr_o),
+	.s_int_i(arb_int_i)
+);
+
 
 
 wishbone_interconnect wi (
@@ -210,6 +347,32 @@ wishbone_interconnect wi (
 
 
 );
+
+wishbone_mem_interconnect wmi (
+    .clk(clk),
+    .rst(rst),
+
+    .m_we_i(mem_we_o),
+    .m_cyc_i(mem_cyc_o),
+    .m_stb_i(mem_stb_o),
+    .m_ack_o(mem_ack_i),
+    .m_dat_i(mem_dat_o),
+    .m_dat_o(mem_dat_i),
+    .m_adr_i(mem_adr_o),
+    .m_int_o(mem_int_i),
+
+    .s0_we_o(mem0_we_o),
+    .s0_cyc_o(mem0_cyc_o),
+    .s0_stb_o(mem0_stb_o),
+    .s0_ack_i(mem0_ack_i),
+    .s0_dat_o(mem0_dat_o),
+    .s0_dat_i(mem0_dat_i),
+    .s0_adr_o(mem0_adr_o),
+    .s0_int_i(mem0_int_i)
+
+);
+
+
 
 integer           fd_in;
 integer           fd_out;
@@ -254,7 +417,7 @@ initial begin
   in_data_count               <= 0;
   out_ready                   <= 0;
   //clear wishbone signals
-  #20
+  #100
   rst                         <= 0;
   out_ready                   <= 1;
 
@@ -307,7 +470,7 @@ initial begin
       end //end read_count == 4
     end //end while ! eof
   end //end not reset
-  #100
+  #10000
   $fclose (fd_in);
   $fclose (fd_out);
   $finish();

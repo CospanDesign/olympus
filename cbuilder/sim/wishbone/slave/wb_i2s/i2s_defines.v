@@ -1,0 +1,1 @@
+../../../../rtl/wishbone/slave/wb_i2s/i2s_defines.v

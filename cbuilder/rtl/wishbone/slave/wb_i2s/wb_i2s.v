@@ -43,6 +43,9 @@ SOFTWARE.
 
 `define DEFAULT_MEMORY_TIMEOUT  300
 
+`include "project_defines.v"
+`include "i2s_defines.v"
+
 module wb_i2s (
 	clk,
 	rst,
@@ -71,8 +74,10 @@ module wb_i2s (
 
   i2s_clock,
   i2s_data,
-  i2s_word
+  i2s_lr
 );
+
+`define DEFAULT_CLOCK_DIVISOR `CLOCK_RATE / (`AUDIO_RATE * `AUDIO_BITS * `AUDIO_CHANNELS + 1)
 
 input 				clk;
 input 				rst;
@@ -102,13 +107,18 @@ input				        mem_int_i;
 //i2s signals
 output              i2s_clock;
 output              i2s_data;
-output              i2s_word;
+output              i2s_lr;
 
 
+parameter			      REG_CONTROL	      =	32'h00000000;
+parameter			      REG_STATUS	      =	32'h00000001;
+parameter			      REG_CLOCK_RATE	  =	32'h00000002;
+parameter           REG_CLOCK_DIVIDER = 32'h00000003;
+parameter           REG_MEM_0_BASE    = 32'h00000004;
+parameter           REG_MEM_0_SIZE    = 32'h00000005;
+parameter           REG_MEM_1_BASE    = 32'h00000006;
+parameter           REG_MEM_1_SIZE    = 32'h00000007;
 
-parameter			ADDR_0	=	32'h00000000;
-parameter			ADDR_1	=	32'h00000001;
-parameter			ADDR_2	=	32'h00000002;
 
 //Reg/Wire
 wire                timeout_elapsed;
@@ -118,9 +128,91 @@ reg         [31:0]  timeout_value;
 
 reg                 enable_mem_read;
 
+wire                request_data;
+reg                 prev_request_data;
+wire                request_data_pos_edge;
+
+reg                 prev_mem_ack;
+wire                mem_ack_pos_edge;
+
+wire        [23:0]  request_size;
+reg                 request_finished;
+wire        [31:0]  memory_data;
+reg                 memory_data_strobe;
+
+
+reg         [31:0]  control;
+wire        [31:0]  status;
+reg         [31:0]  clock_divider;
+
+
+reg         [23:0]  request_count;
+
+reg         [31:0]  memory_0_size;
+reg                 memory_0_new_data;
+reg         [31:0]  memory_1_size;
+reg                 memory_1_new_data;
+
+wire        [31:0]  memory_count[1:0];
+reg         [31:0]  memory_pointer[1:0];
+
+reg                 memory_ready;
+reg                 active_block;
+
+
+reg         [31:0]  memory_0_base;
+reg         [31:0]  memory_1_base;
+
+//control
+wire                enable;
+wire                enable_interrupt;
+
+//status  
+wire                memory_0_empty;
+wire                memory_1_empty;
+
+
+
+
+i2s_controller controller (
+  .rst(rst),
+  .clk(clk),
+
+  .enable(enable),
+
+  .clock_divider(clock_divider),
+
+  .request_data(request_data),
+  .request_size(request_size),
+  .request_finished(request_finished),
+  .memory_data(memory_data),
+  .memory_data_strobe(memory_data_strobe),
+
+  .i2s_clock(i2s_clock),
+  .i2s_data(i2s_data),
+  .i2s_lr(i2s_lr)
+);
+
 
 //Asynchronous Logic
-assign        timeout_elapsed = (timeout == 32'h00000000) && timeout_enable;
+assign        memory_data           = mem_dat_i;
+
+assign        enable                = control[`CONTROL_ENABLE];
+assign        enable_interrupt      = control[`CONTROL_ENABLE_INTERRUPT];
+
+assign        memory_0_empty        = (memory_count[0] == 0);
+assign        memory_1_empty        = (memory_count[1] == 0);
+
+assign        status[`STATUS_MEMORY_0_EMPTY]  = memory_0_empty;
+assign        status[`STATUS_MEMORY_1_EMPTY]  = memory_1_empty;
+assign        status[31:2]          = 0;
+
+assign        request_data_pos_edge = request_data && ~prev_request_data;
+assign        mem_ack_pos_edge      = mem_ack_i && ~prev_mem_ack;
+
+assign        memory_count[0]       = memory_0_size - memory_pointer[0];
+assign        memory_count[1]       = memory_1_size - memory_pointer[1];
+
 
 //blocks
 always @ (posedge clk) begin
@@ -130,9 +222,24 @@ always @ (posedge clk) begin
 		wbs_int_o	      <=  0;
     timeout_enable  <=  0;
     timeout_value   <=  `DEFAULT_MEMORY_TIMEOUT;
+
+    control         <=  0;
+
+    memory_0_base   <=  `DEFAULT_MEM_0_BASE;
+    memory_1_base   <=  `DEFAULT_MEM_1_BASE;
+
+    memory_0_new_data <=  0;
+    memory_1_new_data <=  1;
+
+    clock_divider   <=  `DEFAULT_CLOCK_DIVISOR;
 	end
 
 	else begin
+
+    memory_0_new_data <=  0;
+    memory_1_new_data <=  1;
+
+
 		//when the master acks our ack, then put our ack down
 		if (wbs_ack_o & ~ wbs_stb_i)begin
 			wbs_ack_o <= 0;
@@ -143,30 +250,26 @@ always @ (posedge clk) begin
 			if (wbs_we_i) begin
 				//write request
 				case (wbs_adr_i) 
-					ADDR_0: begin
-						//writing something to address 0
-						//do something
-
-						//NOTE THE FOLLOWING LINE IS AN EXAMPLE
-						//	THIS IS WHAT THE USER WILL READ FROM ADDRESS 0
-						$display("user wrote %h", wbs_dat_i);
+					REG_CONTROL: begin
+            control           <=  wbs_dat_i;
 					end
-					ADDR_1: begin
-						//writing something to address 1
-						//do something
-	
-						//NOTE THE FOLLOWING LINE IS AN EXAMPLE
-						//	THIS IS WHAT THE USER WILL READ FROM ADDRESS 0
-						$display("user wrote %h", wbs_dat_i);
-					end
-					ADDR_2: begin
-						//writing something to address 3
-						//do something
-	
-						//NOTE THE FOLLOWING LINE IS AN EXAMPLE
-						//	THIS IS WHAT THE USER WILL READ FROM ADDRESS 0
-						$display("user wrote %h", wbs_dat_i);
-					end
+          REG_CLOCK_DIVIDER: begin
+            clock_divider     <=  wbs_dat_i;
+          end
+          REG_MEM_0_BASE: begin
+            memory_0_base     <=  wbs_dat_i;
+          end
+          REG_MEM_0_SIZE: begin
+            memory_0_size     <=  wbs_dat_i;
+            memory_0_new_data <=  1;
+          end
+          REG_MEM_1_BASE: begin
+            memory_1_base     <=  wbs_dat_i;
+          end
+          REG_MEM_1_SIZE: begin
+            memory_1_size     <=  wbs_dat_i;
+            memory_1_new_data <=  1;
+          end
 					//add as many ADDR_X you need here
 					default: begin
 					end
@@ -176,27 +279,30 @@ always @ (posedge clk) begin
 			else begin 
 				//read request
 				case (wbs_adr_i)
-					ADDR_0: begin
-						//reading something from address 0
-						//NOTE THE FOLLOWING LINE IS AN EXAMPLE
-						//	THIS IS WHAT THE USER WILL READ FROM ADDRESS 0
-						$display("user read %h", ADDR_0);
-						wbs_dat_o <= ADDR_0;
+					REG_CONTROL: begin
+						wbs_dat_o <= control;
 					end
-					ADDR_1: begin
-						//reading something from address 1
-						//NOTE THE FOLLOWING LINE IS AN EXAMPLE
-						//	THIS IS WHAT THE USER WILL READ FROM ADDRESS 0
-						$display("user read %h", ADDR_1);
-						wbs_dat_o <= ADDR_1;
+					REG_STATUS: begin
+						wbs_dat_o <= status;
 					end
-					ADDR_2: begin
-						//reading soething from address 2
-						//NOTE THE FOLLOWING LINE IS AN EXAMPLE
-						//	THIS IS WHAT THE USER WILL READ FROM ADDRESS 0
-						$display("user read %h", ADDR_2);
-						wbs_dat_o <= ADDR_2;
+					REG_CLOCK_RATE: begin
+						wbs_dat_o <= `CLOCK_RATE;
 					end
+          REG_CLOCK_DIVIDER: begin
+            wbs_dat_o <=  clock_divider;
+          end
+          REG_MEM_0_BASE: begin
+            wbs_dat_o <=  memory_0_base;
+          end
+          REG_MEM_0_SIZE: begin
+            wbs_dat_o <=  memory_count[0];
+          end
+          REG_MEM_1_BASE: begin
+            wbs_dat_o <=  memory_1_base;
+          end
+          REG_MEM_1_SIZE: begin
+            wbs_dat_o <=  memory_count[1];
+          end
 					//add as many ADDR_X you need here
 					default: begin
 					end
@@ -207,39 +313,138 @@ always @ (posedge clk) begin
 	end
 end
 
+//detect the positive edge of request data
+always @ (posedge clk) begin
+  if (rst) begin
+    prev_request_data   <=  0;
+    prev_mem_ack        <=  0;
+  end
+  else begin
+    prev_request_data   <=  request_data;
+    prev_mem_ack        <=  mem_ack_i;
+  end
+end
+
+
 //wishbone master module
 always @ (posedge clk) begin
 	if (rst) begin
-		mem_we_o		  <= 0;
-		mem_stb_o 	  <= 0;
-		mem_cyc_o 	  <= 0;
-		mem_sel_o 	  <= 4'h0;
-		mem_adr_o	    <= 32'h00000000;
-		mem_dat_o	    <= 32'h00000000;
-    timeout_count <=  timeout_value; 
+		mem_we_o		        <=  0;
+		mem_stb_o 	        <=  0;
+		mem_cyc_o 	        <=  0;
+		mem_sel_o 	        <=  4'h0;
+		mem_adr_o	          <=  32'h00000000;
+		mem_dat_o	          <=  32'h00000000;
+
+    //strobe for the i2s memory controller
+    memory_data_strobe  <=  0;
+
+    //point to the current location in the memory to read from
+    memory_pointer[0]   <=  0;
+    memory_pointer[1]   <=  0;
+
+    request_count      <=  0;
+
+    prev_request_data   <=  0;
+
 	end
 	else begin
-		if (timeout_elapsed) begin
-			$display ("write to the memory");
-		end
+    memory_data_strobe  <=  0;
+    request_finished    <=  0;
+
+    //check to see if the i2s_mem_controller has requested data
+    if (request_data_pos_edge) begin
+      request_count     <=  request_size;
+    end
+    //postvie edge of the ack, send the data to the mem controller
+    if (mem_ack_pos_edge) begin
+      if (request_count == 1) begin
+        request_finished  <=  1;
+      end
+      memory_data_strobe  <=  1;
+      request_count <=  request_count - 1;
+    end
+
 		if (mem_ack_i) begin
 			$display ("got an ack!");
 			mem_stb_o	<= 0;
 			mem_cyc_o	<= 0;
 		end
-		if (enable_mem_read) begin
-			$display("enable a host write! of %h");
-			mem_stb_o <= 1;
-			mem_cyc_o <= 1;
-			mem_sel_o <= 4'b1111;
-			mem_we_o	<= 1;
-			mem_adr_o <= 0;
-			mem_dat_o <= 32'h0000000F;  
+
+    if (request_count > 0 && ~mem_stb_o) begin
+      //need to send the mem_controller some data
+      if (memory_count[active_block] > 0) begin
+			  $display("get some data from the memory");
+			  mem_cyc_o                     <=  1;
+			  mem_stb_o                     <=  1;
+			  mem_sel_o                     <=  4'b1111;
+			  mem_we_o	                    <=  0;
+			  mem_dat_o                     <=  0;  
+        mem_adr_o                     <=  memory_pointer[active_block];
+        
+        memory_pointer[active_block]  <=  memory_pointer[active_block] + 1;
+      end
 		end
 	end
 end
 
+//active block logic
+always @ (posedge clk) begin
+  if (rst) begin
+    active_block  <=  0;
+    memory_ready  <=  0;
+  end
+  else begin
+    //active memory logic
+    if (!memory_ready) begin
+      //if there is any memory at all in the memory chunks
+      if (memory_count[0] > 0) begin
+        memory_ready    <=  1;
+        active_block    <=  0;
+      end
+      else if (memory_count[1] > 0) begin
+      end
+      else begin
+        memory_ready    <=  0;
+        active_block    <=  1;
+      end
+    end
+    else begin
+      //if we're are currently active and a the active block
+      //is empty then swith to the other block
+      if (active_block == 0 && (memory_count[0] == 0)) begin
+        memory_ready    <=  0;
+      end
+      else if ((active_block == 1) && (memory_count[1] == 0)) begin
+        memory_ready    <=  0;
+      end
+    end
+  end
+end
 
+//initerrupt controller
+always @ (posedge clk) begin
+  if (rst) begin
+    wbs_int_o <=  0;
+  end
+  else if (enable) begin
+    if (!memory_0_empty && !memory_1_empty) begin
+      wbs_int_o <=  0;
+    end
+    if (wbs_stb_i) begin
+      //de-assert the interrupt on wbs transactions so I can launch another
+      //interrupt when the wbs is de-asserted
+      wbs_int_o <=  0;
+    end
+    else if (memory_0_empty || memory_1_empty) begin
+      wbs_int_o <=  1;
+    end
+  end
+  else begin
+    //if we're not enable de-assert interrupt
+    wbs_int_o <=  0;
+  end
+end
 
 
 endmodule

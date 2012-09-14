@@ -1,0 +1,23 @@
+`ifndef __I2S_DEFINES__
+`define __I2S_DEFINES__
+
+
+//Initially 2MB data chunk
+`define DEFAULT_MEM_0_BASE        32'h00000000
+`define DEFAULT_MEM_1_BASE        32'h001F0000
+
+
+//control bit definition
+`define CONTROL_ENABLE            0
+`define CONTROL_ENABLE_INTERRUPT  1
+
+
+//status bit definition
+`define STATUS_MEMORY_0_EMPTY     0
+`define STATUS_MEMORY_1_EMPTY     1 
+
+`define AUDIO_RATE                44100
+`define AUDIO_BITS                24
+`define AUDIO_CHANNELS            2
+
+`endif

@@ -1,7 +1,15 @@
 ../../interconnect/example_2port_interconnect/wishbone_interconnect.v
+../../interconnect/example_1port_mem_interconnect/wishbone_mem_interconnect.v
+../../arbitrator/example_2port_arbitrator/arbitrator_2_masters.v
+../../../../rtl/generic/graycounter.v
+../../../../rtl/generic/afifo.v
+../../../../rtl/generic/ppfifo.v
 rtl/i2s_mem_controller.v
 rtl/i2s_controller.v
+rtl/i2s_writer.v
 rtl/wb_i2s.v
+../../../../rtl/wishbone/slave/wb_bram/wb_bram.v
+../../../../rtl/generic/bram.v
 ../../../../rtl/wishbone/slave/device_rom_table/device_rom_table.v
 ../../../../rtl/wishbone/master/wishbone_master.v
 wishbone_master_tb.v
