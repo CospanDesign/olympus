@@ -22,6 +22,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+`include "project_defines.v"
+`include "i2s_defines.v"
+
 
 module i2s_controller (
   rst,
@@ -37,10 +40,15 @@ module i2s_controller (
   memory_data,
   memory_data_strobe,
 
+  starved,
+
+  i2s_mclock,
   i2s_clock,
   i2s_data,
   i2s_lr
 );
+
+`define DEFAULT_MCLOCK_DIVISOR `CLOCK_RATE / (`AUDIO_RATE)/256
 
 input               rst;
 input               clk;
@@ -58,12 +66,14 @@ input               request_finished;
 input       [31:0]  memory_data;
 input               memory_data_strobe;
 
+output  reg         i2s_mclock = 0;
 output  reg         i2s_clock = 0;
 output              i2s_data;
 output              i2s_lr;
 
 //registers/wires
 reg         [31:0]  clock_count = 0;
+reg         [31:0]  mclock_count = 0;
 
 wire                audio_data_request;
 wire                audio_data_ack;
@@ -118,17 +128,41 @@ i2s_writer writer(
 );
 
 //asynchronous logic
+`define DEFAULT_MCLOCK_DIVISOR (`CLOCK_RATE / (`AUDIO_RATE * 256)) - 1
 
 //synchronous logic
 //clock generator
 always @(posedge clk) begin
-  if (clock_count == clock_divider) begin
-    i2s_clock     <=  ~i2s_clock;
-    clock_count   <= 0;
+  if (rst) begin
+    i2s_clock   <=  0;
+    clock_count <=  0;
   end
   else begin
-    clock_count   <=  clock_count + 1;
+    if (clock_count == clock_divider) begin
+      i2s_clock     <=  ~i2s_clock;
+      clock_count   <= 0;
+    end
+    else begin
+      clock_count   <=  clock_count + 1;
+    end
   end
 end
+
+always @(posedge clk) begin
+  if (rst) begin
+    i2s_mclock  <=  0;
+    mclock_count  <=  0;
+  end
+  else begin
+    if (mclock_count == `DEFAULT_MCLOCK_DIVISOR) begin
+      i2s_mclock     <=  ~i2s_mclock;
+      mclock_count   <= 0;
+    end
+    else begin
+      mclock_count   <=  mclock_count + 1;
+    end
+  end
+end
+
 
 endmodule

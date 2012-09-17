@@ -65,8 +65,9 @@ output  reg         i2s_lr;
 output  reg         starved;
 
 //parameter
-parameter           REQUEST_DATA  = 4'h0;
-parameter           DATA_READY    = 4'h1;
+parameter           START         = 4'h0;
+parameter           REQUEST_DATA  = 4'h1;
+parameter           DATA_READY    = 4'h2;
 
 //registers/wires
 reg         [7:0]   bit_count;
@@ -82,11 +83,11 @@ reg         [3:0]   state;
 //synchronous logic
 always @ (posedge rst or posedge i2s_clock) begin
   if (rst) begin
-    bit_count           <=  0;
+    bit_count           <=  DATA_SIZE -1;
     new_audio_data      <=  0;
     new_audio_lr_bit    <=  0;
     audio_shifter       <=  0;
-    state               <=  REQUEST_DATA;
+    state               <=  START;
     starved             <=  1;
     i2s_data            <=  0;
     i2s_lr              <=  0;
@@ -95,6 +96,15 @@ always @ (posedge rst or posedge i2s_clock) begin
   else if (enable) begin
     starved           <=  0;
     case (state)
+      START: begin
+         audio_data_request       <=  1;
+        if (audio_data_ack) begin
+          audio_data_request     <=  0;
+          state             <=  DATA_READY;
+          new_audio_data    <=  audio_data;
+          new_audio_lr_bit  <=  audio_lr_bit;
+        end
+      end
       REQUEST_DATA: begin
         audio_data_request       <=  1;
         if (audio_data_ack) begin
@@ -106,7 +116,7 @@ always @ (posedge rst or posedge i2s_clock) begin
       end
       DATA_READY: begin
         //wait for the bit count to reach 0
-        if (bit_count == 1) begin
+        if (bit_count == DATA_SIZE - 2) begin
           state       <=  REQUEST_DATA;
         end
       end
@@ -119,20 +129,23 @@ always @ (posedge rst or posedge i2s_clock) begin
     if (bit_count == 0) begin
       if (state == DATA_READY) begin
         //put the new data into the shifter and reset the bit_count
-        bit_count     <=  DATA_SIZE - 1;
-        audio_shifter <=  new_audio_data;
-        i2s_lr        <=  new_audio_lr_bit;
+        bit_count       <=  DATA_SIZE - 1;
+        audio_shifter   <=  new_audio_data;
+        i2s_lr          <=  new_audio_lr_bit;
+        new_audio_data  <=  0;
+        new_audio_lr_bit<=  0;
       end
       else begin
         //starved, can't do anything
-        starved       <=  1;
+        starved         <=  1;
+        i2s_data        <=  0;
       end
     end
     else begin
       //shift out data
-      bit_count       <=  bit_count - 1;
-      i2s_data        <=  audio_shifter[23];
-      audio_shifter   <=  {audio_shifter[22:0], 1'b0};
+      bit_count         <=  bit_count - 1;
+      i2s_data          <=  audio_shifter[23];
+      audio_shifter     <=  {audio_shifter[22:0], 1'b0};
     end
   end
 end

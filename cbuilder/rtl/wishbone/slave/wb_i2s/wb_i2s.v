@@ -23,21 +23,21 @@ SOFTWARE.
 */
 
 /*
-	Use this to tell sycamore how to populate the Device ROM table
-	so that users can interact with your slave
+  Use this to tell sycamore how to populate the Device ROM table
+  so that users can interact with your slave
 
-	META DATA
+  META DATA
 
-	identification of your device 0 - 65536
-	DRT_ID:  11
+  identification of your device 0 - 65536
+  DRT_ID:  11
 
-	flags (read drt.txt in the slave/device_rom_table directory 1 means
-	a standard device
-	DRT_FLAGS:  1
+  flags (read drt.txt in the slave/device_rom_table directory 1 means
+  a standard device
+  DRT_FLAGS:  1
 
-	number of registers this should be equal to the nubmer of ADDR_???
-	parameters
-	DRT_SIZE:  3
+  number of registers this should be equal to the nubmer of ADDR_???
+  parameters
+  DRT_SIZE:  3
 
 */
 
@@ -47,72 +47,74 @@ SOFTWARE.
 `include "i2s_defines.v"
 
 module wb_i2s (
-	clk,
-	rst,
+  clk,
+  rst,
 
-	//Add signals to control your device here
+  //Add signals to control your device here
 
-	wbs_we_i,
-	wbs_cyc_i,
-	wbs_sel_i,
-	wbs_dat_i,
-	wbs_stb_i,
-	wbs_ack_o,
-	wbs_dat_o,
-	wbs_adr_i,
-	wbs_int_o,
+  wbs_we_i,
+  wbs_cyc_i,
+  wbs_sel_i,
+  wbs_dat_i,
+  wbs_stb_i,
+  wbs_ack_o,
+  wbs_dat_o,
+  wbs_adr_i,
+  wbs_int_o,
 
-	mem_we_o,
-	mem_stb_o,
-	mem_cyc_o,
-	mem_sel_o,
-	mem_adr_o,
-	mem_dat_o,
-	mem_dat_i,
-	mem_ack_i,
-	mem_int_i,
+  mem_we_o,
+  mem_stb_o,
+  mem_cyc_o,
+  mem_sel_o,
+  mem_adr_o,
+  mem_dat_o,
+  mem_dat_i,
+  mem_ack_i,
+  mem_int_i,
 
+  i2s_mclock,
   i2s_clock,
   i2s_data,
   i2s_lr
 );
 
-`define DEFAULT_CLOCK_DIVISOR `CLOCK_RATE / (`AUDIO_RATE * `AUDIO_BITS * `AUDIO_CHANNELS + 1)
+`define DEFAULT_CLOCK_DIVISOR (`CLOCK_RATE / (`AUDIO_RATE * `AUDIO_BITS * `AUDIO_CHANNELS)) - 1
 
-input 				clk;
-input 				rst;
+input         clk;
+input         rst;
 
 //wishbone slave signals
-input 				      wbs_we_i;
-input 				      wbs_stb_i;
-input 				      wbs_cyc_i;
-input		    [3:0]	  wbs_sel_i;
-input		    [31:0]	wbs_adr_i;
-input  		  [31:0]	wbs_dat_i;
-output reg  [31:0]	wbs_dat_o;
-output reg			    wbs_ack_o;
-output reg			    wbs_int_o;
+input               wbs_we_i;
+input               wbs_stb_i;
+input               wbs_cyc_i;
+input       [3:0]   wbs_sel_i;
+input       [31:0]  wbs_adr_i;
+input       [31:0]  wbs_dat_i;
+output reg  [31:0]  wbs_dat_o;
+output reg          wbs_ack_o;
+output reg          wbs_int_o;
 
 //master control signal for memory arbitration
-output reg			    mem_we_o;
-output reg			    mem_stb_o;
-output reg			    mem_cyc_o;
-output reg	[3:0]	  mem_sel_o;
-output reg	[31:0]	mem_adr_o;
-output reg	[31:0]	mem_dat_o;
-input		    [31:0]	mem_dat_i;
-input				        mem_ack_i;
-input				        mem_int_i;
+output reg          mem_we_o;
+output reg          mem_stb_o;
+output reg          mem_cyc_o;
+output reg  [3:0]   mem_sel_o;
+output reg  [31:0]  mem_adr_o;
+output reg  [31:0]  mem_dat_o;
+input       [31:0]  mem_dat_i;
+input               mem_ack_i;
+input               mem_int_i;
 
 //i2s signals
+output              i2s_mclock;
 output              i2s_clock;
 output              i2s_data;
 output              i2s_lr;
 
 
-parameter			      REG_CONTROL	      =	32'h00000000;
-parameter			      REG_STATUS	      =	32'h00000001;
-parameter			      REG_CLOCK_RATE	  =	32'h00000002;
+parameter           REG_CONTROL       = 32'h00000000;
+parameter           REG_STATUS        = 32'h00000001;
+parameter           REG_CLOCK_RATE    = 32'h00000002;
 parameter           REG_CLOCK_DIVIDER = 32'h00000003;
 parameter           REG_MEM_0_BASE    = 32'h00000004;
 parameter           REG_MEM_0_SIZE    = 32'h00000005;
@@ -154,14 +156,19 @@ reg         [31:0]  memory_1_size;
 reg                 memory_1_new_data;
 
 wire        [31:0]  memory_count[1:0];
+wire        [31:0]  memory_0_count;
+wire        [31:0]  memory_1_count;
 reg         [31:0]  memory_pointer[1:0];
+wire        [31:0]  memory_0_pointer;
+wire        [31:0]  memory_1_pointer;
 
 reg                 memory_ready;
 reg                 active_block;
 
 
-reg         [31:0]  memory_0_base;
-reg         [31:0]  memory_1_base;
+reg         [31:0]  memory_base[1:0];
+wire        [31:0]  memory_0_base;
+wire        [31:0]  memory_1_base;
 
 //control
 wire                enable;
@@ -188,6 +195,7 @@ i2s_controller controller (
   .memory_data(memory_data),
   .memory_data_strobe(memory_data_strobe),
 
+  .i2s_mclock(i2s_mclock),
   .i2s_clock(i2s_clock),
   .i2s_data(i2s_data),
   .i2s_lr(i2s_lr)
@@ -213,81 +221,95 @@ assign        mem_ack_pos_edge      = mem_ack_i && ~prev_mem_ack;
 assign        memory_count[0]       = memory_0_size - memory_pointer[0];
 assign        memory_count[1]       = memory_1_size - memory_pointer[1];
 
+assign        memory_0_count        = memory_count[0];
+assign        memory_1_count        = memory_count[1];
+
+assign        memory_0_pointer      = memory_pointer[0];
+assign        memory_1_pointer      = memory_pointer[1];
+
+assign        memory_0_base         = memory_base[0];
+assign        memory_1_base         = memory_base[1];
+
 
 //blocks
 always @ (posedge clk) begin
-	if (rst) begin
-		wbs_dat_o	      <=  32'h0;
-		wbs_ack_o	      <=  0;
-		wbs_int_o	      <=  0;
+  if (rst) begin
+    wbs_dat_o       <=  32'h0;
+    wbs_ack_o       <=  0;
     timeout_enable  <=  0;
     timeout_value   <=  `DEFAULT_MEMORY_TIMEOUT;
 
     control         <=  0;
 
-    memory_0_base   <=  `DEFAULT_MEM_0_BASE;
-    memory_1_base   <=  `DEFAULT_MEM_1_BASE;
+    memory_base[0]  <=  `DEFAULT_MEM_0_BASE;
+    memory_base[1]  <=  `DEFAULT_MEM_1_BASE;
+
+    //memory_0_base   <=  `DEFAULT_MEM_0_BASE;
+    //memory_1_base   <=  `DEFAULT_MEM_1_BASE;
 
     memory_0_new_data <=  0;
-    memory_1_new_data <=  1;
+    memory_1_new_data <=  0;
 
     clock_divider   <=  `DEFAULT_CLOCK_DIVISOR;
-	end
+  end
 
-	else begin
+  else begin
 
     memory_0_new_data <=  0;
-    memory_1_new_data <=  1;
+    memory_1_new_data <=  0;
 
 
-		//when the master acks our ack, then put our ack down
-		if (wbs_ack_o & ~ wbs_stb_i)begin
-			wbs_ack_o <= 0;
-		end
+    //when the master acks our ack, then put our ack down
+    if (wbs_ack_o & ~ wbs_stb_i)begin
+      wbs_ack_o <= 0;
+    end
 
-		if (wbs_stb_i & wbs_cyc_i) begin
-			//master is requesting somethign
-			if (wbs_we_i) begin
-				//write request
-				case (wbs_adr_i) 
-					REG_CONTROL: begin
+    if (wbs_stb_i & wbs_cyc_i) begin
+      //master is requesting somethign
+      if (wbs_we_i) begin
+        //write request
+        case (wbs_adr_i) 
+          REG_CONTROL: begin
             control           <=  wbs_dat_i;
-					end
+          end
           REG_CLOCK_DIVIDER: begin
             clock_divider     <=  wbs_dat_i;
           end
           REG_MEM_0_BASE: begin
-            memory_0_base     <=  wbs_dat_i;
+            memory_base[0]    <=  wbs_dat_i;
           end
           REG_MEM_0_SIZE: begin
             memory_0_size     <=  wbs_dat_i;
-            memory_0_new_data <=  1;
+            if (wbs_dat_i > 0) begin
+              memory_0_new_data <=  1;
+            end
           end
           REG_MEM_1_BASE: begin
-            memory_1_base     <=  wbs_dat_i;
+            memory_base[1]    <=  wbs_dat_i;
           end
           REG_MEM_1_SIZE: begin
             memory_1_size     <=  wbs_dat_i;
-            memory_1_new_data <=  1;
+            if (wbs_dat_i > 0) begin
+              memory_1_new_data <=  1;
+            end
           end
-					//add as many ADDR_X you need here
-					default: begin
-					end
-				endcase
-			end
+          default: begin
+          end
+        endcase
+      end
 
-			else begin 
-				//read request
-				case (wbs_adr_i)
-					REG_CONTROL: begin
-						wbs_dat_o <= control;
-					end
-					REG_STATUS: begin
-						wbs_dat_o <= status;
-					end
-					REG_CLOCK_RATE: begin
-						wbs_dat_o <= `CLOCK_RATE;
-					end
+      else begin 
+        //read request
+        case (wbs_adr_i)
+          REG_CONTROL: begin
+            wbs_dat_o <= control;
+          end
+          REG_STATUS: begin
+            wbs_dat_o <= status;
+          end
+          REG_CLOCK_RATE: begin
+            wbs_dat_o <= `CLOCK_RATE;
+          end
           REG_CLOCK_DIVIDER: begin
             wbs_dat_o <=  clock_divider;
           end
@@ -295,22 +317,23 @@ always @ (posedge clk) begin
             wbs_dat_o <=  memory_0_base;
           end
           REG_MEM_0_SIZE: begin
-            wbs_dat_o <=  memory_count[0];
+            wbs_dat_o <=  memory_0_count;
           end
           REG_MEM_1_BASE: begin
             wbs_dat_o <=  memory_1_base;
           end
           REG_MEM_1_SIZE: begin
-            wbs_dat_o <=  memory_count[1];
+            wbs_dat_o <=  memory_1_count;
           end
-					//add as many ADDR_X you need here
-					default: begin
-					end
-				endcase
-			end
-			wbs_ack_o <= 1;
-		end
-	end
+          //add as many ADDR_X you need here
+          default: begin
+            wbs_dat_o <=  32'h00;
+          end
+        endcase
+      end
+      wbs_ack_o <= 1;
+    end
+  end
 end
 
 //detect the positive edge of request data
@@ -328,13 +351,13 @@ end
 
 //wishbone master module
 always @ (posedge clk) begin
-	if (rst) begin
-		mem_we_o		        <=  0;
-		mem_stb_o 	        <=  0;
-		mem_cyc_o 	        <=  0;
-		mem_sel_o 	        <=  4'h0;
-		mem_adr_o	          <=  32'h00000000;
-		mem_dat_o	          <=  32'h00000000;
+  if (rst) begin
+    mem_we_o            <=  0;
+    mem_stb_o           <=  0;
+    mem_cyc_o           <=  0;
+    mem_sel_o           <=  4'h0;
+    mem_adr_o           <=  32'h00000000;
+    mem_dat_o           <=  32'h00000000;
 
     //strobe for the i2s memory controller
     memory_data_strobe  <=  0;
@@ -345,12 +368,18 @@ always @ (posedge clk) begin
 
     request_count      <=  0;
 
-    prev_request_data   <=  0;
-
-	end
-	else begin
+  end
+  else begin
     memory_data_strobe  <=  0;
     request_finished    <=  0;
+
+    if (memory_0_new_data) begin
+      memory_pointer[0] <=  0;
+    end
+    if (memory_1_new_data) begin
+      memory_pointer[1] <=  0;
+    end
+
 
     //check to see if the i2s_mem_controller has requested data
     if (request_data_pos_edge) begin
@@ -365,27 +394,26 @@ always @ (posedge clk) begin
       request_count <=  request_count - 1;
     end
 
-		if (mem_ack_i) begin
-			$display ("got an ack!");
-			mem_stb_o	<= 0;
-			mem_cyc_o	<= 0;
-		end
-
-    if (request_count > 0 && ~mem_stb_o) begin
-      //need to send the mem_controller some data
-      if (memory_count[active_block] > 0) begin
-			  $display("get some data from the memory");
-			  mem_cyc_o                     <=  1;
-			  mem_stb_o                     <=  1;
-			  mem_sel_o                     <=  4'b1111;
-			  mem_we_o	                    <=  0;
-			  mem_dat_o                     <=  0;  
-        mem_adr_o                     <=  memory_pointer[active_block];
+    if (mem_ack_i) begin
+      $display ("got an ack!");
+      mem_stb_o <= 0;
+      mem_cyc_o <= 0;
+    end
+    if (memory_ready) begin
+      if (request_count > 0 && ~mem_stb_o && ~mem_ack_i) begin
+        //need to request data from the memory
+        $display("get some data from the memory");
+        mem_cyc_o                     <=  1;
+        mem_stb_o                     <=  1;
+        mem_sel_o                     <=  4'b1111;
+        mem_we_o                      <=  0;
+        mem_dat_o                     <=  0;  
+        mem_adr_o                     <=  memory_base[active_block] + memory_pointer[active_block];
         
         memory_pointer[active_block]  <=  memory_pointer[active_block] + 1;
-      end
-		end
-	end
+    end
+    end
+  end
 end
 
 //active block logic
@@ -403,9 +431,7 @@ always @ (posedge clk) begin
         active_block    <=  0;
       end
       else if (memory_count[1] > 0) begin
-      end
-      else begin
-        memory_ready    <=  0;
+        memory_ready    <=  1;
         active_block    <=  1;
       end
     end
