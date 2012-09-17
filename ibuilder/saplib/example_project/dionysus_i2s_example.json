@@ -51,20 +51,20 @@
 				"mem":"mem1"	
 			},
 			"bind":{
-       "i2s_data":{
-          "port":"pmoda7",
+       "phy_data":{
+          "port":"pmoda1",
           "direction":"output"
         },
-       "i2s_clock":{
-          "port":"pmoda8",
+       "phy_clock":{
+          "port":"pmoda2",
           "direction":"output"
         },
-        "i2s_lr":{
-          "port":"pmoda9",
+        "phy_lr":{
+          "port":"pmoda3",
           "direction":"output"
         },
-        "i2s_mclock":{
-          "port":"pmoda10",
+        "phy_mclock":{
+          "port":"pmoda4",
           "direction":"output"
         }
       }
