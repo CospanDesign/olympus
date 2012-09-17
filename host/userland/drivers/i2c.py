@@ -196,7 +196,6 @@ class I2C:
     self.set_control(control)
 
 
-
   def get_clock_rate(self):
     """get_clock_rate
 
