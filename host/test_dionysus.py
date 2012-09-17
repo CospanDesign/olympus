@@ -52,6 +52,7 @@ from userland.drivers import gpio
 from userland.drivers import spi
 from userland.drivers import i2c
 from userland.drivers import console
+from userland.drivers import i2s
 
 #TEST CONSTANTS
 MEM_SIZE = 1100
@@ -64,6 +65,7 @@ TEST_I2C = False
 TEST_SPI = False
 TEST_MEMORY = True
 TEST_CONSOLE = True
+TEST_I2S = True
 
 def test_memory(dyn, dev_index):
   print "testing memory @ %d" % dev_index
@@ -81,10 +83,12 @@ def test_memory(dyn, dev_index):
     print str(hex(data_out[i])) + ", ",
   print " "
 
-  dyn.write(dev_index, 0, data_out, mem_bus)
+  dyn.write_memory(0, data_out)
+  #dyn.write(dev_index, 0, data_out, mem_bus)
 
   print "Testing short read"
-  data_in = dyn.read(dev_index, 0, 2, mem_bus)
+  #data_in = dyn.read(dev_index, 0, 2, mem_bus)
+  data_in = dyn.read_memory(0, 2)
 
   print "mem data: %s" % str(data_in)
   print "hex: "
@@ -111,7 +115,8 @@ def test_memory(dyn, dev_index):
     sys.exit(1)
  
   print "Writing %d bytes of data" % (len(data_out))
-  dyn.write(dev_index, 0, data_out, mem_bus)
+  dyn.write_memory(0, data_out)
+  #dyn.write(dev_index, 0, data_out, mem_bus)
   print "Reading %d DWORDS of data" % (len(data_out))
   data_in = dyn.read(dev_index, 0, len(data_out) / 4, mem_bus)
 
@@ -185,6 +190,13 @@ def unit_test_devices(dyn):
         print "Found a console device"
         console.unit_test(dyn, dev_offset)
 
+    if TEST_I2S:
+      if (device_id == 0x0B):
+        print "Fond I2S device"
+        print "testing I2S @ %d" % dev_offset
+        i2s.unit_test(dyn, dev_offset)
+ 
+
 
  
 def usage():
@@ -244,6 +256,7 @@ if __name__ == '__main__':
   print "Reading DRT"
   dyn.read_drt()
   print "Printing DRT:"
+
 
   if test:
     print "Performing Tests:"
