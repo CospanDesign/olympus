@@ -12,6 +12,7 @@ class DRTError(Exception):
 
   Errors associated with Devcie ROM Table:
     invalid JSON file.
+    DRT is not defined
   """
   def __init__(self, value):
     self.value = value
@@ -246,6 +247,54 @@ class DRTManager():
  
  
     print white,
+
+
+  def get_total_memory_size(self):
+  
+    """get_total_memory_size
+
+    adds all the contiguous memory peripherals together and returns the
+    total size
+  
+    Note: this memory must start at address 0
+
+    Args:
+      Nothing
+
+    Returns:
+      Size of the total memory
+
+    Raises:
+      DRTError: DRT Not defined
+    """
+
+    offset = 0
+    if self.drt is None:
+      raise DRTError("DRT Not Defined")
+
+
+    offset = 0x00
+    num_devices = self.get_number_of_devices()
+    while (1):
+      prev_offset = offset
+      for dev_index in range (0, num_devices):
+        memory_device = self.is_memory_device(dev_index)
+        dev_offset = self.get_address_from_index(dev_index)
+        dev_size = self.get_size_from_index(dev_index)
+        device_id = self.get_id_from_index(dev_index)
+        if (device_id == 5):
+          if dev_offset == offset:
+            offset = offset + dev_size + 1
+
+      if prev_offset == offset:
+        break
+            
+    if offset > 0:
+      return offset - 1
+
+    return 0x00
+              
+
 
 
 
