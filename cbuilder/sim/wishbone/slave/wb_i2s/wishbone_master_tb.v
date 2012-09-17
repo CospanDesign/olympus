@@ -218,9 +218,10 @@ wire  [31:0]	    mem0_adr_o;
 wire		          mem0_int_i;
 
 
-wire              i2s_clock;
-wire              i2s_data;
-wire              i2s_lr;
+wire              phy_mclock;
+wire              phy_clock;
+wire              phy_data;
+wire              phy_lr;
 
 //mem 0
 wb_bram #(
@@ -270,9 +271,10 @@ wb_i2s s1 (
   .mem_ack_i(audio_ack_i),
   .mem_int_i(audio_int_i),
 
-  .i2s_clock(i2s_clock),
-  .i2s_data(i2s_data),
-  .i2s_lr(i2s_lr)
+  .phy_mclock(phy_mclock),
+  .phy_clock(phy_clock),
+  .phy_data(phy_data),
+  .phy_lr(phy_lr)
 
 );
 

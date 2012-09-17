@@ -4,6 +4,7 @@
 ../../../../rtl/generic/graycounter.v
 ../../../../rtl/generic/afifo.v
 ../../../../rtl/generic/ppfifo.v
+rtl/i2s_1khz_wave.v
 rtl/i2s_mem_controller.v
 rtl/i2s_controller.v
 rtl/i2s_writer.v
