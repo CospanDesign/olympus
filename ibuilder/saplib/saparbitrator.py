@@ -273,7 +273,9 @@ def generate_arbitrator_buffer(master_count, debug = False):
   #  master_sel_buf += "or m" +str(i) + "_cyc_i or m" + str(i) + "_stb_i "
 
   #master_sel_buf += ") begin\n"
+
   master_sel_buf += "always @ (posedge clk) begin\n"
+  #master_sel_buf += "always @ (*) begin\n"
   master_sel_buf += "\tif (rst) begin\n"
   master_sel_buf += "\t\tmaster_select <= MASTER_NO_SEL;\n"
   master_sel_buf += "\tend\n"
@@ -303,21 +305,21 @@ def generate_arbitrator_buffer(master_count, debug = False):
     master_sel_buf += "\t\t\t\tend\n"
   master_sel_buf += "\t\t\tend\n"
   master_sel_buf += "\t\tendcase\n"
-  master_sel_buf += "\t\tif ((priority_select < master_select) && (~s_stb_o && ~s_ack_i))begin\n"
-  master_sel_buf += "\n"
+  #master_sel_buf += "\t\tif ((priority_select < master_select) && (~s_stb_o && ~s_ack_i))begin\n"
+  #master_sel_buf += "\n"
 
-  first_if_flag = True
-  for i in range(master_count):
-    if (first_if_flag):
-      first_if_flag = False
-      master_sel_buf += "\t\t\t\tif (m" + str(i) + "_cyc_i) begin\n"
-    else:
-      master_sel_buf += "\t\t\t\telse if (m" + str(i) + "_cyc_i) begin\n"
+  #first_if_flag = True
+  #for i in range(master_count):
+  #  if (first_if_flag):
+  #    first_if_flag = False
+  #    master_sel_buf += "\t\t\t\tif (m" + str(i) + "_cyc_i) begin\n"
+  #  else:
+  #    master_sel_buf += "\t\t\t\telse if (m" + str(i) + "_cyc_i) begin\n"
 
-    master_sel_buf += "\t\t\t\t\tmaster_select <= MASTER_" + str(i) + ";\n"
-    master_sel_buf += "\t\t\t\tend\n"
+  #  master_sel_buf += "\t\t\t\t\tmaster_select <= MASTER_" + str(i) + ";\n"
+  #  master_sel_buf += "\t\t\t\tend\n"
 
-  master_sel_buf += "\t\tend\n"
+  #master_sel_buf += "\t\tend\n"
   master_sel_buf += "\tend\n"
   master_sel_buf += "end\n"
 
@@ -335,12 +337,14 @@ def generate_arbitrator_buffer(master_count, debug = False):
     priority_sel_buf += "parameter PRIORITY_" + str(i) + " = " + str(i) + ";\n"
 
   priority_sel_buf += "\n\n"
-  #priority_sel_buf += "always @(rst or master_select "
+  #priority_sel_buf += "always @(rst or master_select or priority_select "
   #for i in range (master_count):
   #  priority_sel_buf += "or m" + str(i) + "_cyc_i "
 
   #priority_sel_buf += ") begin\n" 
+
   priority_sel_buf += "always @ (posedge clk) begin\n"
+  #priority_sel_buf += "always @ (*) begin\n"
   priority_sel_buf += "\tif (rst) begin\n"
   priority_sel_buf += "\t\tpriority_select <= PRIORITY_NO_SEL;\n"
   priority_sel_buf += "\tend\n"
@@ -370,10 +374,12 @@ def generate_arbitrator_buffer(master_count, debug = False):
 
   #generate the write logic
   write_buf = "//write select block\n"
-  write_buf += "always @(master_select"
-  for i in range(master_count):
-    write_buf += " or m" + str(i) + "_we_i"
-  write_buf += ") begin\n"
+  #write_buf += "always @(master_select"
+  #for i in range(master_count):
+  #  write_buf += " or m" + str(i) + "_we_i"
+  #write_buf += ") begin\n"
+  #write_buf += "always @ (posedge clk) begin\n"
+  write_buf += "always @ (*) begin\n"
   write_buf += "\tcase (master_select)\n"
   for i in range(master_count):
     write_buf += "\t\tMASTER_" + str(i) + ": begin\n"
@@ -388,10 +394,12 @@ def generate_arbitrator_buffer(master_count, debug = False):
 
   #generate the strobe logic
   strobe_buf = "//strobe select block\n"
-  strobe_buf += "always @(master_select"
-  for i in range(master_count):
-    strobe_buf += " or m" + str(i) + "_stb_i"
-  strobe_buf += ") begin\n"
+  #strobe_buf += "always @(master_select"
+  #for i in range(master_count):
+  #  strobe_buf += " or m" + str(i) + "_stb_i"
+  #strobe_buf += ") begin\n"
+  #strobe_buf += "always @ (posedge clk) begin\n"
+  strobe_buf += "always @ (*) begin\n"
   strobe_buf += "\tcase (master_select)\n"
   for i in range(master_count):
     strobe_buf += "\t\tMASTER_" + str(i) + ": begin\n"
@@ -406,10 +414,15 @@ def generate_arbitrator_buffer(master_count, debug = False):
 
   #generate the cycle logic
   cycle_buf = "//cycle select block\n"
-  cycle_buf += "always @(master_select"
-  for i in range(master_count):
-    cycle_buf += " or m" + str(i) + "_cyc_i"
-  cycle_buf += ") begin\n"
+  #cycle_buf += "always @(master_select"
+  #for i in range(master_count):
+  #  cycle_buf += " or m" + str(i) + "_cyc_i"
+  #cycle_buf += ") begin\n"
+
+
+  #cycle_buf += "always @ (posedge clk) begin\n"
+  cycle_buf += "always @ (*) begin\n"
+
   cycle_buf += "\tcase (master_select)\n"
   for i in range(master_count):
     cycle_buf += "\t\tMASTER_" + str(i) + ": begin\n"
@@ -424,10 +437,15 @@ def generate_arbitrator_buffer(master_count, debug = False):
 
   #generate the select logic
   select_buf = "//select select block\n"
-  select_buf += "always @(master_select"
-  for i in range(master_count):
-    select_buf += " or m" + str(i) + "_sel_i"
-  select_buf += ") begin\n"
+  #select_buf += "always @(master_select"
+  #for i in range(master_count):
+  #  select_buf += " or m" + str(i) + "_sel_i"
+  #select_buf += ") begin\n"
+
+
+  #select_buf += "always @ (posedge clk) begin\n"
+  select_buf += "always @ (*) begin\n"
+
   select_buf += "\tcase (master_select)\n"
   for i in range(master_count):
     select_buf += "\t\tMASTER_" + str(i) + ": begin\n"
@@ -442,10 +460,16 @@ def generate_arbitrator_buffer(master_count, debug = False):
 
   #generate the address_logic
   address_buf = "//address seelct block\n"
-  address_buf += "always @(master_select"
-  for i in range(master_count):
-    address_buf += " or m" + str(i) + "_adr_i"
-  address_buf += ") begin\n"
+  #address_buf += "always @(master_select"
+  #for i in range(master_count):
+  #  address_buf += " or m" + str(i) + "_adr_i"
+  #address_buf += ") begin\n"
+
+
+  #address_buf += "always @ (posedge clk) begin\n"
+  address_buf += "always @ (*) begin\n"
+
+
   address_buf += "\tcase (master_select)\n"
   for i in range(master_count):
     address_buf += "\t\tMASTER_" + str(i) + ": begin\n"
@@ -460,10 +484,15 @@ def generate_arbitrator_buffer(master_count, debug = False):
 
   #generate the data logic
   data_buf = "//data select block\n"
-  data_buf += "always @(master_select"
-  for i in range(master_count):
-    data_buf += " or m" + str(i) + "_dat_i"
-  data_buf += ") begin\n"
+  #data_buf += "always @(master_select"
+  #for i in range(master_count):
+  #  data_buf += " or m" + str(i) + "_dat_i"
+  #data_buf += ") begin\n"
+
+
+  #data_buf += "always @ (posedge clk) begin\n"
+  data_buf += "always @ (*) begin\n"
+
   data_buf += "\tcase (master_select)\n"
   for i in range(master_count):
     data_buf += "\t\tMASTER_" + str(i) + ": begin\n"
