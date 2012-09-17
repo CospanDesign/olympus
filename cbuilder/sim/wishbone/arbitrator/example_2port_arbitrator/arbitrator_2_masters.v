@@ -144,15 +144,6 @@ always @ (posedge clk) begin
 				end
 			end
 		endcase
-		if ((priority_select < master_select) && (~s_stb_o && ~s_ack_i))begin
-
-				if (m0_cyc_i) begin
-					master_select <= MASTER_0;
-				end
-				else if (m1_cyc_i) begin
-					master_select <= MASTER_1;
-				end
-		end
 	end
 end
 
@@ -185,7 +176,7 @@ end
 
 
 //write select block
-always @(master_select or m0_we_i or m1_we_i) begin
+always @ (*) begin
 	case (master_select)
 		MASTER_0: begin
 			s_we_o <= m0_we_i;
@@ -201,7 +192,7 @@ end
 
 
 //strobe select block
-always @(master_select or m0_stb_i or m1_stb_i) begin
+always @ (*) begin
 	case (master_select)
 		MASTER_0: begin
 			s_stb_o <= m0_stb_i;
@@ -217,7 +208,7 @@ end
 
 
 //cycle select block
-always @(master_select or m0_cyc_i or m1_cyc_i) begin
+always @ (*) begin
 	case (master_select)
 		MASTER_0: begin
 			s_cyc_o <= m0_cyc_i;
@@ -233,7 +224,7 @@ end
 
 
 //select select block
-always @(master_select or m0_sel_i or m1_sel_i) begin
+always @ (*) begin
 	case (master_select)
 		MASTER_0: begin
 			s_sel_o <= m0_sel_i;
@@ -249,7 +240,7 @@ end
 
 
 //address seelct block
-always @(master_select or m0_adr_i or m1_adr_i) begin
+always @ (*) begin
 	case (master_select)
 		MASTER_0: begin
 			s_adr_o <= m0_adr_i;
@@ -265,7 +256,7 @@ end
 
 
 //data select block
-always @(master_select or m0_dat_i or m1_dat_i) begin
+always @ (*) begin
 	case (master_select)
 		MASTER_0: begin
 			s_dat_o <= m0_dat_i;
