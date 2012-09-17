@@ -74,6 +74,7 @@ output reg [23:0]           read_count;
 output [DATA_WIDTH - 1: 0]  read_data;
 
 
+
 //Local Registers/Wires
 reg    [23:0]               fifo0_write_count;
 reg    [23:0]               fifo1_write_count;
@@ -100,11 +101,22 @@ reg   [1:0]                 read_fifo_select;
 reg   [DATA_WIDTH - 1: 0]   last_read_data;
 reg                         pre_read_strobe;
 
+
+
+
 //Cross clock status
 reg   [1:0]                 fifo0_ready_history;
 wire                        fifo0_ready;
 reg   [1:0]                 fifo1_ready_history;
 wire                        fifo1_ready;
+
+
+wire                        write_clock_pulse_empty0_valid;
+reg   [2:0]                 write_clock_pulse_empty0_valid_sync;
+
+wire                        write_clock_pulse_empty1_valid;
+reg   [2:0]                 write_clock_pulse_empty1_valid_sync;
+
 
 afifo 
   #(
@@ -156,7 +168,7 @@ assign fifo1_write_data     = (write_activate[1]) ? write_data : 0;
 assign fifo0_write_strobe   = (write_activate[0]) ? write_strobe : 0;
 assign fifo1_write_strobe   = (write_activate[1]) ? write_strobe : 0;
 
-assign write_ready          = {fifo1_empty, fifo0_empty};
+assign write_ready          = {fifo1_empty && (fifo1_write_count == 0) , fifo0_empty && (fifo0_write_count == 0)};
 
 assign starved              = ((write_activate[0] == 1) && fifo1_empty) || 
                               ((write_activate[1] == 1) && fifo0_empty) ||
@@ -170,7 +182,20 @@ assign read_data            = (read_fifo_select[0] == 1) ? fifo0_read_data :
 assign fifo0_read_strobe    = (read_fifo_select[0] == 1) ? (read_strobe || pre_read_strobe) : 0;
 assign fifo1_read_strobe    = (read_fifo_select[1] == 1) ? (read_strobe || pre_read_strobe) : 0;
 
+assign  write_clock_pulse_empty0_valid  = (~write_clock_pulse_empty0_valid_sync[2] && write_clock_pulse_empty0_valid_sync[1]);
+assign  write_clock_pulse_empty1_valid  = (~write_clock_pulse_empty1_valid_sync[2] && write_clock_pulse_empty1_valid_sync[1]);
 //synchronous logic
+
+always @(posedge write_clock or posedge reset) begin
+  if (reset) begin
+    write_clock_pulse_empty0_valid_sync <=  0;
+    write_clock_pulse_empty1_valid_sync <=  0;
+  end
+  else begin
+    write_clock_pulse_empty0_valid_sync <=  {write_clock_pulse_empty0_valid_sync[1:0], fifo0_empty};
+    write_clock_pulse_empty1_valid_sync <=  {write_clock_pulse_empty1_valid_sync[1:0], fifo1_empty};
+  end
+end
 
 //FIFO write counts
 always @ (posedge write_clock or posedge reset) begin
@@ -178,7 +203,7 @@ always @ (posedge write_clock or posedge reset) begin
     fifo0_write_count   <=  0;
   end
   else begin
-    if (fifo0_empty) begin
+    if (write_clock_pulse_empty0_valid && ~write_activate[0]) begin
       fifo0_write_count <=  0;
     end
     if (fifo0_write_strobe) begin
@@ -193,7 +218,7 @@ always @ (posedge write_clock or posedge reset) begin
     fifo1_write_count   <=  0;
   end
   else begin
-    if (fifo1_empty) begin
+    if (write_clock_pulse_empty1_valid && ~write_activate[1]) begin
       fifo1_write_count <=  0;
     end
     if (fifo1_write_strobe) begin
