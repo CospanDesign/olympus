@@ -166,6 +166,24 @@ class Olympus:
     """
     raise AssertionError("read function is not implemented")
 
+  def read_memory(self, address, size):
+    """read_memory
+
+    Reads a byte array of the specified size from the specified address from
+    memory
+
+    Args:
+      address: Starting location o memory to read from
+      size: total number of 32-bit words to read
+
+    Returns:
+      Nothing
+
+    Raises:
+      OlympusCommError: Error in communication
+    """
+    return self.read(0, address, size, mem_device=True)
+
   def write_register(self, device_id, address, value):
     """write_register
 
@@ -189,6 +207,22 @@ class Olympus:
     self.write(device_id, address, register_array)
 
 
+  def write_memory(self, address, data):
+    """write_memory
+
+    Writes the byte of array of bytes down to the memory of the bus
+
+    Args:
+      address: Starting location of memory to write to
+      data: A byte array of raw values to write to the memory
+
+    Returns:
+      Nothing
+
+    Raises:
+      OlympusCommError: Error in communication
+    """
+    self.write(0, address, data, mem_device = True)
 
   def write(self, device_id, address, data = None, mem_device = False):
     """write
@@ -335,6 +369,25 @@ class Olympus:
       Nothing
     """
     return self.drt_manager.is_memory_device(device_index)
+
+  def get_total_memory_size(self):
+    """get_total_memory_size
+
+    adds all the contiguous memory peripherals together and returns the
+    total size
+  
+    Note: this memory must start at address 0
+
+    Args:
+      Nothing
+
+    Returns:
+      Size of the total memory
+
+    Raises:
+      DRTError: DRT Not defined
+    """
+    return self.drt_manager.get_total_memory_size()
 
   def ping(self):
     """ping
