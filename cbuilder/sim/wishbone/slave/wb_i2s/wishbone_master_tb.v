@@ -227,7 +227,7 @@ wb_bram #(
   .DATA_WIDTH(32),
   .ADDR_WIDTH(12),
   .MEM_FILE("mem_file.txt"),
-  .MEM_FILE_LENGTH(10)
+  .MEM_FILE_LENGTH(25)
 )m0 (
 
 	.clk(clk),
@@ -356,6 +356,7 @@ wishbone_mem_interconnect wmi (
     .m_cyc_i(mem_cyc_o),
     .m_stb_i(mem_stb_o),
     .m_ack_o(mem_ack_i),
+    .m_sel_i(mem_sel_o),
     .m_dat_i(mem_dat_o),
     .m_dat_o(mem_dat_i),
     .m_adr_i(mem_adr_o),
@@ -365,6 +366,7 @@ wishbone_mem_interconnect wmi (
     .s0_cyc_o(mem0_cyc_o),
     .s0_stb_o(mem0_stb_o),
     .s0_ack_i(mem0_ack_i),
+    .s0_sel_o(mem0_sel_o),
     .s0_dat_o(mem0_dat_o),
     .s0_dat_i(mem0_dat_i),
     .s0_adr_o(mem0_adr_o),
@@ -470,7 +472,7 @@ initial begin
       end //end read_count == 4
     end //end while ! eof
   end //end not reset
-  #10000
+  #100000
   $fclose (fd_in);
   $fclose (fd_out);
   $finish();
