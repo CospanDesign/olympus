@@ -86,11 +86,21 @@ wire        [31:0]  read_data;
 reg         [23:0]  read_count;
 reg         [3:0]   state;
 
+reg         [7:0]   test_wave_pos; 
+wire        [15:0]  test_wave;
+
 
 //parameters
 parameter   READ_STROBE     = 4'h0;
 parameter   DELAY           = 4'h1;
 parameter   READ            = 4'h2; 
+
+waveform wave (
+  .clk(clk),
+  .rst(rst),
+  .pos(test_wave_pos),
+  .value(test_wave)
+);
 
 //generate a Ping Pong FIFO to cross the clock domain
 ppfifo #(
@@ -136,6 +146,7 @@ always @(posedge clk) begin
   if (rst) begin
     request_data    <=  0;
     write_activate  <=  0;
+    test_wave_pos   <=  0;
   end
   else begin
     request_data    <=  0;

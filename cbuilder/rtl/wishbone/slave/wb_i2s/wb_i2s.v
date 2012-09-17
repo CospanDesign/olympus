@@ -72,10 +72,10 @@ module wb_i2s (
   mem_ack_i,
   mem_int_i,
 
-  i2s_mclock,
-  i2s_clock,
-  i2s_data,
-  i2s_lr
+  phy_mclock,
+  phy_clock,
+  phy_data,
+  phy_lr
 );
 
 `define DEFAULT_CLOCK_DIVISOR (`CLOCK_RATE / (`AUDIO_RATE * `AUDIO_BITS * `AUDIO_CHANNELS)) - 1
@@ -106,10 +106,10 @@ input               mem_ack_i;
 input               mem_int_i;
 
 //i2s signals
-output              i2s_mclock;
-output              i2s_clock;
-output              i2s_data;
-output              i2s_lr;
+output              phy_mclock;
+output              phy_clock;
+output              phy_data;
+output              phy_lr;
 
 
 parameter           REG_CONTROL       = 32'h00000000;
@@ -195,10 +195,10 @@ i2s_controller controller (
   .memory_data(memory_data),
   .memory_data_strobe(memory_data_strobe),
 
-  .i2s_mclock(i2s_mclock),
-  .i2s_clock(i2s_clock),
-  .i2s_data(i2s_data),
-  .i2s_lr(i2s_lr)
+  .i2s_mclock(phy_mclock),
+  .i2s_clock(phy_clock),
+  .i2s_data(phy_data),
+  .i2s_lr(phy_lr)
 );
 
 
