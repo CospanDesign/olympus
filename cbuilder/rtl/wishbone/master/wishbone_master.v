@@ -270,6 +270,11 @@ always @ (posedge clk) begin
       nack_count <= nack_count - 1;
     end
 
+    if (!mem_bus_select) begin
+      mem_stb_o <=  0;
+      mem_cyc_o <=  0;
+    end
+
     //check if the input handler reset us
     case (state)
 
