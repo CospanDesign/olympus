@@ -52,6 +52,7 @@ MEM_1_SIZE      = 7
 CONTROL_ENABLE            = 1 << 0
 CONTROL_INTERRUPT_ENABLE  = 1 << 1
 CONTROL_WAVE_POST_FIFO    = 1 << 2
+CONTROL_WAVE_PRE_FIFO     = 1 << 3
 
 #Status bit values
 STATUS_MEM_0_EMPTY        = 1 << 0
@@ -280,6 +281,50 @@ class I2S:
       OlympusCommError: Error in communciation
     """
     return ((self.get_control() & CONTROL_WAVE_POST_FIFO) > 0)
+
+
+  def enable_pre_fifo_test(self, enable):
+    """enable_pre_fifo_test
+ 
+    enables the pre FIFO test
+ 
+    Args:
+      enable:
+        True: Enable the test
+        False: Disable the test
+ 
+    Returns:
+      Nothing
+ 
+    Raises:
+      OlympusCommError: Error in communication
+    """
+    control = self.get_control()
+    if enable:
+      control = control | CONTROL_WAVE_PRE_FIFO
+    else:
+      control = control & (~CONTROL_WAVE_PRE_FIFO)
+ 
+    self.set_control(control)
+
+
+
+  def is_pre_fifo_test_enabled(self):
+    """is_pre_fifo_test_enabled
+    
+    returns true if i2s is enabled
+ 
+    Args:
+      Nothing
+ 
+    Returns:
+      True: Enabled
+      False: Not Enabled
+ 
+    Raises:
+      OlympusCommError: Error in communciation
+    """
+    return ((self.get_control() & CONTROL_WAVE_PRE_FIFO) > 0)
 
 
 
@@ -671,10 +716,16 @@ def unit_test(oly, dev_id):
   i2s.enable_interrupt(True)
 
 
+  #print "Enable sine wave test"
+  #i2s.enable_post_fifo_test(True)
+
+  #print "Check if sine wave is enabled"
+  #print "enabled: " + str(i2s.is_post_fifo_test_enabled())
+
   print "Enable sine wave test"
-  i2s.enable_post_fifo_test(True)
+  i2s.enable_pre_fifo_test(True)
 
   print "Check if sine wave is enabled"
-  print "enabled: " + str(i2s.is_post_fifo_test_enabled())
+  print "enabled: " + str(i2s.is_pre_fifo_test_enabled())
 
 
