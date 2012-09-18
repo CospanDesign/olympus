@@ -22,6 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+`include "project_defines.v"
 
 module i2s_mem_controller (
   rst,
@@ -29,6 +30,7 @@ module i2s_mem_controller (
 
   //control
   enable,
+  post_fifo_wave_en,
 
   //clock divider
   i2s_clock,
@@ -51,6 +53,7 @@ input               rst;
 input               clk;
 
 input               enable;
+input               post_fifo_wave_en;
 
 input               i2s_clock;
 
@@ -86,21 +89,16 @@ wire        [31:0]  read_data;
 reg         [23:0]  read_count;
 reg         [3:0]   state;
 
-reg         [7:0]   test_wave_pos; 
-wire        [15:0]  test_wave;
 
+//waveform
+reg         [7:0]   test_pos;
+wire        [7:0]   test_wavelength;
+wire        [15:0]  test_value;
 
 //parameters
 parameter   READ_STROBE     = 4'h0;
 parameter   DELAY           = 4'h1;
 parameter   READ            = 4'h2; 
-
-waveform wave (
-  .clk(clk),
-  .rst(rst),
-  .pos(test_wave_pos),
-  .value(test_wave)
-);
 
 //generate a Ping Pong FIFO to cross the clock domain
 ppfifo #(
@@ -133,6 +131,14 @@ ppfifo #(
   .read_data(read_data)
 );
 
+waveform wave (
+  .clk(clk),
+  .rst(rst),
+  .wavelength(test_wavelength),
+  .pos(test_pos),
+  .value(test_value)
+);
+
 //asynchronous logic
 
 //XXX: the request data may need to be controlled within a block
@@ -142,11 +148,14 @@ assign  request_size  = write_fifo_size;
 //blocks
 
 //data flow and control
-always @(posedge clk) begin
+`ifdef SIMULATION
+always @(posedge i2s_clock or posedge rst) begin
+`else
+always @(posedge i2s_clock) begin
+`endif
   if (rst) begin
     request_data    <=  0;
     write_activate  <=  0;
-    test_wave_pos   <=  0;
   end
   else begin
     request_data    <=  0;
@@ -174,7 +183,11 @@ end
 
 
 //prepare the data for the i2s writer
+`ifdef SIMULATION
+always @(posedge i2s_clock or posedge rst) begin
+`else
 always @(posedge i2s_clock) begin
+`endif
   read_strobe     <=  0;
   if (rst) begin
     audio_data_ack  <=  0;
@@ -183,6 +196,7 @@ always @(posedge i2s_clock) begin
     read_count      <=  0;
     read_activate   <=  0;
     state           <=  READ_STROBE;
+    test_pos        <=  0;
   end
   else if (enable) begin
 
@@ -193,44 +207,61 @@ always @(posedge i2s_clock) begin
       audio_data_ack      <=  0;
     end
 
-    if (read_count == 0) begin
-      state               <=  READ_STROBE;
-      if (read_activate) begin
-        read_activate <=  0;
-      end
-      //get a new FIFO if it is available
-      else begin
-        //need to activate a fifo
-        if (read_ready) begin
-          read_count    <=  read_size + 1;
-          read_activate <=  1;
+    if (post_fifo_wave_en) begin
+      if (audio_data_request && ~audio_data_ack) begin
+        audio_lr_bit    <=  ~audio_lr_bit;
+
+        if (test_pos >= test_wavelength - 1) begin 
+          test_pos  <=  0;
         end
+        else begin
+          test_pos  <=  test_pos + 1;
+        end
+        
+        audio_data        <=  {test_value, 8'h0};
+        audio_data_ack    <=  1;
       end
     end
-    //more than 0 in the read count
-    else if (audio_data_request && ~audio_data_ack) begin
-      case (state)
-        READ_STROBE: begin
-          //if the i2s writer request a dword
-          //more data to be read
-          read_count    <=  read_count - 1;
-          read_strobe   <=  1;
-          state         <=  DELAY;
+    else begin
+      if (read_count == 0) begin
+        state               <=  READ_STROBE;
+        if (read_activate) begin
+          read_activate <=  0;
         end
-        DELAY: begin
-          state         <=  READ;
+        //get a new FIFO if it is available
+        else begin
+          //need to activate a fifo
+          if (read_ready) begin
+            read_count    <=  read_size + 1;
+            read_activate <=  1;
+          end
         end
-        READ: begin
-          //get data from the ping pong
-          //put it into the dword_data
-          audio_data    <=  read_data[23:0];
-          audio_lr_bit  <=  read_data[31];
-          //raise the ACK to indicate there is new data
-          audio_data_ack     <=  1;
-        end
-        default: begin
-        end
-      endcase
+      end
+      //more than 0 in the read count
+      else if (audio_data_request && ~audio_data_ack) begin
+        case (state)
+          READ_STROBE: begin
+            //if the i2s writer request a dword
+            //more data to be read
+            read_count    <=  read_count - 1;
+            read_strobe   <=  1;
+            state         <=  DELAY;
+          end
+          DELAY: begin
+            state         <=  READ;
+          end
+          READ: begin
+            //get data from the ping pong
+            //put it into the dword_data
+            audio_data    <=  read_data[23:0];
+            audio_lr_bit  <=  read_data[31];
+            //raise the ACK to indicate there is new data
+            audio_data_ack     <=  1;
+          end
+          default: begin
+          end
+        endcase
+      end
     end
   end
 end
