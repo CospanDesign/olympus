@@ -51,19 +51,19 @@
 				"mem":"mem1"	
 			},
 			"bind":{
-       "phy_data":{
+       "phy_mclock":{
           "port":"pmoda1",
           "direction":"output"
         },
-       "phy_clock":{
+       "phy_lr":{
           "port":"pmoda2",
           "direction":"output"
         },
-        "phy_lr":{
+        "phy_clock":{
           "port":"pmoda3",
           "direction":"output"
         },
-        "phy_mclock":{
+        "phy_data":{
           "port":"pmoda4",
           "direction":"output"
         }
