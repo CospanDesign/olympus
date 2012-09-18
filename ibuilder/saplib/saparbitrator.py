@@ -214,8 +214,9 @@ def generate_arbitrator_buffer(master_count, debug = False):
 
   port_buf = ""
   port_def_buf = ""
-  priority_sel_buf = ""
+  master_count_buf = ""
   master_sel_buf = ""
+  priority_sel_buf = ""
   write_buf = ""
   strobe_buf = ""
   cycle_buf = ""
@@ -259,6 +260,7 @@ def generate_arbitrator_buffer(master_count, debug = False):
   if (debug):
     print "port define buf: \n\n" + port_def_buf
 
+  master_count_buf = str(master_count);
 
   #generate the master_select logic
   master_sel_buf = "//master select block\n"
@@ -379,6 +381,11 @@ def generate_arbitrator_buffer(master_count, debug = False):
   #  write_buf += " or m" + str(i) + "_we_i"
   #write_buf += ") begin\n"
   #write_buf += "always @ (posedge clk) begin\n"
+  for i in range (master_count):
+    write_buf += "assign master_we_o[MASTER_%d] = m%d_we_i;\n" % (i, i)
+  write_buf += "\n"
+
+  """
   write_buf += "always @ (*) begin\n"
   write_buf += "\tcase (master_select)\n"
   for i in range(master_count):
@@ -391,6 +398,11 @@ def generate_arbitrator_buffer(master_count, debug = False):
   write_buf += "\t\tend\n"
   write_buf += "\tendcase\n"
   write_buf += "end\n"
+  """
+
+
+
+
 
   #generate the strobe logic
   strobe_buf = "//strobe select block\n"
@@ -399,6 +411,10 @@ def generate_arbitrator_buffer(master_count, debug = False):
   #  strobe_buf += " or m" + str(i) + "_stb_i"
   #strobe_buf += ") begin\n"
   #strobe_buf += "always @ (posedge clk) begin\n"
+  for i in range (master_count):
+    strobe_buf += "assign master_stb_o[MASTER_%d] = m%d_stb_i;\n" % (i, i)
+  strobe_buf += "\n"
+  """
   strobe_buf += "always @ (*) begin\n"
   strobe_buf += "\tcase (master_select)\n"
   for i in range(master_count):
@@ -411,6 +427,11 @@ def generate_arbitrator_buffer(master_count, debug = False):
   strobe_buf += "\t\tend\n"
   strobe_buf += "\tendcase\n"
   strobe_buf += "end\n"
+  """
+
+
+
+
 
   #generate the cycle logic
   cycle_buf = "//cycle select block\n"
@@ -421,6 +442,11 @@ def generate_arbitrator_buffer(master_count, debug = False):
 
 
   #cycle_buf += "always @ (posedge clk) begin\n"
+  for i in range (master_count):
+    cycle_buf += "assign master_cyc_o[MASTER_%d] = m%d_cyc_i;\n" % (i, i)
+  cycle_buf += "\n"
+
+  """
   cycle_buf += "always @ (*) begin\n"
 
   cycle_buf += "\tcase (master_select)\n"
@@ -434,6 +460,7 @@ def generate_arbitrator_buffer(master_count, debug = False):
   cycle_buf += "\t\tend\n"
   cycle_buf += "\tendcase\n"
   cycle_buf += "end\n"
+  """
 
   #generate the select logic
   select_buf = "//select select block\n"
@@ -442,8 +469,13 @@ def generate_arbitrator_buffer(master_count, debug = False):
   #  select_buf += " or m" + str(i) + "_sel_i"
   #select_buf += ") begin\n"
 
+  for i in range (master_count):
+    select_buf += "assign master_sel_o[MASTER_%d] = m%d_sel_i;\n" % (i, i)
+  select_buf += "\n"
+
 
   #select_buf += "always @ (posedge clk) begin\n"
+  """
   select_buf += "always @ (*) begin\n"
 
   select_buf += "\tcase (master_select)\n"
@@ -457,6 +489,7 @@ def generate_arbitrator_buffer(master_count, debug = False):
   select_buf += "\t\tend\n"
   select_buf += "\tendcase\n"
   select_buf += "end\n"
+  """
 
   #generate the address_logic
   address_buf = "//address seelct block\n"
@@ -465,8 +498,14 @@ def generate_arbitrator_buffer(master_count, debug = False):
   #  address_buf += " or m" + str(i) + "_adr_i"
   #address_buf += ") begin\n"
 
+  for i in range (master_count):
+    address_buf += "assign master_adr_o[MASTER_%d] = m%d_adr_i;\n" % (i, i)
+  address_buf += "\n"
+
+
 
   #address_buf += "always @ (posedge clk) begin\n"
+  """
   address_buf += "always @ (*) begin\n"
 
 
@@ -481,6 +520,7 @@ def generate_arbitrator_buffer(master_count, debug = False):
   address_buf += "\t\tend\n"
   address_buf += "\tendcase\n"
   address_buf += "end\n"
+  """
 
   #generate the data logic
   data_buf = "//data select block\n"
@@ -489,8 +529,13 @@ def generate_arbitrator_buffer(master_count, debug = False):
   #  data_buf += " or m" + str(i) + "_dat_i"
   #data_buf += ") begin\n"
 
+  for i in range (master_count):
+    data_buf += "assign master_dat_o[MASTER_%d] = m%d_dat_i;\n" % (i, i)
+  data_buf += "\n\n"
+
 
   #data_buf += "always @ (posedge clk) begin\n"
+  """
   data_buf += "always @ (*) begin\n"
 
   data_buf += "\tcase (master_select)\n"
@@ -504,6 +549,7 @@ def generate_arbitrator_buffer(master_count, debug = False):
   data_buf += "\t\tend\n"
   data_buf += "\tendcase\n"
   data_buf += "end\n"
+  """
 
   #generate the assigns
   assign_buf = "//assign block\n"
@@ -519,6 +565,7 @@ def generate_arbitrator_buffer(master_count, debug = False):
 
   buf = template.substitute ( ARBITRATOR_NAME=arbitrator_name,
                 PORTS=port_buf,
+                NUM_MASTERS=master_count_buf,
                 PORT_DEFINES=port_def_buf,
                 PRIORITY_SELECT=priority_sel_buf,
                 MASTER_SELECT=master_sel_buf,
