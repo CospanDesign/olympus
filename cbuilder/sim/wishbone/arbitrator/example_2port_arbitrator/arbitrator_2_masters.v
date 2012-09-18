@@ -71,17 +71,18 @@ input               clk;
 input               rst;
 
 //wishbone slave signals
-output reg          s_we_o;
-output reg          s_stb_o;
-output reg          s_cyc_o;
-output reg  [3:0]   s_sel_o;
-output reg  [31:0]  s_adr_o;
-output reg  [31:0]  s_dat_o;
-input       [31:0]  s_dat_i;
+output              s_we_o;
+output              s_stb_o;
+output              s_cyc_o;
+output  [3:0]       s_sel_o;
+output  [31:0]      s_adr_o;
+output  [31:0]      s_dat_o;
+
+input   [31:0]      s_dat_i;
 input               s_ack_i;
 input               s_int_i;
 
-
+parameter           MASTER_COUNT = 2;
 //wishbone master signals
 input			m0_we_i;
 input			m0_cyc_i;
@@ -111,6 +112,15 @@ output			m1_int_o;
 //this should be parameterized
 reg [7:0]           master_select;
 reg [7:0]           priority_select;
+
+
+wire                master_we_o  [MASTER_COUNT:0];
+wire                master_stb_o [MASTER_COUNT:0];
+wire                master_cyc_o [MASTER_COUNT:0];
+wire  [3:0]         master_sel_o [MASTER_COUNT:0];
+wire  [31:0]        master_adr_o [MASTER_COUNT:0];
+wire  [31:0]        master_dat_o [MASTER_COUNT:0];
+
 
 //master select block
 parameter MASTER_NO_SEL = 8'hFF;
@@ -175,100 +185,52 @@ always @ (posedge clk) begin
 end
 
 
+
+
+//slave assignments
+assign  s_we_o = master_we_o[master_select];
+assign  s_stb_o = master_stb_o[master_select];
+assign  s_cyc_o = master_cyc_o[master_select];
+assign  s_sel_o = master_sel_o[master_select];
+assign  s_adr_o = master_adr_o[master_select];
+assign  s_dat_o = master_dat_o[master_select];
+
+
 //write select block
-always @ (*) begin
-	case (master_select)
-		MASTER_0: begin
-			s_we_o <= m0_we_i;
-		end
-		MASTER_1: begin
-			s_we_o <= m1_we_i;
-		end
-		default: begin
-			s_we_o <= 1'h0;
-		end
-	endcase
-end
+assign master_we_o[MASTER_0] = m0_we_i;
+assign master_we_o[MASTER_1] = m1_we_i;
+
 
 
 //strobe select block
-always @ (*) begin
-	case (master_select)
-		MASTER_0: begin
-			s_stb_o <= m0_stb_i;
-		end
-		MASTER_1: begin
-			s_stb_o <= m1_stb_i;
-		end
-		default: begin
-			s_stb_o <= 1'h0;
-		end
-	endcase
-end
+assign master_stb_o[MASTER_0] = m0_stb_i;
+assign master_stb_o[MASTER_1] = m1_stb_i;
+
 
 
 //cycle select block
-always @ (*) begin
-	case (master_select)
-		MASTER_0: begin
-			s_cyc_o <= m0_cyc_i;
-		end
-		MASTER_1: begin
-			s_cyc_o <= m1_cyc_i;
-		end
-		default: begin
-			s_cyc_o <= 1'h0;
-		end
-	endcase
-end
+assign master_cyc_o[MASTER_0] = m0_cyc_i;
+assign master_cyc_o[MASTER_1] = m1_cyc_i;
+
 
 
 //select select block
-always @ (*) begin
-	case (master_select)
-		MASTER_0: begin
-			s_sel_o <= m0_sel_i;
-		end
-		MASTER_1: begin
-			s_sel_o <= m1_sel_i;
-		end
-		default: begin
-			s_sel_o <= 4'h0;
-		end
-	endcase
-end
+assign master_sel_o[MASTER_0] = m0_sel_i;
+assign master_sel_o[MASTER_1] = m1_sel_i;
+
 
 
 //address seelct block
-always @ (*) begin
-	case (master_select)
-		MASTER_0: begin
-			s_adr_o <= m0_adr_i;
-		end
-		MASTER_1: begin
-			s_adr_o <= m1_adr_i;
-		end
-		default: begin
-			s_adr_o <= 32'h00000000;
-		end
-	endcase
-end
+assign master_adr_o[MASTER_0] = m0_adr_i;
+assign master_adr_o[MASTER_1] = m1_adr_i;
+
 
 
 //data select block
-always @ (*) begin
-	case (master_select)
-		MASTER_0: begin
-			s_dat_o <= m0_dat_i;
-		end
-		MASTER_1: begin
-			s_dat_o <= m1_dat_i;
-		end
-		default: begin
-			s_dat_o <= 32'h00000000;
-		end
-	endcase
-end
+assign master_dat_o[MASTER_0] = m0_dat_i;
+assign master_dat_o[MASTER_1] = m1_dat_i;
+
+
 
 
 //assign block
