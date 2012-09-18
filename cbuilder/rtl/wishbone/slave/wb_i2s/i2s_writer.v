@@ -45,7 +45,7 @@ module i2s_writer (
   i2s_lr
 );
 
-parameter           DATA_SIZE = 24;
+parameter           DATA_SIZE = 32;
 
 input               rst;
 input               clk;
@@ -81,7 +81,7 @@ reg         [3:0]   state;
 //asynchronous logic
 
 //synchronous logic
-always @ (posedge rst or posedge i2s_clock) begin
+always @ (posedge rst or negedge i2s_clock) begin
   if (rst) begin
     bit_count           <=  DATA_SIZE -1;
     new_audio_data      <=  0;
@@ -101,7 +101,8 @@ always @ (posedge rst or posedge i2s_clock) begin
         if (audio_data_ack) begin
           audio_data_request     <=  0;
           state             <=  DATA_READY;
-          new_audio_data    <=  audio_data;
+          new_audio_data    <=  {1'b0, audio_data[23:1]};
+          //new_audio_data    <=  audio_data[23:0];
           new_audio_lr_bit  <=  audio_lr_bit;
         end
       end

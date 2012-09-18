@@ -49,7 +49,7 @@ module i2s_controller (
   i2s_lr
 );
 
-`define DEFAULT_MCLOCK_DIVISOR `CLOCK_RATE / (`AUDIO_RATE)/256
+`define DEFAULT_MCLOCK_DIVISOR `CLOCK_RATE / (`AUDIO_RATE) / 256
 
 input               rst;
 input               clk;
@@ -74,8 +74,8 @@ output              i2s_data;
 output              i2s_lr;
 
 //registers/wires
-reg         [31:0]  clock_count = 0;
-reg         [31:0]  mclock_count = 0;
+reg         [2:0]  clock_count = 0;
+reg                 mclock_count = 0;
 
 wire                audio_data_request;
 wire                audio_data_ack;
@@ -131,7 +131,8 @@ i2s_writer writer(
 );
 
 //asynchronous logic
-`define DEFAULT_MCLOCK_DIVISOR (`CLOCK_RATE / (`AUDIO_RATE * 256)) - 1
+//`define DEFAULT_MCLOCK_DIVISOR (`CLOCK_RATE / (`AUDIO_RATE * 256)) / 2
+`define DEFAULT_MCLOCK_DIVISOR 1
 
 //synchronous logic
 //clock generator
@@ -141,13 +142,17 @@ always @(posedge clk) begin
     clock_count <=  0;
   end
   else begin
-    if (clock_count == clock_divider) begin
-      i2s_clock     <=  ~i2s_clock;
-      clock_count   <= 0;
+    if (clock_count == 0) begin
+      i2s_clock <=  ~i2s_clock;
     end
-    else begin
-      clock_count   <=  clock_count + 1;
-    end
+    clock_count <=  clock_count + 1;
+//    if (clock_count == clock_divider) begin
+//      i2s_clock     <=  ~i2s_clock;
+//      clock_count   <= 0;
+//    end
+//    else begin
+//      clock_count   <=  clock_count + 1;
+//    end
   end
 end
 
@@ -157,13 +162,19 @@ always @(posedge clk) begin
     mclock_count  <=  0;
   end
   else begin
+    if (mclock_count == 0) begin
+      i2s_mclock     <=  ~i2s_mclock;
+    end
+    mclock_count  <=  mclock_count + 1;
+    /*
     if (mclock_count == `DEFAULT_MCLOCK_DIVISOR) begin
       i2s_mclock     <=  ~i2s_mclock;
-      mclock_count   <= 0;
+      mclock_count   <= 1;
     end
     else begin
       mclock_count   <=  mclock_count + 1;
     end
+  */
   end
 end
 

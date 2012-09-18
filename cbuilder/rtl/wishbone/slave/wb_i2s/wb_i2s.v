@@ -78,7 +78,7 @@ module wb_i2s (
   phy_lr
 );
 
-`define DEFAULT_CLOCK_DIVISOR (`CLOCK_RATE / (`AUDIO_RATE * `AUDIO_BITS * `AUDIO_CHANNELS)) - 1
+`define DEFAULT_CLOCK_DIVISOR (`CLOCK_RATE / (`AUDIO_RATE * `AUDIO_BITS * `AUDIO_CHANNELS)) / 2
 
 input         clk;
 input         rst;
