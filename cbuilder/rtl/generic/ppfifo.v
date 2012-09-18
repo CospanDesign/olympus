@@ -75,6 +75,7 @@ output [DATA_WIDTH - 1: 0]  read_data;
 
 
 
+
 //Local Registers/Wires
 reg    [23:0]               fifo0_write_count;
 reg    [23:0]               fifo1_write_count;
@@ -102,8 +103,6 @@ reg   [DATA_WIDTH - 1: 0]   last_read_data;
 reg                         pre_read_strobe;
 
 
-
-
 //Cross clock status
 reg   [1:0]                 fifo0_ready_history;
 wire                        fifo0_ready;
@@ -116,6 +115,12 @@ reg   [2:0]                 write_clock_pulse_empty0_valid_sync;
 
 wire                        write_clock_pulse_empty1_valid;
 reg   [2:0]                 write_clock_pulse_empty1_valid_sync;
+
+reg   [1:0]                 read_pre_select;
+
+wire                        read_pre_select0;
+wire                        read_pre_select1;
+
 
 
 afifo 
@@ -184,6 +189,11 @@ assign fifo1_read_strobe    = (read_fifo_select[1] == 1) ? (read_strobe || pre_r
 
 assign  write_clock_pulse_empty0_valid  = (~write_clock_pulse_empty0_valid_sync[2] && write_clock_pulse_empty0_valid_sync[1]);
 assign  write_clock_pulse_empty1_valid  = (~write_clock_pulse_empty1_valid_sync[2] && write_clock_pulse_empty1_valid_sync[1]);
+
+
+//debug signals so the simulator can view it
+assign read_pre_select0     = read_pre_select[0];
+assign read_pre_select1     = read_pre_select[1];
 //synchronous logic
 
 always @(posedge write_clock or posedge reset) begin
@@ -254,25 +264,40 @@ always @ (posedge read_clock or posedge reset) begin
     read_fifo_select        <=  0;
     last_read_data          <=  0;
     pre_read_strobe         <=  0;
+    read_pre_select         <=  0;
   end
   else begin
     pre_read_strobe         <=  0;
     if ((read_fifo_select == 0) && !read_activate) begin
-      if (fifo0_ready) begin
-        //although this signal is asynchronous due to the synchronization of fifo0_redy I know that
-        //the fifoX_write_count is stable
-        read_count          <=  fifo0_write_count;
-        read_ready          <=  1;
-        read_fifo_select[0] <=  1;
+      if (read_pre_select[0] && fifo0_ready) begin
+          read_count          <=  fifo0_write_count;
+          read_ready          <=  1;
+          read_fifo_select[0] <=  1;
+          read_pre_select     <=  0;
       end
-      else if (fifo1_ready) begin
-        read_count          <=  fifo1_write_count; 
-        read_ready          <=  1;
-        read_fifo_select[1] <=  1;
+      else if (read_pre_select[1] && fifo1_ready) begin
+          read_count          <=  fifo1_write_count; 
+          read_ready          <=  1;
+          read_fifo_select[1] <=  1;
+          read_pre_select     <=  0;
       end
       else begin
-        read_ready          <=  0;
-        read_count          <=  0;
+        if (fifo0_ready) begin
+          //although this signal is asynchronous due to the synchronization of fifo0_redy I know that
+          //the fifoX_write_count is stable
+          read_count          <=  fifo0_write_count;
+          read_ready          <=  1;
+          read_fifo_select[0] <=  1;
+        end
+        else if (fifo1_ready) begin
+          read_count          <=  fifo1_write_count; 
+          read_ready          <=  1;
+          read_fifo_select[1] <=  1;
+        end
+        else begin
+          read_ready          <=  0;
+          read_count          <=  0;
+        end
       end
     end
     
@@ -293,75 +318,20 @@ always @ (posedge read_clock or posedge reset) begin
     if (read_fifo_select[0] && fifo0_empty) begin
       read_fifo_select[0]     <=  0;
       read_ready              <=  0;
+      //gives the other buffer priority (this is useful for very slow read clocks)
+      //fifo0 can be re-filled before the block can select the other FIFO
+      read_pre_select[1]      <=  1;
     end
 
     //reset FIFO 1 select 
     if (read_fifo_select[1] && fifo1_empty) begin
-      read_fifo_select[1] <=  0;
-      read_ready          <=  0;
+      read_fifo_select[1]     <=  0;
+      read_ready              <=  0;
+      //gives the other buffer priroity (this is useful for very slow read clocks)
+      read_pre_select[0]      <=  1;
     end
 
   end
 end
-/*
-always @ (fifo0_ready or fifo1_ready or read_strobe or fifo0_empty or fifo1_empty or reset) begin
-  if (reset) begin
-    read_ready              <=  0;
-    read_count              <=  0;
-    read_fifo_select        <=  0;
-    read_ready_oneshot      <=  0;
-    last_read_data          <=  0;
-  end
-  else begin
-    //nothing has been previously selected
-    if (read_fifo_select == 0) begin
-      if (fifo0_ready && (read_activate == 0)) begin
-        //by this time the data has had a chance to settle
-        read_count          <=  fifo0_write_count;
-        read_ready          <=  1;
-        read_fifo_select[0] <=  1;
-      end
-      else if (fifo1_ready && (read_activate == 0)) begin
-        read_count          <=  fifo1_write_count; 
-        read_ready          <=  1;
-        read_fifo_select[1] <=  1;
-      end
-      else begin
-        read_ready          <=  0;
-        read_count          <=  0;
-      end
-    end
-
-    //lower the ready when the first strobe comes in this will handle all the 1 count cases
-    if (read_activate && read_fifo_select[0]) begin
-      read_ready              <=  0;
-    end
-    else if (read_activate && read_fifo_select[1]) begin
-      read_ready              <=  0;
-    end
-
-    if (read_fifo_select[0]) begin
-      last_read_data          <=  fifo0_read_data; 
-    end
-    if (read_fifo_select[1]) begin
-      last_read_data           <=  fifo1_read_data; 
-    end
-
-    //reset FIFO 0 select
-    if (read_fifo_select[0] && fifo0_empty) begin
-//      last_read_data          <=  fifo0_read_data; 
-      read_fifo_select[0]     <=  0;
-      read_ready              <=  0;
-    end
-
-    //reset FIFO 1 select 
-    if (read_fifo_select[1] && fifo1_empty) begin
-//      last_read_data           <=  fifo1_read_data; 
-      read_fifo_select[1] <=  0;
-      read_ready          <=  0;
-    end
-  end
-end
-*/
-
 endmodule
+
