@@ -63,8 +63,8 @@ TEST_GPIO = False
 TEST_UART = False
 TEST_I2C = False
 TEST_SPI = False
-TEST_MEMORY = True
-TEST_CONSOLE = True
+TEST_MEMORY = False
+TEST_CONSOLE = False
 TEST_I2S = True
 
 def test_memory(dyn, dev_index):
