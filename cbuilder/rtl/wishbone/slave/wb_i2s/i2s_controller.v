@@ -31,6 +31,7 @@ module i2s_controller (
   clk,
 
   enable,
+  post_fifo_wave_en,
 
   clock_divider,
 
@@ -54,6 +55,7 @@ input               rst;
 input               clk;
 
 input               enable;
+input               post_fifo_wave_en;
 output              starved;
 
 
@@ -87,6 +89,7 @@ i2s_mem_controller mcontroller (
 
   //control
   .enable(enable),
+  .post_fifo_wave_en(post_fifo_wave_en),
 
   //clock
   .i2s_clock(i2s_clock),
