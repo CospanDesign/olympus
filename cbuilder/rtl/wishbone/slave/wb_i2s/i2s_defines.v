@@ -15,6 +15,7 @@
 `define CONTROL_ENABLE            0
 `define CONTROL_ENABLE_INTERRUPT  1
 `define CONTROL_POST_FIFO_WAVE    2
+`define CONTROL_PRE_FIFO_WAVE     3
 
 
 //status bit definition

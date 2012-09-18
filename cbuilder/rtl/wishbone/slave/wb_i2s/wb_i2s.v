@@ -174,6 +174,7 @@ wire        [31:0]  memory_1_base;
 wire                enable;
 wire                enable_interrupt;
 wire                post_fifo_wave_en;
+wire                pre_fifo_wave_en;
 
 //status  
 wire                memory_0_empty;
@@ -188,6 +189,7 @@ i2s_controller controller (
 
   .enable(enable),
   .post_fifo_wave_en(post_fifo_wave_en),
+  .pre_fifo_wave_en(pre_fifo_wave_en),
 
   .clock_divider(clock_divider),
 
@@ -210,6 +212,7 @@ assign        memory_data           = mem_dat_i;
 assign        enable                = control[`CONTROL_ENABLE];
 assign        enable_interrupt      = control[`CONTROL_ENABLE_INTERRUPT];
 assign        post_fifo_wave_en     = control[`CONTROL_POST_FIFO_WAVE];
+assign        pre_fifo_wave_en      = control[`CONTROL_PRE_FIFO_WAVE];
 
 assign        memory_0_empty        = (memory_count[0] == 0);
 assign        memory_1_empty        = (memory_count[1] == 0);

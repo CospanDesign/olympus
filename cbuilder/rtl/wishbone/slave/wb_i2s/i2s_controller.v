@@ -32,6 +32,7 @@ module i2s_controller (
 
   enable,
   post_fifo_wave_en,
+  pre_fifo_wave_en,
 
   clock_divider,
 
@@ -56,6 +57,7 @@ input               clk;
 
 input               enable;
 input               post_fifo_wave_en;
+input               pre_fifo_wave_en;
 output              starved;
 
 
@@ -74,7 +76,7 @@ output              i2s_data;
 output              i2s_lr;
 
 //registers/wires
-reg         [2:0]  clock_count = 0;
+reg         [2:0]   clock_count = 0;
 reg                 mclock_count = 0;
 
 wire                audio_data_request;
@@ -90,6 +92,7 @@ i2s_mem_controller mcontroller (
   //control
   .enable(enable),
   .post_fifo_wave_en(post_fifo_wave_en),
+  .pre_fifo_wave_en(pre_fifo_wave_en),
 
   //clock
   .i2s_clock(i2s_clock),
@@ -137,11 +140,11 @@ i2s_writer writer(
 //synchronous logic
 //clock generator
 always @(posedge clk) begin
-  if (rst) begin
-    i2s_clock   <=  0;
-    clock_count <=  0;
-  end
-  else begin
+//  if (rst) begin
+//    i2s_clock   <=  0;
+//    clock_count <=  0;
+//  end
+//  else begin
     if (clock_count == 0) begin
       i2s_clock <=  ~i2s_clock;
     end
@@ -153,15 +156,18 @@ always @(posedge clk) begin
 //    else begin
 //      clock_count   <=  clock_count + 1;
 //    end
-  end
+
+
+//  end
 end
 
+
 always @(posedge clk) begin
-  if (rst) begin
-    i2s_mclock  <=  0;
-    mclock_count  <=  0;
-  end
-  else begin
+//  if (rst) begin
+//    i2s_mclock  <=  0;
+//    mclock_count  <=  0;
+//  end
+//  else begin
     if (mclock_count == 0) begin
       i2s_mclock     <=  ~i2s_mclock;
     end
@@ -175,7 +181,7 @@ always @(posedge clk) begin
       mclock_count   <=  mclock_count + 1;
     end
   */
-  end
+//  end
 end
 
 
