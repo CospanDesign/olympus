@@ -49,17 +49,18 @@ input               clk;
 input               rst;
 
 //wishbone slave signals
-output reg          s_we_o;
-output reg          s_stb_o;
-output reg          s_cyc_o;
-output reg  [3:0]   s_sel_o;
-output reg  [31:0]  s_adr_o;
-output reg  [31:0]  s_dat_o;
-input       [31:0]  s_dat_i;
+output              s_we_o;
+output              s_stb_o;
+output              s_cyc_o;
+output  [3:0]       s_sel_o;
+output  [31:0]      s_adr_o;
+output  [31:0]      s_dat_o;
+
+input   [31:0]      s_dat_i;
 input               s_ack_i;
 input               s_int_i;
 
-
+parameter           MASTER_COUNT = ${NUM_MASTERS};
 //wishbone master signals
 ${PORT_DEFINES}
 
@@ -68,10 +69,30 @@ ${PORT_DEFINES}
 reg [7:0]           master_select;
 reg [7:0]           priority_select;
 
+
+wire                master_we_o  [MASTER_COUNT:0];
+wire                master_stb_o [MASTER_COUNT:0];
+wire                master_cyc_o [MASTER_COUNT:0];
+wire  [3:0]         master_sel_o [MASTER_COUNT:0];
+wire  [31:0]        master_adr_o [MASTER_COUNT:0];
+wire  [31:0]        master_dat_o [MASTER_COUNT:0];
+
+
 ${MASTER_SELECT}
 
 //priority select
 ${PRIORITY_SELECT}
+
+
+
+//slave assignments
+assign  s_we_o = master_we_o[master_select];
+assign  s_stb_o = master_stb_o[master_select];
+assign  s_cyc_o = master_cyc_o[master_select];
+assign  s_sel_o = master_sel_o[master_select];
+assign  s_adr_o = master_adr_o[master_select];
+assign  s_dat_o = master_dat_o[master_select];
+
 
 ${WRITE}
 
