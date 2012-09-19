@@ -6,12 +6,12 @@ rtl/	    the HDL that will go into hardware
 sim/	    the HDL and tools used to simulate the HDL
 
 boards/*	Contains a subdirectory for each supported board. Each directory
-			    contains ucf used within the HDL as well as any board level
-			    defines
+        contains ucf used within the HDL as well as any board level
+        defines
 
 How Tos:
 
-<TODO> Make your own wishbone slave device:
+  Make your own wishbone slave device:
 	Want to make your own slave that will work with Olympus? its easy...
   well sort of
 	1.  go to <Olympus base>/cbuilder/scripts
