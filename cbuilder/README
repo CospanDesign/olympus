@@ -12,8 +12,10 @@ boards/*	Contains a subdirectory for each supported board. Each directory
 How Tos:
 
   Make your own wishbone slave device:
-	Want to make your own slave that will work with Olympus? its easy...
-  well sort of
+
+  Want to make your own slave that will work with Olympus? its easy...
+  well sort of:
+
 	1.  go to <Olympus base>/cbuilder/scripts
   2.  run this script: "./generate_slave.py -h"
       you can use this script to generate you wishbone slave that will
