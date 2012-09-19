@@ -178,6 +178,7 @@ always @(posedge clk) begin
     write_activate        <=  0;
     test_pre_pos          <=  0;
     test_pre_data         <=  0;
+    test_pre_data[31]     <=  1;
     test_pre_write_strobe <=  0;
     write_count           <=  0;
   end
