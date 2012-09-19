@@ -100,7 +100,11 @@ wire                        fifo1_full;
 reg   [1:0]                 read_fifo_select;
 
 reg   [DATA_WIDTH - 1: 0]   last_read_data;
-reg                         pre_read_strobe;
+reg                         pre_read_strobe0;
+reg                         pre_read_strobe1;
+
+reg                         first_read0;
+reg                         first_read1;
 
 
 //Cross clock status
@@ -120,6 +124,12 @@ reg   [1:0]                 read_pre_select;
 
 wire                        read_pre_select0;
 wire                        read_pre_select1;
+
+wire                        pos_edge_fifo0_ready;
+wire                        pos_edge_fifo1_ready;
+
+reg                         prev_fifo0_ready;
+reg                         prev_fifo1_ready;
 
 
 
@@ -184,8 +194,8 @@ assign read_data            = (read_fifo_select[0] == 1) ? fifo0_read_data :
                               (read_fifo_select[1] == 1) ? fifo1_read_data :
                               last_read_data;
 
-assign fifo0_read_strobe    = (read_fifo_select[0] == 1) ? (read_strobe || pre_read_strobe) : 0;
-assign fifo1_read_strobe    = (read_fifo_select[1] == 1) ? (read_strobe || pre_read_strobe) : 0;
+assign fifo0_read_strobe    = ((read_fifo_select[0] == 1) ? read_strobe : 0) | pre_read_strobe0;
+assign fifo1_read_strobe    = ((read_fifo_select[1] == 1) ? read_strobe : 0) | pre_read_strobe1;
 
 assign  write_clock_pulse_empty0_valid  = (~write_clock_pulse_empty0_valid_sync[2] && write_clock_pulse_empty0_valid_sync[1]);
 assign  write_clock_pulse_empty1_valid  = (~write_clock_pulse_empty1_valid_sync[2] && write_clock_pulse_empty1_valid_sync[1]);
@@ -242,17 +252,34 @@ end
 assign  fifo0_ready = (fifo0_ready_history[1] & fifo0_ready_history[0]);
 assign  fifo1_ready = (fifo1_ready_history[1] & fifo1_ready_history[0]);
 
+assign  pos_edge_fifo0_ready  = fifo0_ready & ~prev_fifo0_ready;
+assign  pos_edge_fifo1_ready  = fifo1_ready & ~prev_fifo1_ready;
+
 always @ (posedge read_clock or posedge reset) begin
   if (reset) begin
     fifo0_ready_history <=  0;
     fifo1_ready_history <=  0;
   end
   else begin
-    fifo0_ready_history[1] <=  fifo0_ready_history[0];
-    fifo0_ready_history[0] <= (!write_activate[0] && (fifo0_write_count != 0));
+    if (fifo0_empty) begin
+      fifo0_ready_history <=  0;
+    end
+    else begin
+      fifo0_ready_history[1] <=  fifo0_ready_history[0];
+      fifo0_ready_history[0] <= (!write_activate[0] && (fifo0_write_count != 0));
+    end
 
-    fifo1_ready_history[1] <=  fifo1_ready_history[0];
-    fifo1_ready_history[0] <= (!write_activate[1] && (fifo1_write_count != 0));
+    if (fifo1_empty) begin
+      fifo1_ready_history <=  0;
+    end
+    else begin
+      fifo1_ready_history[1] <=  fifo1_ready_history[0];
+      fifo1_ready_history[0] <= (!write_activate[1] && (fifo1_write_count != 0));
+    end
+
+    prev_fifo0_ready         <=  fifo0_ready;
+    prev_fifo1_ready         <=  fifo1_ready;
+
   end
 end
 
@@ -263,11 +290,15 @@ always @ (posedge read_clock or posedge reset) begin
     read_count              <=  0;
     read_fifo_select        <=  0;
     last_read_data          <=  0;
-    pre_read_strobe         <=  0;
+    pre_read_strobe0        <=  0;
+    pre_read_strobe1        <=  0;
     read_pre_select         <=  0;
+    first_read0             <=  1;
+    first_read1             <=  1;
   end
   else begin
-    pre_read_strobe         <=  0;
+    pre_read_strobe0        <=  0;
+    pre_read_strobe1        <=  0;
     if ((read_fifo_select == 0) && !read_activate) begin
       if (read_pre_select[0] && fifo0_ready) begin
           read_count          <=  fifo0_write_count;
@@ -300,9 +331,19 @@ always @ (posedge read_clock or posedge reset) begin
         end
       end
     end
+
+    //if (pos_edge_fifo0_ready && first_read0) begin
+    if (pos_edge_fifo0_ready) begin
+      pre_read_strobe0        <=  1;
+      first_read0             <=  0;
+    end
+    //if (pos_edge_fifo1_ready && first_read1) begin
+    if (pos_edge_fifo1_ready) begin
+      pre_read_strobe1        <=  1;
+      first_read1             <=  0;
+    end
     
     if (read_activate && read_ready) begin
-      pre_read_strobe       <=  1;
       read_ready            <=  0;
     end
     //keep the last peice of data around
