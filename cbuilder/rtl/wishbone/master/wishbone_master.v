@@ -102,92 +102,91 @@ module wishbone_master (
   mem_int_i
   );
 
-  input         clk;
-  input         rst;
+  input               clk;
+  input               rst;
 
-  output reg      master_ready;
-  input         in_ready;
-  input         ih_reset;
-  input [31:0]    in_command;
-  input [31:0]    in_address;
-  input [31:0]    in_data;
-  input [27:0]    in_data_count;
+  output reg          master_ready;
+  input               in_ready;
+  input               ih_reset;
+  input       [31:0]  in_command;
+  input       [31:0]  in_address;
+  input       [31:0]  in_data;
+  input       [27:0]  in_data_count;
 
-  input       out_ready;
-  output reg      out_en      = 0;
-  output reg [31:0] out_status    = 32'h0;
-  output reg [31:0] out_address   = 32'h0;
-  output reg [31:0] out_data    = 32'h0;
-  output wire [27:0]   out_data_count;
+  input               out_ready;
+  output reg          out_en      = 0;
+  output reg  [31:0]  out_status    = 32'h0;
+  output reg  [31:0]  out_address   = 32'h0;
+  output reg  [31:0]  out_data    = 32'h0;
+  output wire [27:0]  out_data_count;
 
   //debug output
-  output reg [31:0] debug_out;
+  output reg  [31:0]  debug_out;
   
   //wishbone
-  output reg [31:0] wb_adr_o;
-  output reg [31:0] wb_dat_o;
-  input [31:0]    wb_dat_i;
-  output reg      wb_stb_o;
-  output reg      wb_cyc_o;
-  output reg      wb_we_o;
-  output reg      wb_msk_o;
-  output reg [3:0]  wb_sel_o;
-  input       wb_ack_i;
-  input       wb_int_i;
+  output reg  [31:0]  wb_adr_o;
+  output reg  [31:0]  wb_dat_o;
+  input       [31:0]  wb_dat_i;
+  output reg          wb_stb_o;
+  output reg          wb_cyc_o;
+  output reg          wb_we_o;
+  output reg          wb_msk_o;
+  output reg  [3:0]   wb_sel_o;
+  input               wb_ack_i;
+  input               wb_int_i;
 
   //wishbone memory bus
-  output reg [31:0] mem_adr_o;
-  output reg [31:0] mem_dat_o;
-  input [31:0]    mem_dat_i;
-  output reg      mem_stb_o;
-  output reg      mem_cyc_o;
-  output reg      mem_we_o;
-  output reg      mem_msk_o;
-  output reg [3:0]  mem_sel_o;
-  input       mem_ack_i;
-  input       mem_int_i;
+  output reg  [31:0]  mem_adr_o;
+  output reg  [31:0]  mem_dat_o;
+  input       [31:0]  mem_dat_i;
+  output reg          mem_stb_o;
+  output reg          mem_cyc_o;
+  output reg          mem_we_o;
+  output reg          mem_msk_o;
+  output reg  [3:0]   mem_sel_o;
+  input               mem_ack_i;
+  input               mem_int_i;
 
 
   //parameters
-  parameter       IDLE        = 32'h00000000;
-  parameter       WRITE       = 32'h00000001;
-  parameter       READ        = 32'h00000002;
+  parameter       IDLE                  = 32'h00000000;
+  parameter       WRITE                 = 32'h00000001;
+  parameter       READ                  = 32'h00000002;
 
-  parameter     S_PING_RESP   = 32'h0000C594;
+  parameter       S_PING_RESP           = 32'h0000C594;
   //private registers
 
-  reg [31:0]      state     = IDLE;
-  reg [31:0]      local_command = 32'h0;
-  reg [31:0]      local_address = 32'h0;
-  reg [31:0]      local_data    = 32'h0;
-  reg [27:0]      local_data_count= 27'h0;
+  reg [31:0]          state             = IDLE;
+  reg [31:0]          local_command     = 32'h0;
+  reg [31:0]          local_address     = 32'h0;
+  reg [31:0]          local_data        = 32'h0;
+  reg [27:0]          local_data_count  = 27'h0;
 
-  reg [31:0]      master_flags  = 32'h0;
-  reg [31:0]      rw_count    = 32'h0;
-  reg             wait_for_slave  = 0;
-
-  assign          out_data_count = (state == READ) ? local_data_count : 0;
-
-  reg         prev_int    = 0;
+  reg [31:0]          master_flags      = 32'h0;
+  reg [31:0]          rw_count          = 32'h0;
+  reg                 wait_for_slave    = 0;
 
 
-  reg         interrupt_mask  = 32'h00000000;
+  reg                 prev_int          = 0;
 
-  reg [31:0]      nack_timeout  = `DEF_NACK_TIMEOUT; 
-  reg [31:0]      nack_count    = 0;
+
+  reg                 interrupt_mask    = 32'h00000000;
+
+  reg [31:0]          nack_timeout      = `DEF_NACK_TIMEOUT; 
+  reg [31:0]          nack_count        = 0;
   //private wires
-  wire [15:0]     command_flags;
-  wire        enable_nack;
-  reg         mem_bus_select;
+  wire [15:0]         command_flags;
+  wire                enable_nack;
+  reg                 mem_bus_select;
 
-  wire [15:0]     real_command;
+  wire [15:0]         real_command;
 
   //private assigns
-  assign command_flags        = in_command[31:16];
-  assign real_command         = in_command[15:0];
+  assign              out_data_count    = (state == READ) ? local_data_count : 0;
+  assign              command_flags     = in_command[31:16];
+  assign              real_command      = in_command[15:0];
 
-
-  assign        enable_nack   = master_flags[0];
+  assign              enable_nack       = master_flags[0];
 
 initial begin
     //$monitor("%t, int: %h, ih_ready: %h, ack: %h, stb: %h, cyc: %h", $time, wb_int_i, in_ready, wb_ack_i, wb_stb_o, wb_cyc_o);
@@ -270,14 +269,8 @@ always @ (posedge clk) begin
       nack_count <= nack_count - 1;
     end
 
-    if (!mem_bus_select) begin
-      mem_stb_o <=  0;
-      mem_cyc_o <=  0;
-    end
-
     //check if the input handler reset us
     case (state)
-
       READ: begin
         if (mem_bus_select) begin
           if (mem_ack_i) begin
@@ -289,6 +282,7 @@ always @ (posedge clk) begin
             out_data    <= mem_dat_i;
             out_en      <= 1; 
             if (local_data_count > 1) begin
+              debug_out[9]  <=  ~debug_out[9];
               //finished the next double word
               nack_count    <= nack_timeout;
               local_data_count  <= local_data_count -1;
@@ -298,6 +292,7 @@ always @ (posedge clk) begin
             end
             else begin
               //finished all the reads de-assert the cycle
+              debug_out[10]  <=  ~debug_out[10];
               mem_cyc_o   <=  0;
               state       <=  IDLE;
             end
@@ -316,6 +311,7 @@ always @ (posedge clk) begin
            out_en    <= 1; 
 
             if (local_data_count > 1) begin
+              debug_out[8]  <=  ~debug_out[8];
 //the nack count might need to be reset outside of these conditionals becuase
 //at this point we are waiting on the io handler
               nack_count    <= nack_timeout;
@@ -325,7 +321,7 @@ always @ (posedge clk) begin
             end
             else begin
               //finished all the reads, put de-assert the cycle
-              debug_out[6]  <= ~debug_out[6];
+              debug_out[7]  <= ~debug_out[7];
               wb_cyc_o    <= 0;
               state       <= IDLE;
             end
@@ -339,6 +335,7 @@ always @ (posedge clk) begin
             if (local_data_count <= 1) begin
               //finished all writes 
               $display ("WBM: in_data_count == 0");
+              debug_out[12] <=  ~debug_out[12];
               mem_cyc_o <= 0;
               state   <= IDLE;
               out_en    <= 1;
@@ -355,6 +352,7 @@ always @ (posedge clk) begin
             mem_adr_o   <= mem_adr_o + 4;
             mem_dat_o   <= in_data;
             nack_count    <= nack_timeout;
+            debug_out[13] <=  ~debug_out[13];
           end
         end //end working with mem_bus
         else begin //peripheral bus
@@ -507,7 +505,7 @@ always @ (posedge clk) begin
           //check if there is an interrupt
           //if the wb_int_i goes positive then send a nortifiction to the user
           if ((~prev_int) & wb_int_i) begin 
-            debug_out[8]          <= ~debug_out[8];
+            debug_out[11]          <= ~debug_out[11];
             $display("WBM: found an interrupt!");
             out_status            <= `PERIPH_INTERRUPT; 
             //only supporting interrupts on slave 0 - 31
