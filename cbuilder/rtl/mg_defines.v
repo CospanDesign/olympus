@@ -61,12 +61,12 @@ SOFTWARE.
 
 //conditions
 `define PERIPH_INTERRUPT    32'h00000010
-`define NACK_TIMEOUT        32'h00000020
+`define NACK_TIMEOUT        32'h00000100
 
 //flags
 `define FLAG_MEM_BUS        16'h0001
 
 //default variables
-`define DEF_NACK_TIMEOUT    32'h00000030
+`define DEF_NACK_TIMEOUT    32'h00000100
 
 `endif //__MG_DEFINES__
