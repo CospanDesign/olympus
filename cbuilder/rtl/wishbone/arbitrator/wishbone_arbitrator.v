@@ -86,12 +86,12 @@ ${PRIORITY_SELECT}
 
 
 //slave assignments
-assign  s_we_o = master_we_o[master_select];
-assign  s_stb_o = master_stb_o[master_select];
-assign  s_cyc_o = master_cyc_o[master_select];
-assign  s_sel_o = master_sel_o[master_select];
-assign  s_adr_o = master_adr_o[master_select];
-assign  s_dat_o = master_dat_o[master_select];
+assign  s_we_o  = (master_select != MASTER_NO_SEL) ? master_we_o[master_select]  : 0;
+assign  s_stb_o = (master_select != MASTER_NO_SEL) ? master_stb_o[master_select] : 0;
+assign  s_cyc_o = (master_select != MASTER_NO_SEL) ? master_cyc_o[master_select] : 0;
+assign  s_sel_o = (master_select != MASTER_NO_SEL) ? master_sel_o[master_select] : 0;
+assign  s_adr_o = (master_select != MASTER_NO_SEL) ? master_adr_o[master_select] : 0;
+assign  s_dat_o = (master_select != MASTER_NO_SEL) ? master_dat_o[master_select] : 0;
 
 
 ${WRITE}
