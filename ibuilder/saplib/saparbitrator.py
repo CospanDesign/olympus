@@ -376,180 +376,46 @@ def generate_arbitrator_buffer(master_count, debug = False):
 
   #generate the write logic
   write_buf = "//write select block\n"
-  #write_buf += "always @(master_select"
-  #for i in range(master_count):
-  #  write_buf += " or m" + str(i) + "_we_i"
-  #write_buf += ") begin\n"
-  #write_buf += "always @ (posedge clk) begin\n"
+  #write_buf += "assign master_we_o[MASTER_NO_SEL] = 0;\n"
   for i in range (master_count):
     write_buf += "assign master_we_o[MASTER_%d] = m%d_we_i;\n" % (i, i)
   write_buf += "\n"
 
-  """
-  write_buf += "always @ (*) begin\n"
-  write_buf += "\tcase (master_select)\n"
-  for i in range(master_count):
-    write_buf += "\t\tMASTER_" + str(i) + ": begin\n"
-    write_buf += "\t\t\ts_we_o <= m" + str(i) + "_we_i;\n"
-    write_buf += "\t\tend\n"
-
-  write_buf += "\t\tdefault: begin\n"
-  write_buf += "\t\t\ts_we_o <= 1'h0;\n"
-  write_buf += "\t\tend\n"
-  write_buf += "\tendcase\n"
-  write_buf += "end\n"
-  """
-
-
-
-
-
   #generate the strobe logic
   strobe_buf = "//strobe select block\n"
-  #strobe_buf += "always @(master_select"
-  #for i in range(master_count):
-  #  strobe_buf += " or m" + str(i) + "_stb_i"
-  #strobe_buf += ") begin\n"
-  #strobe_buf += "always @ (posedge clk) begin\n"
+  #strobe_buf += "assign master_stb_o[MASTER_NO_SEL] = 0;\n"
   for i in range (master_count):
     strobe_buf += "assign master_stb_o[MASTER_%d] = m%d_stb_i;\n" % (i, i)
   strobe_buf += "\n"
-  """
-  strobe_buf += "always @ (*) begin\n"
-  strobe_buf += "\tcase (master_select)\n"
-  for i in range(master_count):
-    strobe_buf += "\t\tMASTER_" + str(i) + ": begin\n"
-    strobe_buf += "\t\t\ts_stb_o <= m" + str(i) + "_stb_i;\n"
-    strobe_buf += "\t\tend\n"
-
-  strobe_buf += "\t\tdefault: begin\n"
-  strobe_buf += "\t\t\ts_stb_o <= 1'h0;\n"
-  strobe_buf += "\t\tend\n"
-  strobe_buf += "\tendcase\n"
-  strobe_buf += "end\n"
-  """
-
-
-
-
 
   #generate the cycle logic
   cycle_buf = "//cycle select block\n"
-  #cycle_buf += "always @(master_select"
-  #for i in range(master_count):
-  #  cycle_buf += " or m" + str(i) + "_cyc_i"
-  #cycle_buf += ") begin\n"
-
-
-  #cycle_buf += "always @ (posedge clk) begin\n"
+  #cycle_buf += "assign master_cyc_o[MASTER_NO_SEL] = 0;\n"
   for i in range (master_count):
     cycle_buf += "assign master_cyc_o[MASTER_%d] = m%d_cyc_i;\n" % (i, i)
   cycle_buf += "\n"
 
-  """
-  cycle_buf += "always @ (*) begin\n"
-
-  cycle_buf += "\tcase (master_select)\n"
-  for i in range(master_count):
-    cycle_buf += "\t\tMASTER_" + str(i) + ": begin\n"
-    cycle_buf += "\t\t\ts_cyc_o <= m" + str(i) + "_cyc_i;\n"
-    cycle_buf += "\t\tend\n"
-
-  cycle_buf += "\t\tdefault: begin\n"
-  cycle_buf += "\t\t\ts_cyc_o <= 1'h0;\n"
-  cycle_buf += "\t\tend\n"
-  cycle_buf += "\tendcase\n"
-  cycle_buf += "end\n"
-  """
-
   #generate the select logic
   select_buf = "//select select block\n"
-  #select_buf += "always @(master_select"
-  #for i in range(master_count):
-  #  select_buf += " or m" + str(i) + "_sel_i"
-  #select_buf += ") begin\n"
-
+  #select_buf += "assign master_sel_o[MASTER_NO_SEL] = 0;\n"
   for i in range (master_count):
     select_buf += "assign master_sel_o[MASTER_%d] = m%d_sel_i;\n" % (i, i)
   select_buf += "\n"
 
-
-  #select_buf += "always @ (posedge clk) begin\n"
-  """
-  select_buf += "always @ (*) begin\n"
-
-  select_buf += "\tcase (master_select)\n"
-  for i in range(master_count):
-    select_buf += "\t\tMASTER_" + str(i) + ": begin\n"
-    select_buf += "\t\t\ts_sel_o <= m" + str(i) + "_sel_i;\n"
-    select_buf += "\t\tend\n"
-
-  select_buf += "\t\tdefault: begin\n"
-  select_buf += "\t\t\ts_sel_o <= 4'h0;\n"
-  select_buf += "\t\tend\n"
-  select_buf += "\tendcase\n"
-  select_buf += "end\n"
-  """
-
   #generate the address_logic
   address_buf = "//address seelct block\n"
-  #address_buf += "always @(master_select"
-  #for i in range(master_count):
-  #  address_buf += " or m" + str(i) + "_adr_i"
-  #address_buf += ") begin\n"
-
+  #address_buf += "assign master_adr_o[MASTER_NO_SEL] = 0;\n"
   for i in range (master_count):
     address_buf += "assign master_adr_o[MASTER_%d] = m%d_adr_i;\n" % (i, i)
   address_buf += "\n"
 
-
-
-  #address_buf += "always @ (posedge clk) begin\n"
-  """
-  address_buf += "always @ (*) begin\n"
-
-
-  address_buf += "\tcase (master_select)\n"
-  for i in range(master_count):
-    address_buf += "\t\tMASTER_" + str(i) + ": begin\n"
-    address_buf += "\t\t\ts_adr_o <= m" + str(i) + "_adr_i;\n"
-    address_buf += "\t\tend\n"
-
-  address_buf += "\t\tdefault: begin\n"
-  address_buf += "\t\t\ts_adr_o <= 32'h00000000;\n"
-  address_buf += "\t\tend\n"
-  address_buf += "\tendcase\n"
-  address_buf += "end\n"
-  """
-
   #generate the data logic
   data_buf = "//data select block\n"
-  #data_buf += "always @(master_select"
-  #for i in range(master_count):
-  #  data_buf += " or m" + str(i) + "_dat_i"
-  #data_buf += ") begin\n"
-
+  #data_buf += "assign master_dat_o[MASTER_NO_SEL] = 0;\n"
   for i in range (master_count):
     data_buf += "assign master_dat_o[MASTER_%d] = m%d_dat_i;\n" % (i, i)
   data_buf += "\n\n"
 
-
-  #data_buf += "always @ (posedge clk) begin\n"
-  """
-  data_buf += "always @ (*) begin\n"
-
-  data_buf += "\tcase (master_select)\n"
-  for i in range(master_count):
-    data_buf += "\t\tMASTER_" + str(i) + ": begin\n"
-    data_buf += "\t\t\ts_dat_o <= m" + str(i) + "_dat_i;\n"
-    data_buf += "\t\tend\n"
-
-  data_buf += "\t\tdefault: begin\n"
-  data_buf += "\t\t\ts_dat_o <= 32'h00000000;\n"
-  data_buf += "\t\tend\n"
-  data_buf += "\tendcase\n"
-  data_buf += "end\n"
-  """
 
   #generate the assigns
   assign_buf = "//assign block\n"
