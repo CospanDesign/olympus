@@ -83,11 +83,10 @@ def test_memory(dyn, dev_index):
     print str(hex(data_out[i])) + ", ",
   print " "
 
-  dyn.write_memory(0, data_out)
-  #dyn.write(dev_index, 0, data_out, mem_bus)
+  #dyn.write_memory(0, data_out)
 
   print "Testing short read"
-  #data_in = dyn.read(dev_index, 0, 2, mem_bus)
+  """
   data_in = dyn.read_memory(0, 2)
 
   print "mem data: %s" % str(data_in)
@@ -95,8 +94,10 @@ def test_memory(dyn, dev_index):
   for i in range (0, len(data_in)):
     print str(hex(data_in[i])) + ", ",
   print " "
+  """
 
   dev_size = (dyn.get_device_size(dev_index) / 4)
+  dev_size = 257
   print "Memory size: 0x%X" % (dyn.get_device_size(dev_index))
   
   data_out = Array('B')
@@ -114,11 +115,12 @@ def test_memory(dyn, dev_index):
     print "Overflow Error: %d >= 256" % num
     sys.exit(1)
  
-  print "Writing %d bytes of data" % (len(data_out))
+  print "Writing %d bytes of data" % (len(data_out)/4)
   dyn.write_memory(0, data_out)
   #dyn.write(dev_index, 0, data_out, mem_bus)
   print "Reading %d DWORDS of data" % (len(data_out))
-  data_in = dyn.read(dev_index, 0, len(data_out) / 4, mem_bus)
+  data_in = dyn.read_memory(0, len(data_out) / 4)
+  #data_in = dyn.read(dev_index, 0, len(data_out) / 4, mem_bus)
 
   print "Comparing values"
   fail = False
