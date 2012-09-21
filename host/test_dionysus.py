@@ -65,7 +65,7 @@ TEST_I2C = False
 TEST_SPI = False
 TEST_MEMORY = True
 TEST_CONSOLE = False
-TEST_I2S = False
+TEST_I2S = True
 
 def test_memory(dyn, dev_index):
   print "testing memory @ %d" % dev_index
@@ -87,6 +87,20 @@ def test_memory(dyn, dev_index):
 
   print "Testing short read"
   data_in = dyn.read_memory(0, 2)
+  print "mem data: %s" % str(data_in)
+  print "hex: "
+  for i in range (0, len(data_in)):
+    print str(hex(data_in[i])) + ", ",
+  print " "
+
+
+
+  print "Testing a write/read at the end of memory"
+  dev_size = dyn.get_device_size(dev_index)
+  print "writing to memory location 0x%08X" % (dev_size - 8)
+  dyn.write_memory(dev_size - 8, data_out)
+  print "reading from memory location 0x%08X" % (dev_size - 8)
+  data_in = dyn.read_memory(dev_size - 8, 2)
 
   print "mem data: %s" % str(data_in)
   print "hex: "
