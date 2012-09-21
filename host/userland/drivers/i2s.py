@@ -598,11 +598,11 @@ class I2S:
     self.set_memory_size(0, 0)
     self.set_memory_size(1, 0)
 
-    self.enable_i2s(True)
     self.enable_interrupt(True)
     position = 0
     base_index = 0
 
+    print "length of audio_data: %d" % len(audio_data)
     #writing to the screen may take too long...
     prev_percent = 0.0
     percent_complete = 0.0
@@ -612,7 +612,7 @@ class I2S:
       size = block_size
       #see if there is enough audio data for the entire block size
       if len(audio_data[position:]) < block_size: 
-        size = len(audio_data[position, -1])
+        size = len(audio_data[position: -1])
  
       #check to see if there is an available memory block
       available_blocks = self.get_available_memory_blocks()
@@ -620,34 +620,40 @@ class I2S:
         print "Memory block 0 available"
         #memory block 0 is available
         self.o.write_memory(memory_0_base, audio_data[position: position + size])
-        self.set_memory_size(0, size)
+        self.set_memory_size(0, size / 4)
         position = position + size
 
       elif (available_blocks == STATUS_MEM_1_EMPTY): 
         print "Memory block 1 available"
         #memory block 1 is available
         self.o.write_memory(memory_1_base, audio_data[position: position + size])
-        self.set_memory_size(1, size)
+        self.set_memory_size(1, size / 4)
         position = position + size
 
       elif (available_blocks == 3):
         print "Both Blocks are available"
         #both blocks are available
+        print "position for mem 0: %d" % position
+        print "writing %d data to mem 0" % size
         self.o.write_memory(memory_0_base, audio_data[position: position + size])
-        self.set_memory_size(0, size)
-        position = position + size
+        self.set_memory_size(0, size / 4)
+        position = position + size + 1
 
         size = block_size
         #see if there is enough audio data for the entire block size
         if len(audio_data[position:]) < block_size: 
+          print "size > block_size"
           size = len(audio_data[position:])
 
+        print "position for mem 1: %d" % position
         if (size > 0):
           #memory block 1 is available
+          print "writing: %d data to mem 1" % size
           self.o.write_memory(memory_1_base, audio_data[position: position + size])
-          self.set_memory_size(1, size)
+          self.set_memory_size(1, size / 4)
           position = position + size
 
+      self.enable_i2s(True)
       #precent_complete = ((position * 100.0) / (total_length * 1.0))
       #if (prev_percent != percent_complete):
         #print "position:0x%08X" % position
