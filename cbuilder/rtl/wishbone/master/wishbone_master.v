@@ -382,7 +382,8 @@ always @ (posedge clk) begin
       end
       IDLE: begin
         //handle input
-        master_ready  <= 1;
+        master_ready    <= 1;
+        mem_bus_select  <= 0;
         if (in_ready) begin
           debug_out[6]  <= ~debug_out[6];
           mem_bus_select  <= 0;
