@@ -254,7 +254,7 @@ reg [23:0]            read_count;
 always @ (posedge clk) begin
 	if (rst) begin
 		$display ("FT_HI: in reset");
-		in_command		  <=	32'h0000;
+		in_command		  <=	32'h0080;
 		in_address		  <=	32'h0000;
 		in_data			    <=	32'h0000;
 		in_data_count	  <= 	32'h0000;
@@ -320,7 +320,7 @@ always @ (posedge clk) begin
         else begin
           //UNSUPPORTED COMMAND
           $display ("FT_READ: Unsupported command!");
-          rstate            <=  IDLE;
+          rstate            <=  READ_ADDRESS;
         end
       end
       READ_ADDRESS: begin
@@ -334,6 +334,10 @@ always @ (posedge clk) begin
               in_address      <=  read_dw;
               rstate          <=  READ_DATA;
             end
+          end
+          else if (in_command[3:0] > 3) begin
+              in_address      <=  read_dw;
+              rstate          <=  READ_DATA;
           end
           else begin
             //READ command
@@ -518,8 +522,12 @@ always @ (posedge clk) begin
             output_dw         <=  {master_status[7:0], out_data_count[23:0]}; 
             wstate            <=  SEND_ADDRESS;
           end
+          else if (master_status[3:0] == 4'h0) begin
+            output_dw         <=  {master_status[7:0], out_data_count[23:0]}; 
+            wstate            <=  SEND_DATA;
+          end
           else begin
-            $display ("FT_WRITE: Sending ILLEAGLE COMMAND TO HOST %h", master_status[3:0] & PING);
+            $display ("FT_WRITE: Sending Command %h", master_status[3:0] & PING);
 //XXX: Should I send illeagle commands to the host?
             output_dw         <=  {master_status[7:0], 24'h0};
             wstate            <=  SEND_DATA;
@@ -537,6 +545,9 @@ always @ (posedge clk) begin
           if ((master_status[3:0] == 4'hD) && (out_data_count > 0)) begin
             //the command is writing and the data count > 0
             $display ("\t\tFT_WRITE: Send more data");
+            wstate            <=  SEND_MORE_DATA;
+          end
+          else if ((master_status[3:0] == 4'h0) && (out_data_count > 0)) begin
             wstate            <=  SEND_MORE_DATA;
           end
           else begin
