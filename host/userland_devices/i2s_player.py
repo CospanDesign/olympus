@@ -186,10 +186,21 @@ class I2S_Player:
     """
     byte_array = Array('B')
  
-    for i in range (0, 70000):
+    for i in range (0, 35000):
+
       byte_array.append(0x00)
       byte_array.append(0x00)
       byte_array.append(0x00)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
+      byte_array.append(0x00)
+      byte_array.append(0x00)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x12) 
+      byte_array.append(0x37) 
       byte_array.append(0x00)
       
       byte_array.append(0x80)
@@ -203,15 +214,35 @@ class I2S_Player:
       byte_array.append(0x00)
 
       byte_array.append(0x80)
+      byte_array.append(0x24)
+      byte_array.append(0x0F)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
       byte_array.append(0x35)
       byte_array.append(0x2C)
       byte_array.append(0x00)
 
+      byte_array.append(0x80)
+      byte_array.append(0x35)
+      byte_array.append(0x2C)
+      byte_array.append(0x00)
+      
       byte_array.append(0x00)
       byte_array.append(0x45)
       byte_array.append(0x33)
       byte_array.append(0x00)
       
+      byte_array.append(0x80)
+      byte_array.append(0x45)
+      byte_array.append(0x33)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x53)
+      byte_array.append(0xD2)
+      byte_array.append(0x00)
+
       byte_array.append(0x80)
       byte_array.append(0x53)
       byte_array.append(0xD2)
@@ -220,6 +251,16 @@ class I2S_Player:
       byte_array.append(0x00)
       byte_array.append(0x60)
       byte_array.append(0xBC)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
+      byte_array.append(0x60)
+      byte_array.append(0xBC)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x6B)
+      byte_array.append(0xAE)
       byte_array.append(0x00)
 
       byte_array.append(0x80)
@@ -233,6 +274,16 @@ class I2S_Player:
       byte_array.append(0x00)
 
       byte_array.append(0x80)
+      byte_array.append(0x74)
+      byte_array.append(0x6E)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x7A)
+      byte_array.append(0xD0)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
       byte_array.append(0x7A)
       byte_array.append(0xD0)
       byte_array.append(0x00)
@@ -240,6 +291,16 @@ class I2S_Player:
       byte_array.append(0x00)
       byte_array.append(0x7E)
       byte_array.append(0xB2)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
+      byte_array.append(0x7E)
+      byte_array.append(0xB2)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x7F)
+      byte_array.append(0xFF)
       byte_array.append(0x00)
 
       byte_array.append(0x80)
@@ -253,6 +314,16 @@ class I2S_Player:
       byte_array.append(0x00)
 
       byte_array.append(0x80)
+      byte_array.append(0x7E)
+      byte_array.append(0xB2)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x7A)
+      byte_array.append(0xD0)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
       byte_array.append(0x7A)
       byte_array.append(0xD0)
       byte_array.append(0x00)
@@ -260,6 +331,16 @@ class I2S_Player:
       byte_array.append(0x00)
       byte_array.append(0x74)
       byte_array.append(0x6E)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
+      byte_array.append(0x74)
+      byte_array.append(0x6E)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x6B)
+      byte_array.append(0xAE)
       byte_array.append(0x00)
 
       byte_array.append(0x80)
@@ -273,6 +354,16 @@ class I2S_Player:
       byte_array.append(0x00)
 
       byte_array.append(0x80)
+      byte_array.append(0x60)
+      byte_array.append(0xBC)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x53)
+      byte_array.append(0xD2)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
       byte_array.append(0x53)
       byte_array.append(0xD2)
       byte_array.append(0x00)
@@ -280,6 +371,16 @@ class I2S_Player:
       byte_array.append(0x00)
       byte_array.append(0x45)
       byte_array.append(0x33)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
+      byte_array.append(0x45)
+      byte_array.append(0x33)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x35)
+      byte_array.append(0x2C)
       byte_array.append(0x00)
 
       byte_array.append(0x80)
@@ -293,6 +394,16 @@ class I2S_Player:
       byte_array.append(0x00)
 
       byte_array.append(0x80)
+      byte_array.append(0x24)
+      byte_array.append(0x0F)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x12)
+      byte_array.append(0x37)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
       byte_array.append(0x12)
       byte_array.append(0x37)
       byte_array.append(0x00)
@@ -300,6 +411,16 @@ class I2S_Player:
       byte_array.append(0x00)
       byte_array.append(0x00)
       byte_array.append(0x00)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
+      byte_array.append(0x00)
+      byte_array.append(0x00)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0xED)
+      byte_array.append(0xC9)
       byte_array.append(0x00)
 
       byte_array.append(0x80)
@@ -313,6 +434,16 @@ class I2S_Player:
       byte_array.append(0x00)
 
       byte_array.append(0x80)
+      byte_array.append(0xDB)
+      byte_array.append(0xF1)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0xCA)
+      byte_array.append(0xD4)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
       byte_array.append(0xCA)
       byte_array.append(0xD4)
       byte_array.append(0x00)
@@ -320,6 +451,16 @@ class I2S_Player:
       byte_array.append(0x00)
       byte_array.append(0xBA)
       byte_array.append(0xCD)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
+      byte_array.append(0xBA)
+      byte_array.append(0xCD)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0xAC)
+      byte_array.append(0x2E)
       byte_array.append(0x00)
 
       byte_array.append(0x80)
@@ -333,6 +474,16 @@ class I2S_Player:
       byte_array.append(0x00)
 
       byte_array.append(0x80)
+      byte_array.append(0x9F)
+      byte_array.append(0x43)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x94)
+      byte_array.append(0x52)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
       byte_array.append(0x94)
       byte_array.append(0x52)
       byte_array.append(0x00)
@@ -343,6 +494,16 @@ class I2S_Player:
       byte_array.append(0x00)
 
       byte_array.append(0x80)
+      byte_array.append(0x8B)
+      byte_array.append(0x92)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x85)
+      byte_array.append(0x30)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
       byte_array.append(0x85)
       byte_array.append(0x30)
       byte_array.append(0x00)
@@ -350,6 +511,16 @@ class I2S_Player:
       byte_array.append(0x00)
       byte_array.append(0x81)
       byte_array.append(0x4E)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
+      byte_array.append(0x81)
+      byte_array.append(0x4E)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x80)
+      byte_array.append(0x01)
       byte_array.append(0x00)
 
       byte_array.append(0x80)
@@ -363,6 +534,16 @@ class I2S_Player:
       byte_array.append(0x00)
 
       byte_array.append(0x80)
+      byte_array.append(0x81)
+      byte_array.append(0x4E)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x85)
+      byte_array.append(0x30)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
       byte_array.append(0x85)
       byte_array.append(0x30)
       byte_array.append(0x00)
@@ -370,6 +551,16 @@ class I2S_Player:
       byte_array.append(0x00)
       byte_array.append(0x8B)
       byte_array.append(0x92)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
+      byte_array.append(0x8B)
+      byte_array.append(0x92)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x94)
+      byte_array.append(0x52)
       byte_array.append(0x00)
 
       byte_array.append(0x80)
@@ -383,6 +574,16 @@ class I2S_Player:
       byte_array.append(0x00)
 
       byte_array.append(0x80)
+      byte_array.append(0x9F)
+      byte_array.append(0x43)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0xAC)
+      byte_array.append(0x2E)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
       byte_array.append(0xAC)
       byte_array.append(0x2E)
       byte_array.append(0x00)
@@ -393,6 +594,16 @@ class I2S_Player:
       byte_array.append(0x00)
 
       byte_array.append(0x80)
+      byte_array.append(0xBA)
+      byte_array.append(0xCD)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0xCA)
+      byte_array.append(0xD4)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
       byte_array.append(0xCA)
       byte_array.append(0xD4)
       byte_array.append(0x00)
@@ -400,6 +611,16 @@ class I2S_Player:
       byte_array.append(0x00)
       byte_array.append(0xDB)
       byte_array.append(0xF1)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
+      byte_array.append(0xDB)
+      byte_array.append(0xF1)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0xED)
+      byte_array.append(0xC9)
       byte_array.append(0x00)
 
       byte_array.append(0x80)

@@ -598,7 +598,7 @@ class I2S:
     self.set_memory_size(0, 0)
     self.set_memory_size(1, 0)
 
-    self.enable_interrupt(True)
+    self.enable_interrupt(False)
     position = 0
     base_index = 0
 
@@ -620,14 +620,14 @@ class I2S:
         print "Memory block 0 available"
         #memory block 0 is available
         self.o.write_memory(memory_0_base, audio_data[position: position + size])
-        self.set_memory_size(0, size / 4)
+        self.set_memory_size(0, size)
         position = position + size
 
       elif (available_blocks == STATUS_MEM_1_EMPTY): 
         print "Memory block 1 available"
         #memory block 1 is available
         self.o.write_memory(memory_1_base, audio_data[position: position + size])
-        self.set_memory_size(1, size / 4)
+        self.set_memory_size(1, size)
         position = position + size
 
       elif (available_blocks == 3):
@@ -636,9 +636,11 @@ class I2S:
         print "position for mem 0: %d" % position
         print "writing %d data to mem 0" % size
         self.o.write_memory(memory_0_base, audio_data[position: position + size])
-        self.set_memory_size(0, size / 4)
+        self.set_memory_size(0, size/4)
         position = position + size + 1
 
+        self.enable_i2s(True)
+        break
         size = block_size
         #see if there is enough audio data for the entire block size
         if len(audio_data[position:]) < block_size: 
@@ -650,10 +652,9 @@ class I2S:
           #memory block 1 is available
           print "writing: %d data to mem 1" % size
           self.o.write_memory(memory_1_base, audio_data[position: position + size])
-          self.set_memory_size(1, size / 4)
+          self.set_memory_size(1, size)
           position = position + size
 
-      self.enable_i2s(True)
       #precent_complete = ((position * 100.0) / (total_length * 1.0))
       #if (prev_percent != percent_complete):
         #print "position:0x%08X" % position
@@ -719,7 +720,7 @@ def unit_test(oly, dev_id):
   i2s.enable_i2s(True)
 
   print "Enable interrupt"
-  i2s.enable_interrupt(True)
+  i2s.enable_interrupt(False)
 
 
   #print "Enable sine wave test"
