@@ -168,13 +168,265 @@ class I2S_Player:
     self.i2s.write_all_audio_data(byte_array)
     print "Fin"
 
+
+
+  def test_1khz_sine_wave(self, debug=False):
+    """generate_1khz_sine_wave
+
+    generates 1kHz sine wave and plays it through the i2s
+
+    Args:
+      Debug: True (debug enabled)
+
+    Returns:
+      1 khz sine wave in a 32-bit array
+
+    Raises:
+      Nothing
+    """
+    byte_array = Array('B')
+ 
+    for i in range (0, 70000):
+      byte_array.append(0x00)
+      byte_array.append(0x00)
+      byte_array.append(0x00)
+      byte_array.append(0x00)
+      
+      byte_array.append(0x80)
+      byte_array.append(0x12) 
+      byte_array.append(0x37) 
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x24)
+      byte_array.append(0x0F)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
+      byte_array.append(0x35)
+      byte_array.append(0x2C)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x45)
+      byte_array.append(0x33)
+      byte_array.append(0x00)
+      
+      byte_array.append(0x80)
+      byte_array.append(0x53)
+      byte_array.append(0xD2)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x60)
+      byte_array.append(0xBC)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
+      byte_array.append(0x6B)
+      byte_array.append(0xAE)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x74)
+      byte_array.append(0x6E)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
+      byte_array.append(0x7A)
+      byte_array.append(0xD0)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x7E)
+      byte_array.append(0xB2)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
+      byte_array.append(0x7F)
+      byte_array.append(0xFF)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x7E)
+      byte_array.append(0xB2)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
+      byte_array.append(0x7A)
+      byte_array.append(0xD0)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x74)
+      byte_array.append(0x6E)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
+      byte_array.append(0x6B)
+      byte_array.append(0xAE)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x60)
+      byte_array.append(0xBC)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
+      byte_array.append(0x53)
+      byte_array.append(0xD2)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x45)
+      byte_array.append(0x33)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
+      byte_array.append(0x35)
+      byte_array.append(0x2C)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x24)
+      byte_array.append(0x0F)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
+      byte_array.append(0x12)
+      byte_array.append(0x37)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x00)
+      byte_array.append(0x00)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
+      byte_array.append(0xED)
+      byte_array.append(0xC9)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0xDB)
+      byte_array.append(0xF1)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
+      byte_array.append(0xCA)
+      byte_array.append(0xD4)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0xBA)
+      byte_array.append(0xCD)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
+      byte_array.append(0xAC)
+      byte_array.append(0x2E)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x9F)
+      byte_array.append(0x43)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
+      byte_array.append(0x94)
+      byte_array.append(0x52)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x8B)
+      byte_array.append(0x92)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
+      byte_array.append(0x85)
+      byte_array.append(0x30)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x81)
+      byte_array.append(0x4E)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
+      byte_array.append(0x80)
+      byte_array.append(0x01)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x81)
+      byte_array.append(0x4E)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
+      byte_array.append(0x85)
+      byte_array.append(0x30)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x8B)
+      byte_array.append(0x92)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
+      byte_array.append(0x94)
+      byte_array.append(0x52)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0x9F)
+      byte_array.append(0x43)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
+      byte_array.append(0xAC)
+      byte_array.append(0x2E)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0xBA)
+      byte_array.append(0xCD)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
+      byte_array.append(0xCA)
+      byte_array.append(0xD4)
+      byte_array.append(0x00)
+
+      byte_array.append(0x00)
+      byte_array.append(0xDB)
+      byte_array.append(0xF1)
+      byte_array.append(0x00)
+
+      byte_array.append(0x80)
+      byte_array.append(0xED)
+      byte_array.append(0xC9)
+      byte_array.append(0x00)
+
+
+
+    while ((len(byte_array) % 4) > 0):
+      byte_array.append(0x00)
+
+    print "length of byte_array: %d, megabytes: %d" % (len(byte_array), (len(byte_array) / 4) / 1e6)
+    self.i2s.write_all_audio_data(byte_array)
+    print "Fin"
+
      
 
 def usage():
   """prints out a helpful message to the user"""
   print ""
   print "usage: i2s_player.py [options] <wave filename>"
+  print "\tor i2s_player.py -t"
+  print "\t\tto test a sine wave" 
   print ""
+
+ 
 
 
 
@@ -208,7 +460,7 @@ if __name__ == "__main__":
     sys.exit(1)
   else:
     try:
-      opts, args = getopt.getopt(argv, "hvdco:", ["help", "verbose", "debug", "compress", "outfile"])
+      opts, args = getopt.getopt(argv, "hvdtco:", ["help", "verbose", "debug", "test", "compress", "outfile"])
     except getopt.GetoptError, err:
       print (err)
       usage()
@@ -218,6 +470,11 @@ if __name__ == "__main__":
       if opt in ("-h", "--help"):
         usage()
         sys.exit()
+      if opt in ("-t", "--test"):
+        i2s_player = I2S_Player(oly, i2s_index)
+        i2s_player.test_1khz_sine_wave()
+        sys.exit()
+        
 
   if len(args) == 0:
     print "No input file to process"
