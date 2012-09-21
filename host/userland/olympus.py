@@ -425,6 +425,25 @@ class Olympus:
     """
     raise AssertionError("Reset function not implemented")
 
+  def dump_core(self):
+    """dump_core
+
+    reads the state of the wishbone master prior to a reset, useful for
+    debugging
+
+    Args:
+      Nothing
+
+    Returns:
+      Array of 32-bit values to be parsed by core_analyzer
+
+    Raises:
+      AssertionError: This function must be overriden by a board specific
+      implementation
+      OlympusCommError: A failure of communication is detected
+    """
+    raise AssertionError("Core Dump function not implemented")
+
   def wait_for_interrupts(self, wait_time = 1):
     """wait_for_interrupts
     

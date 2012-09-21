@@ -29,7 +29,9 @@ Main userland communication tool with the Dionysus board
 __author__ = 'dave.mccoy@cospandesign.com (Dave McCoy)'
 
 """ Changelog:
-  
+09/21/2012
+  -added core dump function to retrieve the state of the master when a crash
+  occurs
 08/30/2012
   -Initial Commit
 
@@ -371,6 +373,98 @@ class Dionysus(Olympus):
       print "Sending reset..."
     self.dev.purge_buffers()
     self.dev.write_data(data)
+
+  def dump_core(self):
+    """dump_core
+
+    reads the state of the wishbone master prior to a reset, useful for
+    debugging
+
+    Args:
+      Nothing
+
+    Returns:
+      Array of 32-bit values to be parsed by core_analyzer
+
+    Raises:
+      AssertionError: This function must be overriden by a board specific
+      implementation
+      OlympusCommError: A failure of communication is detected
+    """
+
+    data = Array('B')
+    data.extend([0xCD, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+    print "Sending core dump request..."
+
+    self.dev.purge_buffers()
+    self.dev.write_data(data)
+
+    core_dump = Array('L')
+    wait_time = 5
+    timeout = time.time() + wait_time
+
+    temp = Array ('B')
+    while time.time() < timeout:
+      response = self.dev.read_data(1)
+      rsp = Array('B')
+      rsp.fromstring(response)
+      temp.extend(rsp)
+      if 0xDC in rsp:
+        print "Got a response"  
+        break
+
+    if not 0xDC in rsp:
+      print "Response not found"  
+      raise OlympusCommError("Response Not Found")
+
+    rsp = Array('B')
+    read_total = 4
+    read_count = len(rsp)
+
+    #get the number of items from the address
+    timeout = time.time() + wait_time
+    while (time.time() < timeout) and (read_count < read_total):
+      response = self.dev.read_data(read_total - read_count)
+      temp  = Array('B')
+      temp.fromstring(response)
+      if (len(temp) > 0):
+        rsp += temp
+        read_count = len(rsp)
+
+    print "Length of read: %d" % len(rsp)
+    print "Data: %s" % str(rsp)
+    count  = ( rsp[1] << 16 | rsp[2] << 8 | rsp[3]) * 4
+    print "Number of core registers: %d" % (count / 4)
+
+    #get the core dump data
+    timeout = time.time() + wait_time
+    read_total  = count
+    read_count  = 0
+    temp = Array ('B')
+    rsp = Array('B')
+    while (time.time() < timeout) and (read_count < read_total):
+      response = self.dev.read_data(read_total - read_count)
+      temp  = Array('B')
+      temp.fromstring(response)
+      if (len(temp) > 0):
+        rsp += temp
+        read_count = len(rsp)
+
+    print "Length read: %d" % (len(rsp) / 4)
+    print "Data: %s" % str(rsp)
+    core_data = Array('L')
+    for i in range (0, count, 4):
+      print "count: %d" % i
+      core_data.append(rsp[i] << 24 | rsp[i + 1] << 16 | rsp[i + 2] << 8 | rsp[i + 3])
+    
+    #if self.debug:
+    print "core data: " + str(core_data)
+
+    return core_data
+
+
+
+ 
 
   def wait_for_interrupts(self, wait_time = 1):
     """wait_for_interrupts
