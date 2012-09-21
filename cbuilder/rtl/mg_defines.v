@@ -23,6 +23,11 @@ SOFTWARE.
 */
 
 /*
+  09/21/2012
+    -changed the master command interface to use the address for single read
+    and write
+    -added core dump feature so users can find out the state of the master
+    before the system was reset
   06/24/2012
     -Added the Reset command that will reset the state machine from
     the host interface
@@ -53,15 +58,21 @@ SOFTWARE.
 `define COMMAND_WRITE       32'h00000001
 `define COMMAND_READ        32'h00000002
 `define COMMAND_RESET       32'h00000003
-`define COMMAND_RW_FLAGS    32'h00000007
-`define COMMAND_WR_INT_EN   32'h00000008
-`define COMMAND_RD_INT_EN   32'h00000009
-`define COMMAND_NACK_TO_WR  32'h0000000A
-`define COMMAND_NACK_TO_RD  32'h0000000B
+`define COMMAND_MASTER_ADDR 32'h00000004
+`define COMMAND_CORE_DUMP   32'h0000000F
+
+//master address space
+`define MADDR_WR_FLAGS      32'h00000000
+`define MADDR_RD_FLAGS      32'h00000001
+`define MADDR_WR_INT_EN     32'h00000002
+`define MADDR_RD_INT_EN     32'h00000003
+`define MADDR_NACK_TO_WR    32'h00000004
+`define MADDR_NACK_TO_RD    32'h00000005
+`define MADDR_CORE_DUMP     32'h00000006
 
 //conditions
-`define PERIPH_INTERRUPT    32'h00000010
-`define NACK_TIMEOUT        32'h00000100
+`define PERIPH_INTERRUPT    32'h00000001
+`define NACK_TIMEOUT        32'h00000002
 
 //flags
 `define FLAG_MEM_BUS        16'h0001
