@@ -285,7 +285,7 @@ always @ (posedge clk) begin
             memory_base[0]    <=  wbs_dat_i;
           end
           REG_MEM_0_SIZE: begin
-            memory_0_size     <=  wbs_dat_i;
+            memory_0_size     <=  wbs_dat_i << 2;
             if (wbs_dat_i > 0) begin
               memory_0_new_data <=  1;
             end
@@ -294,7 +294,7 @@ always @ (posedge clk) begin
             memory_base[1]    <=  wbs_dat_i;
           end
           REG_MEM_1_SIZE: begin
-            memory_1_size     <=  wbs_dat_i;
+            memory_1_size     <=  wbs_dat_i << 2;
             if (wbs_dat_i > 0) begin
               memory_1_new_data <=  1;
             end
@@ -394,19 +394,19 @@ always @ (posedge clk) begin
     //postvie edge of the ack, send the data to the mem controller
     if (mem_ack_pos_edge) begin
       if (request_count == 1) begin
-        request_finished  <=  1;
+        request_finished            <=  1;
       end
-      memory_data_strobe  <=  1;
-      request_count <=  request_count - 1;
+      memory_data_strobe            <=  1;
+      request_count                 <=  request_count - 1;
+      memory_pointer[active_block]  <=  memory_pointer[active_block] + 4;
     end
 
     if (mem_ack_i) begin
       $display ("got an ack!");
-      mem_stb_o <= 0;
-      mem_cyc_o <= 0;
+      mem_stb_o                       <=  0;
     end
     if (memory_ready) begin
-      if (request_count > 0 && ~mem_stb_o && ~mem_ack_i) begin
+      if ((request_count > 0) && (memory_count[active_block] > 0) && ~mem_stb_o && ~mem_ack_i) begin
         //need to request data from the memory
         $display("get some data from the memory");
         mem_cyc_o                     <=  1;
@@ -416,8 +416,11 @@ always @ (posedge clk) begin
         mem_dat_o                     <=  0;  
         mem_adr_o                     <=  memory_base[active_block] + memory_pointer[active_block];
         
-        memory_pointer[active_block]  <=  memory_pointer[active_block] + 4;
+      end
     end
+    if ((request_count == 0) || (memory_count[active_block] == 0) || (!memory_ready)) begin
+      mem_stb_o                       <=  0;
+      mem_cyc_o                       <=  0;
     end
   end
 end

@@ -424,6 +424,11 @@ initial begin
   #100
   rst                         <= 0;
   out_ready                   <= 1;
+  #20
+  rst                         <= 1;
+  #20;
+  rst                         <= 0;
+  #20;
 
   if (fd_in == 0) begin
     $display ("TB: input stimulus file was not found");
