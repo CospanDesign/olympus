@@ -152,15 +152,20 @@ module wishbone_master (
   parameter       IDLE                  = 32'h00000000;
   parameter       WRITE                 = 32'h00000001;
   parameter       READ                  = 32'h00000002;
+  parameter       DUMP_CORE             = 32'h00000003;
 
   parameter       S_PING_RESP           = 32'h0000C594;
-  //private registers
+
+  parameter       DUMP_COUNT            = 14;
+
+
+  // registers
 
   reg [31:0]          state             = IDLE;
-  reg [31:0]          local_command     = 32'h0;
   reg [31:0]          local_address     = 32'h0;
   reg [31:0]          local_data        = 32'h0;
   reg [27:0]          local_data_count  = 27'h0;
+  reg                 mem_bus_select;
 
   reg [31:0]          master_flags      = 32'h0;
   reg [31:0]          rw_count          = 32'h0;
@@ -174,19 +179,44 @@ module wishbone_master (
 
   reg [31:0]          nack_timeout      = `DEF_NACK_TIMEOUT; 
   reg [31:0]          nack_count        = 0;
-  //private wires
+
+  //core dump
+  reg [31:0]          dump_count        = 0;
+
+  reg [31:0]          dump_state        = 0;
+  reg [31:0]          dump_status       = 0;
+  reg [31:0]          dump_flags        = 0;
+  reg [31:0]          dump_nack_count   = 0;
+  reg [31:0]          dump_lcommand     = 0;
+  reg [31:0]          dump_laddress     = 0;
+  reg [31:0]          dump_ldata_count  = 0;
+  reg [31:0]          dump_wb_state     = 0;
+  reg [31:0]          dump_wb_p_addr    = 0;
+  reg [31:0]          dump_wb_p_dat_in  = 0;
+  reg [31:0]          dump_wb_p_dat_out = 0;
+  reg [31:0]          dump_wb_m_addr    = 0;
+  reg [31:0]          dump_wb_m_dat_in  = 0;
+  reg [31:0]          dump_wb_m_dat_out = 0;
+
+  reg                 prev_reset        = 0;
+
+  // wires
   wire [15:0]         command_flags;
   wire                enable_nack;
-  reg                 mem_bus_select;
 
   wire [15:0]         real_command;
 
-  //private assigns
-  assign              out_data_count    = (state == READ) ? local_data_count : 0;
+  wire                pos_edge_reset;
+
+  // assigns
+  assign              out_data_count    = ((state == READ) || (state == DUMP_CORE)) ? local_data_count : 0;
   assign              command_flags     = in_command[31:16];
   assign              real_command      = in_command[15:0];
 
   assign              enable_nack       = master_flags[0];
+
+  assign              pos_edge_reset    = rst & ~prev_reset;
+
 
 initial begin
     //$monitor("%t, int: %h, ih_ready: %h, ack: %h, stb: %h, cyc: %h", $time, wb_int_i, in_ready, wb_ack_i, wb_stb_o, wb_cyc_o);
@@ -202,13 +232,34 @@ always @ (posedge clk) begin
 //master ready should be used as a flow control, for now its being reset every
 //clock cycle, but in the future this should be used to regulate data comming in so that the master can send data to the slaves without overflowing any buffers
   //master_ready  <= 1;
+  if (pos_edge_reset) begin
+    dump_state        <=  state;
+    dump_status       <=  {26'h0, ih_reset, out_ready, out_en, in_ready, master_ready, mem_bus_select};
+    dump_flags        <=  master_flags;
+    dump_nack_count   <=  nack_count;
+    dump_lcommand     <=  {command_flags, real_command};
+    dump_laddress     <=  in_address;
+    dump_ldata_count  <=  local_data_count;
+    dump_wb_state     <=  {11'h0, wb_cyc_o, wb_stb_o, wb_we_o, wb_ack_i, wb_int_i,  12'h0, mem_cyc_o, mem_stb_o, mem_we_o, mem_ack_i};
+    dump_wb_p_addr    <=  wb_adr_o;
+    dump_wb_p_dat_in  <=  wb_dat_i;
+    dump_wb_p_dat_out <=  wb_dat_o;
+    dump_wb_m_addr    <=  mem_adr_o;
+    dump_wb_m_dat_in  <=  mem_dat_i;
+    dump_wb_m_dat_out <=  mem_dat_o;
+
+
+
+  end
 
   if (rst || ih_reset) begin
+
+
+
     out_status        <= 32'h0;
     out_address       <= 32'h0;
     out_data          <= 32'h0;
     //out_data_count  <= 28'h0;
-    local_command     <= 32'h0;
     local_address     <= 32'h0;
     local_data        <= 32'h0;
     local_data_count  <= 27'h0;
@@ -247,6 +298,8 @@ always @ (posedge clk) begin
     //interrupts
     interrupt_mask    <= 32'h00000000;
     nack_timeout      <= `DEF_NACK_TIMEOUT;
+    nack_count        <= 0;
+
 
   end
 
@@ -380,17 +433,78 @@ always @ (posedge clk) begin
           end
         end
       end
+      DUMP_CORE: begin
+        if (out_ready && !out_en) begin
+          case (dump_count)
+            0:  begin
+              out_data          <=  dump_state;
+            end
+            1:  begin
+              out_data          <=  dump_status;
+            end
+            2:  begin
+              out_data          <=  dump_flags;
+            end
+            3:  begin
+              out_data          <=  dump_nack_count;
+            end
+            4:  begin
+              out_data          <=  dump_lcommand;
+            end
+            5:  begin
+              out_data          <=  dump_laddress;
+            end
+            6:  begin
+              out_data          <=  dump_ldata_count;
+            end
+            7:  begin
+              out_data          <=  dump_wb_state;
+            end
+            8:  begin
+              out_data          <=  dump_wb_p_addr;
+            end
+            9:  begin
+              out_data          <=  dump_wb_p_dat_in;
+            end
+            10: begin
+              out_data          <=  dump_wb_p_dat_out;
+            end
+            11: begin
+              out_data          <=  dump_wb_m_addr;
+            end
+            12: begin
+              out_data          <=  dump_wb_m_dat_in;
+            end
+            13: begin
+              out_data          <=  dump_wb_m_dat_out;
+            end
+            default: begin
+              out_data            <=  32'hFFFFFFFF;
+            end
+          endcase
+          if (local_data_count > 0) begin
+             local_data_count <= local_data_count - 1;
+           end
+           else begin
+            state                 <=  IDLE;
+           end
+           out_status              <=  ~in_command;
+           out_address             <=  0;
+           out_en                  <=  1; 
+           dump_count              <=  dump_count + 1;
+        end
+      end
       IDLE: begin
         //handle input
-        master_ready    <= 1;
-        mem_bus_select  <= 0;
+        master_ready            <= 1;
+        mem_bus_select          <= 0;
         if (in_ready) begin
-          debug_out[6]  <= ~debug_out[6];
-          mem_bus_select  <= 0;
-          nack_count    <= nack_timeout;
+          debug_out[6]          <= ~debug_out[6];
+          mem_bus_select        <= 0;
+          nack_count            <= nack_timeout;
 
-          local_address <= in_address;
-          local_data    <= in_data;
+          local_address         <= in_address;
+          local_data            <= in_data;
           //out_data_count  <= 0;
 
           case (real_command)
@@ -400,13 +514,13 @@ always @ (posedge clk) begin
               debug_out[0]    <= ~debug_out[0];
               out_status      <= ~in_command;
               out_address     <= 32'h00000000;
-              out_data      <= S_PING_RESP;
-              out_en        <= 1;
-              state         <= IDLE;
+              out_data        <= S_PING_RESP;
+              out_en          <= 1;
+              state           <= IDLE;
             end
             `COMMAND_WRITE: begin
-              out_status  <= ~in_command;
-              debug_out[1]  <= ~debug_out[1];
+              out_status      <= ~in_command;
+              debug_out[1]    <= ~debug_out[1];
               local_data_count    <=  in_data_count;
               if (command_flags & `FLAG_MEM_BUS) begin
                 mem_bus_select  <= 1; 
@@ -424,14 +538,14 @@ always @ (posedge clk) begin
                 wb_we_o       <= 1;
                 wb_dat_o      <= in_data;
               end 
-              out_address   <= in_address;
-              out_data    <= in_data;
-              master_ready  <= 0;
-              state     <= WRITE;
+              out_address     <= in_address;
+              out_data        <= in_data;
+              master_ready    <= 0;
+              state           <= WRITE;
             end
             `COMMAND_READ:  begin
               local_data_count  <=  in_data_count;
-              debug_out[2]  <= ~debug_out[2];
+              debug_out[2]    <= ~debug_out[2];
               if (command_flags & `FLAG_MEM_BUS) begin
                 mem_bus_select  <= 1; 
                 mem_adr_o     <= in_address;
@@ -448,48 +562,46 @@ always @ (posedge clk) begin
                 wb_we_o       <= 0;
                 out_status    <= ~in_command;
               end
-              master_ready  <= 0;
-              out_address   <= in_address;
-              state     <= READ;
+              master_ready    <= 0;
+              out_address     <= in_address;
+              state           <= READ;
             end 
-            `COMMAND_RW_FLAGS: begin
-              if (command_flags & 1)begin
-                //reading
-                out_data  <= master_flags;
-              end
-              else begin
-                master_flags <= in_data;
-              end
-              debug_out[3]  <= ~debug_out[3];
-              out_status    <= ~in_command;
-              out_en      <= 1;
-              state     <= IDLE;
+            `COMMAND_MASTER_ADDR: begin
+              out_address     <=  in_address;
+              out_status      <= ~in_command;
+              case (in_address)
+                `MADDR_WR_FLAGS: begin
+                  master_flags  <= in_data;
+                end
+                `MADDR_RD_FLAGS: begin
+                  out_data      <= master_flags;
+                end
+                `MADDR_WR_INT_EN: begin
+                  interrupt_mask  <= in_data;
+                  out_data      <=  in_data;
+                  $display("WBM: setting interrupt enable to: %h", in_data); 
+                end
+                `MADDR_RD_INT_EN: begin
+                  out_data      <= interrupt_mask;
+                end
+                `MADDR_NACK_TO_WR: begin
+                  nack_timeout  <= in_data;
+                end
+                `MADDR_NACK_TO_RD: begin
+                  out_data      <= nack_timeout;
+                end
+                default: begin
+                  //unrecognized command
+                  out_status      <=  32'h00000000;
+               end
+              endcase
+              out_en          <=  1;
+              state           <=  IDLE;
             end
-            `COMMAND_WR_INT_EN: begin
-              out_status    <= ~in_command;
-              interrupt_mask  <= in_data;
-              out_address   <= 32'h00000000;
-              out_data    <= in_data;
-              out_en      <= 1;
-              state     <= IDLE;
-              $display("WBM: setting interrupt enable to: %h", in_data); 
-            end
-            `COMMAND_RD_INT_EN: begin
-              out_status    <= ~in_command;
-              out_data    <= interrupt_mask;
-              out_address   <= 32'h00000000;
-              out_en      <= 1;
-              state     <= IDLE;
-            end
-            `COMMAND_NACK_TO_WR: begin
-              out_status    <= ~in_command;
-              out_address   <= 32'h00000000;
-              nack_timeout  <= in_data;
-            end
-            `COMMAND_NACK_TO_RD: begin
-              out_status    <= ~in_command;
-              out_address   <= 32'h00000000;
-              out_data    <= nack_timeout;
+            `COMMAND_CORE_DUMP: begin
+              local_data_count        <=  DUMP_COUNT + 1;
+              dump_count              <=  0;
+              state                   <=  DUMP_CORE;
             end
             default:    begin
             end
@@ -523,6 +635,7 @@ always @ (posedge clk) begin
     endcase
   end
   //handle output
+  prev_reset  <=  rst;
 end
 
 endmodule
