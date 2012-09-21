@@ -98,7 +98,7 @@ output reg  [31:0]	wbs_dat_o;
 output reg			wbs_ack_o;
 output reg			wbs_int_o;
 
-parameter			RAM_SIZE = DATA_WIDTH - 1;
+parameter			RAM_SIZE = ADDR_WIDTH - 1;
 parameter			SLEEP_COUNT = 4;
 
 wire [31:0] read_data;
@@ -147,7 +147,7 @@ always @ (posedge clk) begin
 		if (wbs_stb_i & wbs_cyc_i) begin
 			//master is requesting somethign
 			en_ram <= 1;
-			ram_adr <= wbs_adr_i[RAM_SIZE:0];
+			ram_adr <= wbs_adr_i[RAM_SIZE + 2:2];
 			if (wbs_we_i) begin
 				//write request
 				//the bram module will handle all the writes
