@@ -416,7 +416,7 @@ always @ (posedge clk) begin
         mem_dat_o                     <=  0;  
         mem_adr_o                     <=  memory_base[active_block] + memory_pointer[active_block];
         
-        memory_pointer[active_block]  <=  memory_pointer[active_block] + 1;
+        memory_pointer[active_block]  <=  memory_pointer[active_block] + 4;
     end
     end
   end
