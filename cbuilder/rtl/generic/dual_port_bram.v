@@ -1,5 +1,5 @@
 /*
-  This code was originially on
+  This code was adapted from
   http://danstrother.com/2010/09/11/inferring-rams-in-fpgas/
 */
 
