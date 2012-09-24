@@ -1,11 +1,11 @@
-rtl/uart_v2.v
+../../../../rtl/generic/uart_v2.v
 ../../interconnect/example_2port_interconnect/wishbone_interconnect.v
 ../../../../rtl/generic/graycounter.v
 ../../../../rtl/generic/afifo.v
 ../../../../rtl/generic/bram.v
 ../../../../rtl/generic/dual_port_bram.v
-rtl/uart_fifo.v
-rtl/uart_controller.v
+../../../../rtl/generic/uart_fifo.v
+../../../../rtl/generic/uart_controller.v
 rtl/wb_uart.v
 ../../../../rtl/wishbone/slave/device_rom_table/device_rom_table.v
 ../../../../rtl/wishbone/master/wishbone_master.v
