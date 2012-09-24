@@ -1,0 +1,68 @@
+[*]
+[*] GTKWave Analyzer v3.3.34 (w)1999-2012 BSI
+[*] Mon Sep 24 04:53:51 2012
+[*]
+[dumpfile] "(null)"
+[savefile] "/home/cospan/Projects/olympus/cbuilder/sim/wishbone/slave/wb_logic_analyzer/logic_analyzer.sav"
+[timestart] 0
+[size] 1918 1059
+[pos] -1 -1
+*-16.598783 235000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] wishbone_master_tb.
+[treeopen] wishbone_master_tb.s1.
+[treeopen] wishbone_master_tb.s1.ulac.
+[treeopen] wishbone_master_tb.s1.ulac.uc.
+[sst_width] 223
+[signals_width] 190
+[sst_expanded] 1
+[sst_vpaned_height] 313
+@28
+wishbone_master_tb.clk
+wishbone_master_tb.rst
+wishbone_master_tb.execute_command
+wishbone_master_tb.command_finished
+@22
+wishbone_master_tb.in_command[31:0]
+wishbone_master_tb.in_address[31:0]
+wishbone_master_tb.in_data_count[27:0]
+wishbone_master_tb.in_data[31:0]
+wishbone_master_tb.out_data_count[27:0]
+wishbone_master_tb.out_status[31:0]
+wishbone_master_tb.out_data[31:0]
+@28
+wishbone_master_tb.master_ready
+wishbone_master_tb.in_ready
+wishbone_master_tb.out_ready
+wishbone_master_tb.out_en
+@22
+wishbone_master_tb.wm.wb_adr_o[31:0]
+wishbone_master_tb.wm.wb_dat_o[31:0]
+wishbone_master_tb.wm.wb_dat_i[31:0]
+@28
+wishbone_master_tb.wm.wb_cyc_o
+wishbone_master_tb.wm.wb_stb_o
+wishbone_master_tb.wm.wb_we_o
+wishbone_master_tb.wm.wb_ack_i
+@200
+-Slave
+@28
+wishbone_master_tb.s1.control_reset
+@22
+wishbone_master_tb.s1.control[31:0]
+wishbone_master_tb.s1.status[31:0]
+wishbone_master_tb.s1.trigger[31:0]
+wishbone_master_tb.s1.trigger_mask[31:0]
+wishbone_master_tb.s1.data_out[31:0]
+@200
+-UART_CONTROLLER
+@22
+wishbone_master_tb.s1.ulac.trigger[31:0]
+@28
+wishbone_master_tb.s1.ulac.read_empty
+@22
+wishbone_master_tb.s1.ulac.uc.uf_rx.read_count[31:0]
+wishbone_master_tb.s1.ulac.uc.read_size[31:0]
+@23
+wishbone_master_tb.s1.ulac.write_size[31:0]
+[pattern_trace] 1
+[pattern_trace] 0
