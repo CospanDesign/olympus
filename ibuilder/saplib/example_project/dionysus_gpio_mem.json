@@ -57,7 +57,12 @@
 					"direction":"input"
 				}
 			}
-  	}
+  	},
+    "lax1":{
+      "filename":"wb_logic_analyzer.v",
+      "bind":{
+      }
+    }
   },
   "MEMORY":{
 		"mem1":{
@@ -112,9 +117,25 @@
 			}
 		}
 	},
-
-	"bind": {
+	"bind":{
+    "la_clk"{
+      "port":"clk",
+      "direction":"input"
+    },
+		"la_data[7:0]":{
+			"port":"wbm_debug_out",
+			"direction":"input"
+		},
+    "la_data[31:8]":{
+      "port":"24'h0",
+      "direction":"input"
+    },
+    "la_ext_trig":{
+      "port":"0",
+      "direction":"input"
+    }
 	},
+	
 	"constraint_files":[
 	]
 
