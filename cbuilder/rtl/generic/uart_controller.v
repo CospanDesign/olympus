@@ -234,7 +234,7 @@ always @ (posedge clk) begin
 
 
     if (tx_read_strobe) begin
-      $display ("UART_CONTROLLER: Setting tx_byte to %h", tx_fifo_read_data);
+      //$display ("UART_CONTROLLER: Setting tx_byte to %h", tx_fifo_read_data);
       tx_byte                     <=  tx_fifo_read_data;
       transmit                    <=  1;
     end
