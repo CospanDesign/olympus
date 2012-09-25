@@ -1,7 +1,7 @@
 #! /usr/bin/python
 
 #Distributed under the MIT licesnse.
-#Copyright (c) 2011 Dave McCoy (dave.mccoy@cospandesign.com)
+#Copyright (c) 2012 Dave McCoy (dave.mccoy@cospandesign.com)
 
 #Permission is hereby granted, free of charge, to any person obtaining a copy of
 #this software and associated documentation files (the "Software"), to deal in 
@@ -23,15 +23,14 @@
 
 """ Logic Analyzer
 
-Facilitates communication with the HMC6352 module, and example can be found
-at sparkfun.com:
+Facilitates communication with the logic analyzer core, either through the
+standard wishbone bus or through the UART core
 
-https://www.sparkfun.com/products/7915?
+When used with an Olympus image the logic_analyzer driver is used to
+communicate with the core, for more information about the logic analyzer
+core please refer to:
 
-This core uses the I2C core and userland driver for details on the i2c
-driver:
-
-http://wiki.cospandesign.com/index.php?title=Wb_i2c
+http://wiki.cospandesign.com/index.php?title=Logic_analyzer
 
 """
 
@@ -55,23 +54,39 @@ DESCRIPTION = "\n" + \
 "\n" + \
 "Can be used in one of two ways:\n" + \
 "\tAn Olympus Peripheral:\tAccessed in the same way as other slaves\n" + \
-"\tIndependent UART device:\tUsed to interface with the \n"
+"\tStandalone UART device:\tThis is useful to debug internal signals\n"
 
 EPILOG = "\n" + \
 "Examples:\n" + \
-"\n"
+"\n" + \
+"View a list of UART devices attached to this computer\n" + \
+"\tlogic_analyzer.py -l\n" + \
+"\n" + \
+"Attach to the specified UART\n" + \
+"\tlogic_analyzer.py -u /dev/ttyUSB0\n" + \
+"\n" + \
+"Go through all the UART devices on this computer, open up each UART\n" + \
+"send the \'ping\' command, if the device responds then select that\n" + \
+"device\n" + \
+"\tlogic_analyzer.py -s\n"
   
 
 
 
 if __name__ == "__main__":
-  #parser = argparse.ArgumentParser()
-  #parser.parse_args()
+  parser = argparse.ArgumentParser(
+  formatter_class=argparse.RawDescriptionHelpFormatter,
+    description=DESCRIPTION,
+    epilog=EPILOG
+    )
 
   #parser.add_argument("echo")
-  #args = parser.parse_args()
-  #print args.echo
-  print EPILOG
+  parser.add_argument("-u", "--uart", type=str, default='/dev/ttyUSB0', help="Uses the UART logic analyzer interface specified")
+  parser.add_argument("-l", "--list", help="Displays a list of possible UART interfaces to specify", action="store_true")
+  parser.add_argument("-s", "--scan", help="Scans for a UART Logic Analyzer", action="store_true")
+  parser.parse_args()
+  args = parser.parse_args()
+  #print EPILOG
 
 
 
