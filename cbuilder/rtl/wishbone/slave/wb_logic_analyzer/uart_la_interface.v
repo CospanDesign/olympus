@@ -74,7 +74,8 @@ parameter                   READ_TRIGGER          = 3;
 parameter                   READ_TRIGGER_MASK     = 4;
 parameter                   READ_TRIGGER_AFTER    = 5;
 parameter                   READ_REPEAT_COUNT     = 6;
-parameter                   SEND_RESPONSE         = 7;
+parameter                   READ_CARRIAGE_RETURN  = 7;
+parameter                   SEND_RESPONSE         = 8;
 
 //UART Control
 reg                         write_strobe;
@@ -108,17 +109,26 @@ reg   [31:0]                la_data;
 reg   [1:0]                 byte_count;
 
 wire  [3:0]                 nibble;
+wire  [7:0]                 hex_value;
+reg   [3:0]                 nibble_value;
+reg   [3:0]                 in_nibble;
+reg   [3:0]                 size_count;
+wire  [31:0]                readible_write_size;
+reg   [31:0]                la_write_size;
 
-//reg   [3:0]                 read_history;
-//reg                         reset;
+reg   [7:0]                 command;
+wire                        init_packet_read;
+reg                         prev_packet_read;
+wire                        pos_edge_packet_read;
+reg   [3:0]                 sleep;
 
 //submodules
 uart_controller uc (
   .clk(clk),
   //should this be reset here?
   .rst(rst),
-  .rx(la_uart_rx),
-  .tx(la_uart_tx),
+  .rx(phy_rx),
+  .tx(phy_tx),
   .rts(0),
   
   .control_reset(rst),
@@ -144,25 +154,13 @@ uart_controller uc (
 
 
 //asynchronous logic
-assign nibble         = decode_ascii(read_data); 
-
-//extended reset logic
-/*
-always @ (posedge clk) begin
-  if (rst) begin
-    reset                   <=  0;
-    read_history            <=  0;
-  end
-  else begin
-    reset                   <=  0;
-
-    if (read_history == 4'b0111) begin
-      reset                 <=  1;
-    end
-    read_history            <=  {read_history[2:0], 1'h1};
-  end
-end
-*/
+//assign  nibble              = decode_ascii(read_data); 
+//assign  hex_value           = encode_ascii(in_nibble);
+assign  hex_value             = (nibble_value >= 10) ? (nibble_value + 8'h55) : (nibble_value + 8'h30);
+assign  nibble                = (read_data >= 8'h55) ? (read_data - 8'h55) : (read_data - 8'h30);
+assign  init_packet_read      = (enable & finished);
+assign  pos_edge_packet_read  = (init_packet_read & ~prev_packet_read);
+assign  readible_write_size   = data_read_size;
 
 //UART Interface Controller
 always @ (posedge clk) begin
@@ -176,12 +174,12 @@ always @ (posedge clk) begin
     enable                  <=  0;
 
     ready                   <=  0;
-    read_state                   <=  IDLE;
-
+    read_state              <=  IDLE;
     command_response        <=  0;
+    command                 <=  0;
     response_status         <=  0;
-
     write_status            <=  0;
+
   end
   else begin
 
@@ -190,8 +188,9 @@ always @ (posedge clk) begin
     read_strobe             <=  0;
     process_byte            <=  0;
     write_status            <=  0;
+    set_strobe              <=  0;
 
-    if (ready && !read_empty) begin
+    if (ready && !read_empty && !read_strobe) begin
       //new command data to process
       read_strobe       <=  1;
       ready             <=  0;
@@ -199,7 +198,13 @@ always @ (posedge clk) begin
     if (read_strobe) begin
       process_byte      <=  1;
     end
-
+    if (read_state != READ_CARRIAGE_RETURN) begin
+      if (process_byte) begin
+        if (read_data == (`CARRIAGE_RETURN)) begin
+          read_state    <=  IDLE;
+        end
+      end
+    end
     //check if incomming UART is not empty
     case (read_state)
       IDLE: begin
@@ -218,12 +223,14 @@ always @ (posedge clk) begin
         end
       end
       READ_COMMAND: begin
+        ready               <=  1;
         if (process_byte) begin
+          
+          command                 <=  read_data; 
           case (read_data)
             `LA_PING: begin
-              ready               <=  0;
               command_response    <=  `RESPONSE_SUCCESS; 
-              read_state          <=  SEND_RESPONSE;
+              read_state          <=  READ_CARRIAGE_RETURN;
             end
             `LA_WRITE_SETTINGS: begin
               //disable the LA when updating settings
@@ -236,20 +243,22 @@ always @ (posedge clk) begin
               read_state          <=  READ_ENABLE_SET; 
             end
             `LA_GET_ENABLE: begin
-              ready               <=  0;
-              read_state          <=  SEND_RESPONSE;
+              read_state          <=  READ_CARRIAGE_RETURN;
               response_status     <=  enable + `HEX_0;
+            end
+            `LA_GET_SIZE: begin
+              read_state          <=  READ_CARRIAGE_RETURN;
             end
             default: begin
               //unrecognized command
-              ready               <=  0;
               command_response    <=  `RESPONSE_FAIL;
-              read_state          <=  SEND_RESPONSE;
+              read_state          <=  READ_CARRIAGE_RETURN;
             end
           endcase
         end
       end
       READ_TRIGGER: begin
+        ready <=  1;
         if (process_byte) begin
           trigger                 <=  {trigger[27:0], nibble}; 
           read_count              <=  read_count -  1;
@@ -260,16 +269,18 @@ always @ (posedge clk) begin
         end
       end
       READ_TRIGGER_MASK: begin
+        ready <=  1;
         if (process_byte) begin
           trigger_mask            <=  {trigger_mask[27:0], nibble}; 
           read_count              <=  read_count -  1;
           if (read_count == 0) begin
             read_count            <=  7;
-            read_state            <=  READ_REPEAT_COUNT;
+            read_state            <=  READ_TRIGGER_AFTER;
           end
         end
       end
       READ_TRIGGER_AFTER: begin
+        ready <=  1;
         if (process_byte) begin
           trigger_after           <=  {trigger_after[27:0], nibble}; 
           read_count              <=  read_count -  1;
@@ -280,6 +291,7 @@ always @ (posedge clk) begin
         end
       end
       READ_REPEAT_COUNT: begin
+        ready <=  1;
         if (process_byte) begin
           repeat_count            <=  {repeat_count[27:0], nibble}; 
           read_count              <=  read_count -  1;
@@ -287,22 +299,34 @@ always @ (posedge clk) begin
             read_count            <=  7;
             set_strobe            <=  1;
             command_response      <=  `RESPONSE_SUCCESS; 
-            read_state            <=  SEND_RESPONSE;
+            read_state            <=  READ_CARRIAGE_RETURN;
           end
         end
       end
       READ_ENABLE_SET: begin
+        ready <=  1;
         if (process_byte) begin
           if (read_data == (0 + `HEX_0)) begin
-            enable                <=  0;
-            command_response      <=  `RESPONSE_SUCCESS;
+            enable              <=  0;
+            command_response    <=  `RESPONSE_SUCCESS;
           end
           else if (read_data == (1 + `HEX_0)) begin
-              enable              <=  1;
+            enable              <=  1;
+            command_response    <=  `RESPONSE_SUCCESS;
           end
           else begin
-            command_response      <=  `RESPONSE_FAIL;
-            read_state            <=  SEND_RESPONSE;
+            command_response    <=  `RESPONSE_FAIL;
+          end
+          read_state            <=  READ_CARRIAGE_RETURN;
+        end
+      end
+      READ_CARRIAGE_RETURN: begin
+        ready <=  1;
+        if (process_byte) begin
+          if (read_data == (`CARRIAGE_RETURN)) begin
+            ready <=  0;
+            read_state          <=  SEND_RESPONSE;
+            write_status        <=  1;
           end
         end
       end
@@ -323,9 +347,11 @@ end
 parameter                   RESPONSE_WRITE_ID     = 1;
 parameter                   RESPONSE_WRITE_STATUS = 2;
 parameter                   RESPONSE_WRITE_ARG    = 3;
-parameter                   GET_DATA_PACKET       = 4;
-parameter                   SEND_DATA_PACKET      = 5;
-
+parameter                   RESPONSE_WRITE_SIZE   = 4;
+parameter                   GET_DATA_PACKET       = 5;
+parameter                   SEND_DATA_PACKET      = 6;
+parameter                   SEND_LINE_FEED        = 7;
+parameter                   SEND_CARRIAGE_RETURN  = 8;
 
 
 //write data state machine
@@ -337,78 +363,148 @@ always @ (posedge clk) begin
     write_state                 <=  IDLE;
     la_data_read_count          <=  0;
     la_data                     <=  0;
+    size_count                  <=  0;
+    byte_count                  <=  0;
   end
   else begin
     write_strobe                <=  0;
     status_written              <=  0;
     data_read_strobe            <=  0;
-    case (write_state ==  IDLE)
+   
+    case (write_state)
       IDLE: begin
         if (write_status) begin
           write_state           <=  RESPONSE_WRITE_ID;
         end
-        if (enable && finished) begin
+        if (pos_edge_packet_read) begin
           write_state           <=  GET_DATA_PACKET;
-          la_data_read_count    <=  data_read_size;
+          la_data_read_count    <=  data_read_size - 2;
           data_read_strobe      <=  1;
+          sleep                 <=  3;
         end
       end
       RESPONSE_WRITE_ID: begin
-        if (write_available) begin
+        if (!write_full) begin
           write_data            <=  `RESPONSE_ID;  
           write_strobe          <=  1;
-          write_state            <=  RESPONSE_WRITE_STATUS;
+          write_state           <=  RESPONSE_WRITE_STATUS;
         end
       end
       RESPONSE_WRITE_STATUS: begin
-        if (write_available) begin
+        if (!write_full) begin
           write_data            <=  command_response;
           write_strobe          <=  1;
-          if (response_status > 0) begin
+          if (command == `LA_GET_ENABLE) begin
             write_state          <=  RESPONSE_WRITE_ARG;
           end
+          else if (command == `LA_GET_SIZE) begin
+            write_state         <=  RESPONSE_WRITE_SIZE;
+            nibble_value        <=  readible_write_size[31:28];
+            la_write_size       <=  {readible_write_size[27:0], 4'h0};
+            size_count          <=  0;
+          end
           else begin
-            write_state          <=  IDLE;
+            write_state         <=  SEND_LINE_FEED;
           end
         end
       end
       RESPONSE_WRITE_ARG: begin
-        if (write_available) begin
+        if (!write_full) begin
           write_data            <=  response_status;
           write_strobe          <=  1;
-          write_state            <=  IDLE;
+          write_state           <=  SEND_LINE_FEED;
+        end
+      end
+
+      RESPONSE_WRITE_SIZE: begin
+        if (!write_full) begin
+          if (size_count == 8) begin
+            write_state         <=  SEND_LINE_FEED;
+          end
+          else begin
+            //in_nibble           <=  la_write_size[31:28];
+            nibble_value        <=  la_write_size[31:28];
+            write_data          <=  hex_value;
+            la_write_size       <=  {la_write_size[27:0], 4'h0};
+            write_strobe        <=  1;
+            size_count          <= size_count + 1;
+          end
         end
       end
       GET_DATA_PACKET: begin
-        byte_count              <=  0;
-        la_data                 <=  data;
+        if (sleep > 0) begin
+          sleep   <=  sleep - 1;
+        end
+        else begin
+          byte_count              <=  0;
+          la_data                 <=  data;
+          write_state             <=  SEND_DATA_PACKET;
+          data_read_strobe        <=  1;
+          write_data              <=  la_data[31:24];
+          write_strobe            <=  1;
+        end
       end
       SEND_DATA_PACKET: begin
-        if (write_available) begin
+        if (write_available > 4) begin
           write_data              <=  la_data[31:24];
-          la_data                 <=  {la_data[23:0], 8'h00};
- 
           if (byte_count == 3) begin
             if (la_data_read_count > 0) begin
+              la_data_read_count  <=  la_data_read_count - 1;
               data_read_strobe    <=  1;
-              write_state         <=  GET_DATA_PACKET;
+              la_data             <=  data;
             end
             else begin
-              write_state         <=  IDLE;
+              write_state         <=  SEND_LINE_FEED;
             end
           end
- 
+          else begin
+            la_data               <=  {la_data[23:0], 8'h00};
+          end
+          write_strobe            <=  1;
           byte_count              <=  byte_count + 1;
+        end
+      end
+      SEND_LINE_FEED: begin
+        if (!write_full) begin
+          write_strobe            <=  1;
+          write_data              <=  `LINE_FEED;
+          write_state             <=  SEND_CARRIAGE_RETURN;
+          status_written          <=  1;
+        end
+      end
+      SEND_CARRIAGE_RETURN: begin
+        if (!write_full) begin
+          write_strobe            <=  1;
+          write_data              <=  `CARRIAGE_RETURN;
+          write_state             <=  IDLE;
         end
       end
       default begin
         write_state               <=  IDLE;
       end
     endcase
+    //Only allow this to update in an IDLE state
+    if (write_state == IDLE) begin
+      prev_packet_read              <=  init_packet_read;
+    end
   end
 end
 
+/*
+//nibble -> ascii
+function encode_ascii;
+input raw_nibble;
+begin
+  if (raw_nibble >= 10) begin
+    encode_ascii  = raw_nibble + 55;
+  end
+  else begin 
+    encode_ascii  = raw_nibble + 32;
+  end
+end
+endfunction
 
+//ascii -> nibble
 function decode_ascii;
 input ascii_byte;
 begin
@@ -420,5 +516,6 @@ begin
   end
 end
 endfunction
+*/
 
 endmodule

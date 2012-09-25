@@ -70,6 +70,8 @@ SOFTWARE.
 
 `timescale 1 ns/1 ps
 
+`include "logic_analyzer_defines.v"
+
 `define TIMEOUT_COUNT 40
 `define INPUT_FILE "master_input_test_data.txt"  
 `define OUTPUT_FILE "master_output_test_data.txt"
@@ -159,6 +161,14 @@ wire  [31:0]      wbs1_dat_i;
 wire  [31:0]      wbs1_adr_o;
 wire              wbs1_int_i;
 
+reg               uart_finished;
+
+reg               la_clk = 0;
+reg   [31:0]      la_data;
+reg               la_ext_trigger;
+wire              la_uart_tx;
+wire              la_uart_rx;
+
 //slave 1
 wb_logic_analyzer s1 (
 
@@ -172,8 +182,37 @@ wb_logic_analyzer s1 (
   .wbs_ack_o(wbs1_ack_i),
   .wbs_dat_o(wbs1_dat_i),
   .wbs_adr_i(wbs1_adr_o),
-  .wbs_int_o(wbs1_int_i)
+  .wbs_int_o(wbs1_int_i),
 
+  .la_clk(la_clk),
+  .la_data(la_data),
+  .la_ext_trig(la_ext_trigger),
+
+  //uart interface
+  .la_uart_tx(la_uart_tx),
+  .la_uart_rx(la_uart_rx)
+);
+
+reg               test_transmit = 0;
+reg   [7:0]       test_tx_byte  = 8'h55;
+wire              test_received;
+wire  [7:0]       test_rx_byte;
+wire              test_is_receiving;
+wire              test_is_transmitting;
+wire              test_rx_error;
+
+uart_v2  u_test (
+  .clk(clk),
+  .rst(rst),
+  .rx(la_uart_tx),
+  .tx(la_uart_rx),
+  .transmit(test_transmit),
+  .tx_byte(test_tx_byte),
+  .received(test_received),
+  .rx_byte(test_rx_byte),
+  .is_receiving(test_is_receiving),
+  .is_transmitting(test_is_transmitting),
+  .rx_error(test_rx_error)
 );
 
 
@@ -219,6 +258,7 @@ integer           ch;
 
 integer           data_count;
 
+
 reg               execute_command;
 reg               command_finished;
 reg               request_more_data;
@@ -227,7 +267,8 @@ reg     [27:0]    data_write_count;
 
 
 //Clock rate is 50MHz
-always #1 clk = ~clk;
+always #10 clk = ~clk;
+always #5 la_clk = ~la_clk;
 
 initial begin
   fd_out                      = 0;
@@ -243,7 +284,7 @@ initial begin
   fd_out                      = $fopen(`OUTPUT_FILE, "w");
 
   rst                         <= 0;
-  #4
+  #40
   rst                         <= 1;
 
   //clear the handler signals
@@ -254,7 +295,7 @@ initial begin
   in_data_count               <= 0;
   out_ready                   <= 0;
   //clear wishbone signals
-  #20
+  #80
   rst                         <= 0;
   out_ready                   <= 1;
 
@@ -269,8 +310,18 @@ initial begin
 
       if (read_count != 4) begin
         ch = $fgetc(fd_in);
-        $display ("Error: read_count = %h != 4", read_count);
-        $display ("Character: %h", ch);
+        if (ch == 8'h53) begin
+          read_count = $fscanf (fd_in, "%h\n", in_data_count);
+          $display ("Sleep for %d ticks", in_data_count); 
+          for (read_count = in_data_count[27:0]; read_count > 0; read_count = read_count - 1) begin
+            #1;
+          end
+        end
+        else begin
+          ch = $fgetc(fd_in);
+          $display ("Error: read_count = %h != 4", read_count);
+          $display ("Character: %h", ch);
+        end
       end
       else begin
         case (in_command)
@@ -280,7 +331,8 @@ initial begin
           3: $display ("TB: Executing RESET command");
         endcase
         execute_command                 <= 1;
-        #2
+        #20
+
         while (~command_finished) begin
           request_more_data_ack         <= 0;
 
@@ -293,21 +345,25 @@ initial begin
           end
 
           //so time porgresses wait a tick
-          #2
+          #20;
           //this doesn't need to be here, but there is a weird behavior in iverilog
           //that wont allow me to put a delay in right before an 'end' statement
           execute_command <= 1;
         end //while command is not finished
         while (command_finished) begin
-          #2;
+          #20;
           execute_command <= 0;
         end
-        #100
+        #200
         $display ("TB: finished command");
       end //end read_count == 4
     end //end while ! eof
   end //end not reset
-  #100
+
+  while (!uart_finished) begin
+    #100;
+  end
+  #100000
   $fclose (fd_in);
   $fclose (fd_out);
   $finish();
@@ -507,6 +563,976 @@ always @ (posedge clk) begin
       $display("TB:\tdata: %h", out_data);
     end
   end//not reset
+end
+
+always @ (posedge la_clk) begin
+  if (rst) begin
+    la_data         <=  0;
+    la_ext_trigger  <=  0;
+  end
+  else begin
+    la_data         <=  la_data + 1;
+  end
+end
+
+initial begin
+  
+  /*
+//Ping
+  $display ("TB: Sending PING");
+  uart_finished   <=  0;
+  #100
+  test_transmit       <=  0;
+  //initiate a write
+  test_tx_byte        <=  8'h57;
+  #1000
+
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #20
+
+  while (test_is_transmitting) begin
+  #20;
+  end
+  //write 0 for ping
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  `LA_PING;
+  #1000
+
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #20;
+  while (test_is_transmitting) begin
+  #20;
+  end
+  //write carriage return
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  `CARRIAGE_RETURN;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+
+  //look for a response
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %c", test_rx_byte);
+  #20;
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %c", test_rx_byte);
+  #20;
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %c", test_rx_byte);
+  #20;
+
+
+
+
+
+
+  $display ("TB: Sending Enable");
+
+//Writing Enable
+  #100
+  test_transmit       <=  0;
+  //initiate a write
+  test_tx_byte        <=  `START_ID;
+  #1000
+
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #20
+
+  while (test_is_transmitting) begin
+  #20;
+  end
+  #100
+  test_transmit       <=  0;
+  //Set the enable bit
+  test_tx_byte        <=  `LA_SET_ENABLE;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #20;
+  while (test_is_transmitting) begin
+  #20;
+  end
+  #100
+  test_transmit       <=  0;
+  //write 0 for disable
+  test_tx_byte        <=  (0 + `HEX_0);
+  #1000
+
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #20;
+  while (test_is_transmitting) begin
+  #20;
+  end
+  //write carriage return
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  `CARRIAGE_RETURN;
+  #1000
+
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #20;
+  while (test_is_transmitting) begin
+  #20;
+  end
+
+
+  //look for a response
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %c", test_rx_byte);
+  #20;
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %c", test_rx_byte);
+  #20;
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %c", test_rx_byte);
+  #1000;
+
+
+
+
+//Reading Enable
+  #100
+  test_transmit       <=  0;
+  //initiate a write
+  test_tx_byte        <=  `START_ID;
+  #1000
+
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #20
+
+  while (test_is_transmitting) begin
+  #20;
+  end
+  #100
+  test_transmit       <=  0;
+  //write 0 for ping
+  test_tx_byte        <=  `LA_GET_ENABLE;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #20;
+  while (test_is_transmitting) begin
+  #20;
+  end
+
+
+  //write carriage return
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  `CARRIAGE_RETURN;
+  #1000
+
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #20;
+  while (test_is_transmitting) begin
+  #20;
+  end
+
+
+
+  //look for a response
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %c", test_rx_byte);
+  #20;
+
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %c", test_rx_byte);
+  #1000;
+
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %c", test_rx_byte);
+  #1000;
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %c", test_rx_byte);
+  #1000;
+
+
+
+
+
+
+
+//Reading Size
+  #100
+  test_transmit       <=  0;
+  //initiate a write
+  test_tx_byte        <=  `START_ID;
+  #1000
+
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #20
+
+  while (test_is_transmitting) begin
+  #20;
+  end
+  #100
+  test_transmit       <=  0;
+  //write get size command
+  test_tx_byte        <=  `LA_GET_SIZE;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #20;
+  while (test_is_transmitting) begin
+  #20;
+  end
+
+
+  //write carriage return
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  `CARRIAGE_RETURN;
+  #1000
+
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #20;
+  while (test_is_transmitting) begin
+  #20;
+  end
+
+
+
+$display ("Reading Size of the bufffer");
+  //look for a response
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %c", test_rx_byte);
+  #20;
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %c", test_rx_byte);
+  #20;
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %c", test_rx_byte);
+  #20;
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %c", test_rx_byte);
+  #20;
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %c", test_rx_byte);
+  #20;
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %c", test_rx_byte);
+  #20;
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %c", test_rx_byte);
+  #20;
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %c", test_rx_byte);
+  #20;
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %c", test_rx_byte);
+  #20;
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %c", test_rx_byte);
+  #20;
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %c", test_rx_byte);
+
+
+
+
+
+//Ping
+  $display ("TB: Sending WRITE_SETTINGS");
+  uart_finished   <=  0;
+  #100
+  test_transmit       <=  0;
+  //initiate a write
+  test_tx_byte        <=  8'h57;
+  #1000
+
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #20
+
+  while (test_is_transmitting) begin
+  #20;
+  end
+  //write 0 for ping
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  `LA_WRITE_SETTINGS;
+  #1000
+
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #20;
+  while (test_is_transmitting) begin
+  #20;
+  end
+
+  //send trigger
+  $display ("Writing trigger");
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  0 + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  0 + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  0 + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  0 + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  0 + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  0 + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  0 + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  8'hF + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+
+  //send trigger mask
+  $display ("Writing trigger mask");
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  0 + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  0 + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  0 + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  0 + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  0 + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  0 + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  0 + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  8'hF + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+
+  $display ("Writing trigger after");
+  //send trigger after
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  0 + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  0 + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  0 + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  0 + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  0 + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  0 + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  0 + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  0 + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+
+  $display ("Writing repeat count");
+  //send repeat count
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  0 + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  0 + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  0 + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  0 + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  0 + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  0 + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  0 + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  0 + 8'h55;
+  //test_tx_byte        <=  7 + `HEX_0;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+
+  //write carriage return
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  `CARRIAGE_RETURN;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #5;
+  while (test_is_transmitting) begin
+  #5;
+  end
+
+
+
+  //look for a response
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %c", test_rx_byte);
+  #20;
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %c", test_rx_byte);
+  #20;
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %c", test_rx_byte);
+  #20;
+
+
+  $display ("TB: Sending Enable");
+
+//Writing Enable
+  #100
+  test_transmit       <=  0;
+  //initiate a write
+  test_tx_byte        <=  `START_ID;
+  #1000
+
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #20
+
+  while (test_is_transmitting) begin
+  #20;
+  end
+  #100
+  test_transmit       <=  0;
+  //Set the enable bit
+  test_tx_byte        <=  `LA_SET_ENABLE;
+  #1000
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #20;
+  while (test_is_transmitting) begin
+  #20;
+  end
+  #100
+  test_transmit       <=  0;
+  //write 1 for Enable
+  test_tx_byte        <=  (1 + `HEX_0);
+  #1000
+
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #20;
+  while (test_is_transmitting) begin
+  #20;
+  end
+  //write carriage return
+  #100
+  test_transmit       <=  0;
+  test_tx_byte        <=  `CARRIAGE_RETURN;
+  #1000
+
+  test_transmit       <=  1;
+  #20
+  test_transmit       <=  0;
+  #20;
+  while (test_is_transmitting) begin
+  #20;
+  end
+
+
+  //look for a response
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %h", test_rx_byte);
+  #20;
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %h", test_rx_byte);
+  #20;
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %h", test_rx_byte);
+  #20;
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %h", test_rx_byte);
+   #20;
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %h", test_rx_byte);
+   #20;
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %h", test_rx_byte);
+   #20;
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %h", test_rx_byte);
+  #20;
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %h", test_rx_byte);
+  #20;
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %h", test_rx_byte);
+   #20;
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %h", test_rx_byte);
+   #20;
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %h", test_rx_byte);
+  #20;
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %h", test_rx_byte);
+  #20;
+  while (!test_received) begin
+  #20;
+  end
+  $display ("Received: %c", test_rx_byte);
+ 
+
+  #10000;
+  */
+  uart_finished   <=  1;
+
+
+
+
+
+
 end
 
 endmodule

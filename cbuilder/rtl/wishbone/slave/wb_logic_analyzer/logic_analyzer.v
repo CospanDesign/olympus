@@ -33,6 +33,8 @@ module logic_analyzer #(
   cap_clk,
   cap_external_trigger,
   cap_data,
+  clk_div,
+  clk_select,
 
   //logic analyzer control
   trigger,
@@ -41,6 +43,7 @@ module logic_analyzer #(
   repeat_count,
   set_strobe,
   enable,
+  restart,
   finished,
 
   //data output interface
@@ -48,6 +51,7 @@ module logic_analyzer #(
   data_out_read_size,
   data_out
 );
+parameter FIFO_WIDTH = (1 << CAPTURE_DEPTH);
 
 input           rst;
 input           clk;
@@ -56,6 +60,8 @@ input           clk;
 input           cap_clk;
 input           cap_external_trigger;
 input [31:0]    cap_data;
+input [31:0]    clk_div;
+input           clk_select;
 
 //logic analyzer control
 input [31:0]    trigger;
@@ -64,6 +70,7 @@ input [31:0]    trigger_after;
 input [31:0]    repeat_count;
 input           set_strobe;
 input           enable;
+input           restart;
 output          finished;
 
 
@@ -94,14 +101,20 @@ wire    [CAPTURE_DEPTH - 1: 0]        last;
 wire                                  full;
 wire                                  empty;
 
-wire    [31:0]                        size;
-
-
 reg     [3:0]                         cap_state;
 reg                                   cap_write_strobe;
+wire                                  cap_start;
+wire                                  cap_pos_start;
+wire                                  cap_neg_start;
+
+reg                                   div_clk;
+wire                                  out_clk;
+reg     [31:0]                        clk_count;
+
 reg     [3:0]                         read_state;
 reg     [31:0]                        trigger_after_count;
 reg     [31:0]                        rep_count;
+reg     [31:0]                        prev_cap;
 
 
 
@@ -114,49 +127,85 @@ dual_port_bram #(
   .a_clk(cap_clk),
   .a_wr(cap_write_strobe),
   .a_addr(in_pointer),
-  .a_din(cap_data),
+  .a_din(prev_cap),
 
   .b_clk(clk),
   .b_wr(0),
   .b_addr(out_pointer),
+  .b_din(0),
   .b_dout(data_out)
 
 );
 
 //asynchronous logic
 
-assign                  data_out_read_size  = 1 << CAPTURE_WIDTH;
-assign                  last                = start - 1;
-assign                  full                = (in_pointer == last);
-assign                  empty               = ((out_pointer == start) && (finished) && (!data_out_read_strobe));
+assign  data_out_read_size  = (FIFO_WIDTH);
+assign  last                = start - 1;
+assign  full                = (in_pointer == last);
+assign  empty               = ((out_pointer == start) && (finished) && (!data_out_read_strobe));
 //this may not be the best place for this
-assign                  finished            = (cap_state == FINISHED);
+assign  finished            = (cap_state == FINISHED);
 
+assign  cap_pos_start       = (((cap_data & trigger_mask) == (trigger & trigger_mask)) && ((trigger & trigger_mask) > 0));
+assign  cap_neg_start       = (((~cap_data & trigger_mask) == (~trigger & trigger_mask)) && ((~trigger & trigger_mask) > 0));
+
+assign  cap_start           = cap_pos_start || cap_neg_start || (trigger_mask == 0);
+
+/*
+assign  out_clk             = (clk_div > 0) ? div_clk : cap_clk; 
+
+
+//clock divider
+always @ (posedge cap_clk) begin
+  if (rst) begin
+    //the out clock needs to keep going during reset
+    div_clk   <=  0;
+    clk_count <=  0;
+  end
+  else begin
+    if (clk_div > 0) begin
+      clk_count <=  clk_count + 1;
+      if (clk_count == clk_div) begin
+        clk_count <=  0;
+        div_clk <=  ~div_clk;
+      end
+    end
+    else begin
+      div_clk <= ~div_clk;
+    end
+  end
+end
+*/
 
 
 always @ (posedge cap_clk) begin
   if (rst) begin
     in_pointer            <=  0;
     start                 <=  0;
-    cap_state                 <=  IDLE;
+    cap_state             <=  IDLE;
     trigger_after_count   <=  0;
     rep_count             <=  0;
+    cap_write_strobe      <=  0;
+    prev_cap              <=  0;
   end
   else begin
+    prev_cap              <=  cap_data;
     cap_write_strobe      <=  0;
     //if trigger_after > 0 then I have to continuously read data
     case (cap_state)
       IDLE: begin
         if (enable) begin
-          if (trigger_after > 0) begin
+          if (trigger_after > 0 || repeat_count > 0) begin
             //this is the special case where we need to continus reading data
             //all the time just in case a trigger even happens we have the history
+            in_pointer          <=  start;
+            rep_count           <=  repeat_count;
             cap_state           <=  CONT_READ;
           end
           else begin
             start               <=  0;
             in_pointer          <=  0;
-            if (cap_data == (trigger & trigger_mask)) begin
+            if (cap_start) begin
               cap_state         <=  CAPTURE;
               cap_write_strobe  <=  1;
               in_pointer        <=  in_pointer + 1;
@@ -174,17 +223,22 @@ always @ (posedge cap_clk) begin
         end
       end
       SETUP: begin
-        rep_count         <=  repeat_count;
+        rep_count             <=  repeat_count;
+        start                 <=  0;
+        in_pointer            <=  0;
         cap_state             <=  IDLE;
       end
       CONT_READ: begin
-        if (enable) begin
+        if (set_strobe) begin
+          cap_state           <=  SETUP;
+        end
+        else if (enable) begin
           cap_write_strobe  <=  1;
 //XXX: I don't know if this will wrap around when the in_pointer goes around the '0' mark
           start             <=  start + 1;
           in_pointer         <=  start + trigger_after;
-          if ((cap_data == (trigger & trigger_mask)) || cap_external_trigger) begin
-            if (rep_count > 0) begin
+          if (cap_start) begin
+            if (rep_count == 0) begin
               cap_state         <=  CAPTURE;
               cap_write_strobe  <=  1;
             end
@@ -206,7 +260,9 @@ always @ (posedge cap_clk) begin
         end
       end
       FINISHED: begin
-        cap_state             <=  IDLE;
+        if (!enable || restart) begin
+          cap_state             <=  IDLE;
+        end
       end
       default: begin
         cap_state             <=  IDLE;
