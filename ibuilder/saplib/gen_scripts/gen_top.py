@@ -14,7 +14,6 @@ class GenTop(Gen):
 
   def add_ports_to_wires(self):
     """add all the ports to wires list so that no item adds wires"""
-    #bindings = self.tags["CONSTRAINTS"]["bind"]
     for name in self.bindings.keys():
       self.wires.append(self.bindings[name]["port"])
 
@@ -22,7 +21,6 @@ class GenTop(Gen):
   def generate_ports(self):
     """create the ports string"""
     port_buf = ""
-    #bindings = self.tags["CONSTRAINTS"]["bind"]
     for name in self.bindings.keys():
       port_name = self.bindings[name]["port"]
       if (port_name.__contains__("[") and port_name.__contains__(":")):
@@ -40,6 +38,8 @@ class GenTop(Gen):
     invert_reset = board_dict["invert_reset"]
     en_mem_bus = False
     slave_list = tags["SLAVES"]
+    self.internal_bindings = {}
+    self.bindings = {}
     if "MEMORY" in tags:
 #     if debug:
 #       print "Found a memory bus"
@@ -51,6 +51,11 @@ class GenTop(Gen):
     num_slaves = len(slave_list) + 1
     self.tags = tags
 
+#add the internal bindings
+    self.internal_bindings = {}
+    if "internal_bind" in self.tags.keys():
+      self.internal_bindings = self.tags["internal_bind"]
+      #print "Internal bindings: %s" % str(self.internal_bindings)
 
 #add the global tags
     self.bindings = self.tags["bind"]
@@ -97,7 +102,6 @@ class GenTop(Gen):
     header = header + "\tclk,\n"
     header = header + "\trst,\n"
 
-    #bindings = tags["CONSTRAINTS"]["bind"]
     for c_index in range(0, len(self.bindings.keys())):
       name = self.bindings.keys()[c_index]  
       header = header + "\t" + self.bindings[name]["port"]
@@ -466,9 +470,16 @@ class GenTop(Gen):
 
   
     buf_bind = ""
-    #Generate the bindings
+    buf_bind += "\t//assigns\n"
+    #Generate the internal bindings
+    if (len(self.internal_bindings.keys()) > 0):
+      buf_bind += "\t//Internal Bindings\n"
+      for key in self.internal_bindings.keys():
+        buf_bind += "\tassign\t%s\t=\t%s;\n" % (key, self.internal_bindings[key]["signal"])
+      
+    #Generate the external bindings
     if (len(self.bindings.keys()) > 0):
-      buf_bind = buf_bind + "\t//assigns\n"
+      buf_bind += "\t//Bindings to Ports\n"
       for key in self.bindings.keys():
         if (self.bindings[key]["direction"] == "input"):
           buf_bind = buf_bind + "\tassign\t" + key + "\t=\t" + self.bindings[key]["port"] + ";\n"

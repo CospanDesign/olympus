@@ -270,6 +270,7 @@ def get_module_tags(filename="", bus="", keywords = [], debug=False):
       continue
     module_string = substring.partition("module")[2]
     module_string = module_string.strip(" ")
+    module_string = module_string.strip("(")
     index = module_string.find(" ")
 
     if (index != -1):
