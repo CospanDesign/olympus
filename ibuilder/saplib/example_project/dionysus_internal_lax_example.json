@@ -61,6 +61,14 @@
     "lax1":{
       "filename":"wb_logic_analyzer.v",
       "bind":{
+        "la_uart_tx":{
+          "port":"s0",
+          "direction":"output"
+        },
+        "la_uart_rx":{
+          "port":"s1",
+          "direction":"input"
+        }
       }
     }
   },
@@ -117,23 +125,24 @@
 			}
 		}
 	},
-	"bind":{
-    "la_clk"{
-      "port":"clk",
-      "direction":"input"
+  "internal_bind":{
+    "lax1_la_clk" : {
+      "signal":"clk"
     },
-		"la_data[7:0]":{
-			"port":"wbm_debug_out",
-			"direction":"input"
+		"lax1_la_data[7:0]":{
+			"signal":"wbm_debug_out"
 		},
-    "la_data[31:8]":{
-      "port":"24'h0",
-      "direction":"input"
+    "lax1_la_data[9:8]":{
+      "signal":"button[1:0]"
     },
-    "la_ext_trig":{
-      "port":"0",
-      "direction":"input"
+    "lax1_la_data[31:10]":{
+      "signal":"22'h0"
+    },
+    "lax1_la_ext_trig":{
+      "signal":"0"
     }
+  },
+	"bind":{
 	},
 	
 	"constraint_files":[

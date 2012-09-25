@@ -119,11 +119,9 @@ wire                tx_underflow;
 wire                tx_full;
 wire                tx_empty;
 
-wire        [31:0]  rx_fifo_size;
 wire        [31:0]  rx_write_available;
 wire                rx_underflow;
 wire                rx_full;
-wire                rx_empty;
 
 
 //UART Core
@@ -171,7 +169,7 @@ uart_fifo uf_rx (
   .clk(clk),
   .rst(rst || control_reset),
   
-  .size(rx_fifo_size),
+  .size(read_size),
 
   .write_strobe(received),
   .write_available(rx_write_available),
@@ -183,7 +181,7 @@ uart_fifo uf_rx (
   .overflow(read_overflow),
   .underflow(rx_underflow),
   .full(rx_full),
-  .empty(rx_empty)
+  .empty(read_empty)
 );
 
 //Low Level UART
@@ -212,7 +210,6 @@ parameter     READ  = 3'h2;
 
 
 //asynchronous logic
-assign  read_empty  = rx_full;
 assign  write_full  = tx_full; 
 
 
@@ -237,7 +234,7 @@ always @ (posedge clk) begin
 
 
     if (tx_read_strobe) begin
-      $display ("UART_CONTROLLER: Setting tx_byte to %h", tx_fifo_read_data);
+      //$display ("UART_CONTROLLER: Setting tx_byte to %h", tx_fifo_read_data);
       tx_byte                     <=  tx_fifo_read_data;
       transmit                    <=  1;
     end

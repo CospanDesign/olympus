@@ -155,6 +155,40 @@ class Test (unittest.TestCase):
     self.assertEqual(tags["module"], "wb_ddr")
 
 
+  def test_read_slave_tags_with_params_lax(self):
+    """test the LAX for the parameters"""
+    #self.dbg = True
+    
+    base_dir = os.getenv("SAPLIB_BASE")
+    filename = base_dir + "/hdl/rtl/wishbone/slave/wb_logic_analyzer/wb_logic_analyzer.v"
+    drt_keywords = [
+      "DRT_ID",
+      "DRT_FLAGS",
+      "DRT_SIZE"
+    ]
+    tags = saputils.get_module_tags(filename, keywords = drt_keywords, debug=self.dbg)
+
+    io_types = [
+      "input",
+      "output",
+      "inout"
+    ]
+    #
+    #for io in io_types:
+    # for port in tags["ports"][io].keys():
+    #   print "Ports: " + port
+
+    if self.dbg:
+      print "\n\n\n\n\n\n"
+      print "module name: " + tags["module"]
+      print "\n\n\n\n\n\n"
+
+    #self.dbg = False
+    self.assertEqual(tags["module"], "wb_logic_analyzer")
+
+
+
+
   def test_read_user_parameters(self):
     filename = saputils.find_rtl_file_location("wb_gpio.v")
     tags = saputils.get_module_tags(filename, debug=self.dbg)
@@ -162,14 +196,11 @@ class Test (unittest.TestCase):
     keys = tags["parameters"].keys()
     if self.dbg:
       print "reading the parameters specified by the user"
-    self.assertIn("INTERRUPT_MASK", keys)
+    self.assertIn("DEFAULT_INTERRUPT_MASK", keys)
     if self.dbg:
       print "make sure other parameters don't get read"
     self.assertNotIn("ADDR_GPIO", keys)
     
-
-
-
   
   def test_read_hard_slave_tags(self):
     """try and extrapolate all info from the slave file"""

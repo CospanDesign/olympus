@@ -53,6 +53,7 @@ from userland.drivers import spi
 from userland.drivers import i2c
 from userland.drivers import console
 from userland.drivers import i2s
+from userland.drivers import logic_analyzer
 
 #TEST CONSTANTS
 MEM_SIZE = 1100
@@ -63,9 +64,10 @@ TEST_GPIO = False
 TEST_UART = False
 TEST_I2C = False
 TEST_SPI = False
-TEST_MEMORY = True
+TEST_MEMORY = False
 TEST_CONSOLE = False
-TEST_I2S = True
+TEST_I2S = False
+TEST_LOGIC_ANALYZER = True
 
 def test_memory(dyn, dev_index):
   print "testing memory @ %d" % dev_index
@@ -205,9 +207,15 @@ def unit_test_devices(dyn):
 
     if TEST_I2S:
       if (device_id == 0x0B):
-        print "Fond I2S device"
+        print "Found I2S device"
         print "testing I2S @ %d" % dev_offset
         i2s.unit_test(dyn, dev_offset)
+
+    if TEST_LOGIC_ANALYZER:
+      if (device_id == 0x0C):
+        print "Found Logic Analyzer device"
+        print "testing Logic Analyzer @ %d" % dev_offset
+        logic_analyzer.unit_test(dyn, dev_offset)
  
 
 

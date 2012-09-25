@@ -1,0 +1,1 @@
+../../../../rtl/wishbone/slave/wb_logic_analyzer/logic_analyzer_defines.v
