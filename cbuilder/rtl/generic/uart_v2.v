@@ -248,7 +248,7 @@ always @ (posedge clk) begin
     case (tx_state)
       TX_IDLE: begin
         if (transmit) begin
-          $display ("Transmit signal received");
+          //$display ("Transmit signal received");
           tx_data       <=  tx_byte;
           tx_clk_divider    <= clock_div;
           tx_countdown    <= `FULL_PERIOD;
