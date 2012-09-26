@@ -74,6 +74,7 @@ class LogicAnalyzer:
   Logic Analyzer core
   """
   def __init__(self, olympus, dev_id=None, debug=False):
+    print "entered init"
     self.dev_id  = dev_id
     self.o = olympus
     self.debug = debug
@@ -474,6 +475,28 @@ class LogicAnalyzer:
 
     return data_out
 
+  def wait_for_capture(self, timeout):
+    """wait_for_capture
+
+    listens for interrupts for the specified amount of time, if interrupt
+    has occured then return True
+
+    Args:
+      Timeout, the length of time to wait
+
+    Return:
+      True: an interrupt for the logic analyzer has occured
+      False: timeout has occured
+
+    Raises:
+      OlympusCommError: Error in communication
+    """
+
+    if self.o.wait_for_interrupts(wait_time = timeout):
+      if self.o.is_interrupt_for_slave(self.dev_id):
+        return True
+    return False
+ 
 
 def unit_test(oly, dev_id):
   print "unit test!"
