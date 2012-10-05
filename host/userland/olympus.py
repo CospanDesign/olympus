@@ -194,7 +194,8 @@ class Olympus:
       address:  Address of the register/memory to read
       value:  32-bit unsigned integer to be written into the register
 
-    Return: Nothing
+    Return: 
+      Nothing
 
     Raises:
       OlympusCommError: Error in communication
@@ -205,6 +206,69 @@ class Olympus:
     register_array[2]  = (value >> 8) & 0xFF
     register_array[3]  = (value) & 0xFF
     self.write(device_id, address, register_array)
+
+  def set_register_bit(self, device_id, address, bit):
+    """set_register_bit
+
+    Sets an individual bit in a register
+    
+    Args:
+      device_id: Device identification number, this number is found in the DRT
+      address:  Address of the register/memory to modify
+      value:    address of bit to set (31 - 0)
+
+    Return:
+      Nothing
+
+    Raises:
+      OlympusCommError: Error in communication
+    """
+    register = self.read_register(device_id, address)
+    bit_mask =  1 << bit
+    register |= bit_mask
+    self.write_register(device_id, address, register)
+
+  def clear_register_bit(self, device_id, address, bit):
+    """clear_register_bit
+
+    Clear an individual bit in a register
+
+    Args:
+      device_id:  Device identification number, this number is found in the DRT
+      address:    Address of the register/memory to modify
+      value       Address of bit to set (31 - 0)
+
+    Return:
+      Nothing
+
+    Raises:
+      OlympusCommError: Error in communication
+    """
+    register = self.read_register(device_id, address)
+    bit_mask =  1 << bit
+    register &= ~bit_mask
+    self.write_register(device_id, address, register)
+
+
+  def is_register_bit_set(self, device_id, address, bit):
+    """is_register_bit_set
+
+    returns true if an individual bit is set, false if clear
+
+    Args:
+      device_id:  Device identification number ,this number is found in the DRT
+      address:    Address of the register/memory to read
+
+    Return:
+      True: bit is set
+      False: bit is not set
+
+    Raises:
+      OlympusCommError
+    """
+    register = self.read_register(device_id, address)
+    bit_mask =  1 << bit
+    return ((register & bit_mask) > 0)
 
 
   def write_memory(self, address, data):
