@@ -54,6 +54,7 @@ from userland.drivers import i2c
 from userland.drivers import console
 from userland.drivers import i2s
 from userland.drivers import logic_analyzer
+from userland.drivers import gtp_test
 
 #TEST CONSTANTS
 MEM_SIZE = 1100
@@ -68,6 +69,7 @@ TEST_MEMORY = False
 TEST_CONSOLE = False
 TEST_I2S = False
 TEST_LOGIC_ANALYZER = True
+TEST_GTP = True
 
 def test_memory(dyn, dev_index):
   print "testing memory @ %d" % dev_index
@@ -217,7 +219,12 @@ def unit_test_devices(dyn):
         print "testing Logic Analyzer @ %d" % dev_offset
         logic_analyzer.unit_test(dyn, dev_offset)
  
-
+    if TEST_GTP:
+      if (device_id == 0x0E):
+        print "Found Experimental GTP"
+        print "testing GTP @ %d" % dev_offset
+        gtp_test.unit_test(dyn, dev_offset)
+ 
 
  
 def usage():
