@@ -1,5 +1,5 @@
 {
-	"board_name":"Sycamore 1",
+	"board_name":"Dionysus",
 	"vendor":"Cospan Design",
 	"fpga_part_number":"xc6slx9tqg144-3",
 	"build_tool":"xilinx",
