@@ -1,5 +1,6 @@
-../../../../rtl/wishbone/host_interface/ft245_sync_fifo/ft245_sync.v
-../../../../rtl/wishbone/host_interface/ft245_sync_fifo/ft_host_interface.v
+../../../../rtl/wishbone/host_interface/ft245_sync_fifo/ft_fifo_interface.v
+../../../../rtl/wishbone/host_interface/ft245_sync_fifo/ft_master_interface.v
+../../../../rtl/generic/ppfifo.v
 ../../../../rtl/generic/afifo.v
 ../../../../rtl/generic/graycounter.v
 ../../../../rtl/generic/generic_dpram.v

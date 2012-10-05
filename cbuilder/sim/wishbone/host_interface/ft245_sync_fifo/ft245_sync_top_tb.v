@@ -76,7 +76,7 @@ wire          ih_reset;
 
   
 //instantiate the ft245_sync core
-ft_host_interface ft_hi(
+ft_master_interface ft_hi(
   .clk(clk),
   .rst(rst),
 
