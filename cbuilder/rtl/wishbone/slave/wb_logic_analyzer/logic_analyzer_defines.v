@@ -29,22 +29,8 @@
 //LF:                   '\r'
 //CR:                   '\n'
 
-`define LA_WRITE_SETTINGS     (1 + `HEX_0)
-//write setting structure
-//ID:                   'W'
-//Command:              '1'
-//Trigger:              'W' 'W' 'W' 'W' 'W' 'W' 'W' 'W'
-//Trigger Mask:         'X' 'X' 'X' 'X' 'X' 'X' 'X' 'X'
-//Trigger After:        'Y' 'Y' 'Y' 'Y' 'Y' 'Y' 'Y' 'Y'
-//Repeat Count:         'Z' 'Z' 'Z' 'Z' 'Z' 'Z' 'Z' 'Z'
-//CR:                   '\n'
 
-//Response ID:          'R'
-//Response Status:      'S' = Success, 'X' = Fail
-//LF:                   '\r'
-//CR:                   '\n'
-
-`define LA_SET_ENABLE         (2 + `HEX_0)
+`define LA_SET_ENABLE         (1 + `HEX_0)
 //set enable structure
 //ID:                   'W'
 //Command:              '2'
@@ -57,7 +43,7 @@
 //CR:                   '\n'
 
 
-`define LA_GET_ENABLE         (3 + `HEX_0)
+`define LA_GET_ENABLE         (2 + `HEX_0)
 //get enable structure
 //ID:                   'W'
 //Command:              '3'
@@ -68,7 +54,7 @@
 //LF:                   '\r'
 //CR:                   '\n'
 
-`define LA_GET_SIZE           (4 + `HEX_0)
+`define LA_GET_SIZE           (3 + `HEX_0)
 //get the size of a read * 4 * bytes
 //ID:                   'W'
 //Command:              '4'
@@ -76,6 +62,81 @@
 
 //Response ID:          'R'
 //Response Status       'V' 'V' 'V' 'V' 'V' 'V' 'V' 'V'
+//LF:                   '\r'
+//CR:                   '\n'
+
+`define LA_WRITE_TRIGGER      (4 + `HEX_0)
+//write trigger
+//ID:                   'W'
+//Command:              '4'
+//Trigger:              'V' 'V' 'V' 'V' 'V' 'V' 'V' 'V'
+//CR:                   '\n'
+
+
+//Response ID:          'R'
+//Response Status:      'S' = Success, 'X' = Fail
+//LF:                   '\r'
+//CR:                   '\n'
+
+`define LA_WRITE_MASK        (5 + `HEX_0)
+//write trigger mask
+//ID:                   'W'
+//Command:              '5'
+//Trigger Mask:         'V' 'V' 'V' 'V' 'V' 'V' 'V' 'V'
+//CR:                   '\n'
+
+//Response ID:          'R'
+//Response Status:      'S' = Success, 'X' = Fail
+//LF:                   '\r'
+//CR:                   '\n'
+
+`define LA_WRITE_TRIGGER_AFTER        (6 + `HEX_0)
+//write trigger after
+//ID:                   'W'
+//Command:              '6'
+//Trigger After:        'V' 'V' 'V' 'V' 'V' 'V' 'V' 'V'
+//CR:                   '\n'
+
+
+//Response ID:          'R'
+//Response Status:      'S' = Success, 'X' = Fail
+//LF:                   '\r'
+//CR:                   '\n'
+
+`define LA_WRITE_TRIGGER_EDGE        (7 + `HEX_0)
+//write trigger edge
+//ID:                   'W'
+//Command:              '7'
+//Trigger Edge:         'V' 'V' 'V' 'V' 'V' 'V' 'V' 'V'
+
+
+//Response ID:          'R'
+//Response Status:      'S' = Success, 'X' = Fail
+//LF:                   '\r'
+//CR:                   '\n'
+
+`define LA_WRITE_BOTH_EDGES        (8 + `HEX_0)
+//write both edges
+//ID:                   'W'
+//Command:              '8'
+//Both Edges:           'V' 'V' 'V' 'V' 'V' 'V' 'V' 'V'
+//CR:                   '\n'
+
+//Response ID:          'R'
+//Response Status:      'S' = Success, 'X' = Fail
+//LF:                   '\r'
+//CR:                   '\n'
+
+
+`define LA_WRITE_REPEAT_COUNT        (9 + `HEX_0)
+//write repeat count
+//ID:                   'W'
+//Command:              '9'
+//Repeat Count:         'V' 'V' 'V' 'V' 'V' 'V' 'V' 'V'
+//CR:                   '\n'
+
+//Response ID:          'R'
+//Response Status:      'S' = Success, 'X' = Fail
 //LF:                   '\r'
 //CR:                   '\n'
 

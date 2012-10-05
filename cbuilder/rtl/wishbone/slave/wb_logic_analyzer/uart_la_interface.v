@@ -31,8 +31,12 @@ module uart_la_interface (
   trigger,
   trigger_mask,
   trigger_after,
+  trigger_edge,
+  both_edges,
   repeat_count,
   set_strobe,
+
+  disable_uart,
   enable,
   finished,
 
@@ -50,10 +54,13 @@ input                       rst;
 input                       clk;
                            
 output reg  [31:0]          trigger;
-output reg  [31:0]          repeat_count;
 output reg  [31:0]          trigger_mask;
 output reg  [31:0]          trigger_after;
+output reg  [31:0]          trigger_edge;
+output reg  [31:0]          both_edges;
+output reg  [31:0]          repeat_count;
 output reg                  set_strobe;
+input                       disable_uart;
 output reg                  enable;
 input                       finished;
                            
@@ -73,9 +80,11 @@ parameter                   READ_ENABLE_SET       = 2;
 parameter                   READ_TRIGGER          = 3;
 parameter                   READ_TRIGGER_MASK     = 4;
 parameter                   READ_TRIGGER_AFTER    = 5;
-parameter                   READ_REPEAT_COUNT     = 6;
-parameter                   READ_CARRIAGE_RETURN  = 7;
-parameter                   SEND_RESPONSE         = 8;
+parameter                   READ_TRIGGER_EDGE     = 6;
+parameter                   READ_BOTH_EDGES       = 7;
+parameter                   READ_REPEAT_COUNT     = 8;
+parameter                   READ_LINE_FEED        = 9;
+parameter                   SEND_RESPONSE         = 10;
 
 //UART Control
 reg                         write_strobe;
@@ -106,7 +115,7 @@ reg   [31:0]                read_count;
 
 reg   [31:0]                la_data_read_count;
 reg   [31:0]                la_data;
-reg   [1:0]                 byte_count;
+reg   [2:0]                 byte_count;
 
 wire  [3:0]                 nibble;
 wire  [7:0]                 hex_value;
@@ -119,8 +128,10 @@ reg   [31:0]                la_write_size;
 reg   [7:0]                 command;
 wire                        init_packet_read;
 reg                         prev_packet_read;
-wire                        pos_edge_packet_read;
+reg                         data_ready;
+reg                         send_la_data;
 reg   [3:0]                 sleep;
+
 
 //submodules
 uart_controller uc (
@@ -156,11 +167,29 @@ uart_controller uc (
 //asynchronous logic
 //assign  nibble              = decode_ascii(read_data); 
 //assign  hex_value           = encode_ascii(in_nibble);
-assign  hex_value             = (nibble_value >= 10) ? (nibble_value + 8'h55) : (nibble_value + 8'h30);
-assign  nibble                = (read_data >= 8'h55) ? (read_data - 8'h55) : (read_data - 8'h30);
+assign  hex_value             = (nibble_value >= 8'hA) ? (nibble_value + 8'h37) : (nibble_value + 8'h30);
+assign  nibble                = (read_data >= 8'h41) ? (read_data - 8'h37) : (read_data - 8'h30);
 assign  init_packet_read      = (enable & finished);
 assign  pos_edge_packet_read  = (init_packet_read & ~prev_packet_read);
-assign  readible_write_size   = data_read_size;
+assign  readible_write_size   = data_read_size - 1;
+
+//signal for sending logic signal to the UART host
+always @ (posedge clk) begin
+  if (rst) begin
+    send_la_data  <=  0;
+    data_ready    <=  0;
+  end
+  else begin
+    send_la_data  <=  0;
+    if (pos_edge_packet_read) begin
+      data_ready  <=  1;
+    end
+    if (data_ready && (read_state == IDLE) && (write_state == IDLE)) begin
+      send_la_data  <=  1;
+      data_ready    <=  0;
+    end
+  end
+end
 
 //UART Interface Controller
 always @ (posedge clk) begin
@@ -170,6 +199,8 @@ always @ (posedge clk) begin
     repeat_count            <=  0;
     trigger_mask            <=  0;
     trigger_after           <=  0;
+    trigger_edge            <=  0;
+    both_edges              <=  0;
     set_strobe              <=  0;
     enable                  <=  0;
 
@@ -182,6 +213,9 @@ always @ (posedge clk) begin
 
   end
   else begin
+    if (disable_uart) begin
+      enable                <=  0;
+    end
 
 
     //read commands from the host computer
@@ -198,9 +232,10 @@ always @ (posedge clk) begin
     if (read_strobe) begin
       process_byte      <=  1;
     end
-    if (read_state != READ_CARRIAGE_RETURN) begin
+    if (read_state != READ_LINE_FEED) begin
+      //reset everything
       if (process_byte) begin
-        if (read_data == (`CARRIAGE_RETURN)) begin
+        if (read_data == (`LINE_FEED)) begin
           read_state    <=  IDLE;
         end
       end
@@ -230,29 +265,66 @@ always @ (posedge clk) begin
           case (read_data)
             `LA_PING: begin
               command_response    <=  `RESPONSE_SUCCESS; 
-              read_state          <=  READ_CARRIAGE_RETURN;
+              read_state          <=  READ_LINE_FEED;
             end
-            `LA_WRITE_SETTINGS: begin
+            `LA_WRITE_TRIGGER: begin
               //disable the LA when updating settings
               $display("ULA: Write settings (Disable LA)");
               enable              <=  0;
               read_state          <=  READ_TRIGGER;
               read_count          <=  7;
             end
+            `LA_WRITE_MASK: begin
+              //disable the LA when updating settings
+              $display("ULA: Write settings (Disable LA)");
+              enable              <=  0;
+              read_state          <=  READ_TRIGGER_MASK;
+              read_count          <=  7;
+            end
+             `LA_WRITE_TRIGGER_AFTER: begin
+              //disable the LA when updating settings
+              $display("ULA: Write settings (Disable LA)");
+              enable              <=  0;
+              read_state          <=  READ_TRIGGER_AFTER;
+              read_count          <=  7;
+            end
+             `LA_WRITE_TRIGGER_EDGE: begin
+              //disable the LA when updating settings
+              $display("ULA: Write settings (Disable LA)");
+              enable              <=  0;
+              read_state          <=  READ_TRIGGER_EDGE;
+              read_count          <=  7;
+            end
+             `LA_WRITE_BOTH_EDGES: begin
+              //disable the LA when updating settings
+              $display("ULA: Write settings (Disable LA)");
+              enable              <=  0;
+              read_state          <=  READ_BOTH_EDGES;
+              read_count          <=  7;
+            end
+             `LA_WRITE_REPEAT_COUNT: begin
+              //disable the LA when updating settings
+              $display("ULA: Write settings (Disable LA)");
+              enable              <=  0;
+              read_state          <=  READ_REPEAT_COUNT;
+              read_count          <=  7;
+            end
+ 
             `LA_SET_ENABLE: begin
               read_state          <=  READ_ENABLE_SET; 
             end
             `LA_GET_ENABLE: begin
-              read_state          <=  READ_CARRIAGE_RETURN;
+              command_response    <=  `RESPONSE_SUCCESS; 
+              read_state          <=  READ_LINE_FEED;
               response_status     <=  enable + `HEX_0;
             end
             `LA_GET_SIZE: begin
-              read_state          <=  READ_CARRIAGE_RETURN;
+              read_state          <=  READ_LINE_FEED;
             end
             default: begin
               //unrecognized command
               command_response    <=  `RESPONSE_FAIL;
-              read_state          <=  READ_CARRIAGE_RETURN;
+              read_state          <=  READ_LINE_FEED;
             end
           endcase
         end
@@ -263,8 +335,9 @@ always @ (posedge clk) begin
           trigger                 <=  {trigger[27:0], nibble}; 
           read_count              <=  read_count -  1;
           if (read_count == 0) begin
-            read_count            <=  7;
-            read_state            <=  READ_TRIGGER_MASK;
+            set_strobe            <=  1;
+            command_response      <=  `RESPONSE_SUCCESS;
+            read_state            <=  READ_LINE_FEED;
           end
         end
       end
@@ -274,8 +347,9 @@ always @ (posedge clk) begin
           trigger_mask            <=  {trigger_mask[27:0], nibble}; 
           read_count              <=  read_count -  1;
           if (read_count == 0) begin
-            read_count            <=  7;
-            read_state            <=  READ_TRIGGER_AFTER;
+            set_strobe            <=  1;
+            command_response      <=  `RESPONSE_SUCCESS;
+            read_state            <=  READ_LINE_FEED;
           end
         end
       end
@@ -285,10 +359,36 @@ always @ (posedge clk) begin
           trigger_after           <=  {trigger_after[27:0], nibble}; 
           read_count              <=  read_count -  1;
           if (read_count == 0) begin
-            read_count            <=  7;
-            read_state            <=  READ_REPEAT_COUNT;
+            set_strobe            <=  1;
+            command_response      <=  `RESPONSE_SUCCESS;
+            read_state            <=  READ_LINE_FEED;
           end
         end
+      end
+      READ_TRIGGER_EDGE: begin
+        ready <=  1;
+        if (process_byte) begin
+          trigger_edge            <=  {trigger_edge[27:0], nibble}; 
+          read_count              <=  read_count -  1;
+          if (read_count == 0) begin
+            set_strobe            <=  1;
+            command_response      <=  `RESPONSE_SUCCESS;
+            read_state            <=  READ_LINE_FEED;
+          end
+        end
+      end
+      READ_BOTH_EDGES: begin
+        ready <=  1;
+        if (process_byte) begin
+          both_edges            <=  {both_edges[27:0], nibble}; 
+          read_count              <=  read_count -  1;
+          if (read_count == 0) begin
+            set_strobe            <=  1;
+            command_response      <=  `RESPONSE_SUCCESS;
+            read_state            <=  READ_LINE_FEED;
+          end
+        end
+
       end
       READ_REPEAT_COUNT: begin
         ready <=  1;
@@ -296,13 +396,13 @@ always @ (posedge clk) begin
           repeat_count            <=  {repeat_count[27:0], nibble}; 
           read_count              <=  read_count -  1;
           if (read_count == 0) begin
-            read_count            <=  7;
             set_strobe            <=  1;
-            command_response      <=  `RESPONSE_SUCCESS; 
-            read_state            <=  READ_CARRIAGE_RETURN;
+            command_response      <=  `RESPONSE_SUCCESS;
+            read_state            <=  READ_LINE_FEED;
           end
         end
       end
+
       READ_ENABLE_SET: begin
         ready <=  1;
         if (process_byte) begin
@@ -317,13 +417,13 @@ always @ (posedge clk) begin
           else begin
             command_response    <=  `RESPONSE_FAIL;
           end
-          read_state            <=  READ_CARRIAGE_RETURN;
+          read_state            <=  READ_LINE_FEED;
         end
       end
-      READ_CARRIAGE_RETURN: begin
+      READ_LINE_FEED: begin
         ready <=  1;
         if (process_byte) begin
-          if (read_data == (`CARRIAGE_RETURN)) begin
+          if (read_data == (`LINE_FEED)) begin
             ready <=  0;
             read_state          <=  SEND_RESPONSE;
             write_status        <=  1;
@@ -350,8 +450,8 @@ parameter                   RESPONSE_WRITE_ARG    = 3;
 parameter                   RESPONSE_WRITE_SIZE   = 4;
 parameter                   GET_DATA_PACKET       = 5;
 parameter                   SEND_DATA_PACKET      = 6;
-parameter                   SEND_LINE_FEED        = 7;
-parameter                   SEND_CARRIAGE_RETURN  = 8;
+parameter                   SEND_CARRIAGE_RETURN  = 7;
+parameter                   SEND_LINE_FEED        = 8;
 
 
 //write data state machine
@@ -376,10 +476,10 @@ always @ (posedge clk) begin
         if (write_status) begin
           write_state           <=  RESPONSE_WRITE_ID;
         end
-        if (pos_edge_packet_read) begin
+        if (send_la_data) begin
           write_state           <=  GET_DATA_PACKET;
-          la_data_read_count    <=  data_read_size - 2;
-          data_read_strobe      <=  1;
+          la_data_read_count    <=  data_read_size - 1;
+          data_read_strobe      <=  0;
           sleep                 <=  3;
         end
       end
@@ -404,7 +504,7 @@ always @ (posedge clk) begin
             size_count          <=  0;
           end
           else begin
-            write_state         <=  SEND_LINE_FEED;
+            write_state         <=  SEND_CARRIAGE_RETURN;
           end
         end
       end
@@ -412,14 +512,14 @@ always @ (posedge clk) begin
         if (!write_full) begin
           write_data            <=  response_status;
           write_strobe          <=  1;
-          write_state           <=  SEND_LINE_FEED;
+          write_state           <=  SEND_CARRIAGE_RETURN;
         end
       end
 
       RESPONSE_WRITE_SIZE: begin
         if (!write_full) begin
           if (size_count == 8) begin
-            write_state         <=  SEND_LINE_FEED;
+            write_state         <=  SEND_CARRIAGE_RETURN;
           end
           else begin
             //in_nibble           <=  la_write_size[31:28];
@@ -438,45 +538,44 @@ always @ (posedge clk) begin
         else begin
           byte_count              <=  0;
           la_data                 <=  data;
-          write_state             <=  SEND_DATA_PACKET;
           data_read_strobe        <=  1;
-          write_data              <=  la_data[31:24];
-          write_strobe            <=  1;
+          write_state             <=  SEND_DATA_PACKET;
         end
       end
       SEND_DATA_PACKET: begin
         if (write_available > 4) begin
-          write_data              <=  la_data[31:24];
-          if (byte_count == 3) begin
+          write_data              <=  {4'h0, la_data[31:28]};
+          if (byte_count == 7) begin
             if (la_data_read_count > 0) begin
               la_data_read_count  <=  la_data_read_count - 1;
               data_read_strobe    <=  1;
               la_data             <=  data;
             end
             else begin
-              write_state         <=  SEND_LINE_FEED;
+              write_state         <=  SEND_CARRIAGE_RETURN;
             end
           end
           else begin
-            la_data               <=  {la_data[23:0], 8'h00};
+            la_data               <=  {la_data[27:0], 4'h0};
           end
           write_strobe            <=  1;
           byte_count              <=  byte_count + 1;
-        end
-      end
-      SEND_LINE_FEED: begin
-        if (!write_full) begin
-          write_strobe            <=  1;
-          write_data              <=  `LINE_FEED;
-          write_state             <=  SEND_CARRIAGE_RETURN;
-          status_written          <=  1;
         end
       end
       SEND_CARRIAGE_RETURN: begin
         if (!write_full) begin
           write_strobe            <=  1;
           write_data              <=  `CARRIAGE_RETURN;
+          write_state             <=  SEND_LINE_FEED;
+        end
+      end
+      SEND_LINE_FEED: begin
+        if (!write_full) begin
+          $display ("Writing Line Feed");
+          write_strobe            <=  1;
+          write_data              <=  `LINE_FEED;
           write_state             <=  IDLE;
+          status_written          <=  1;
         end
       end
       default begin
@@ -484,9 +583,7 @@ always @ (posedge clk) begin
       end
     endcase
     //Only allow this to update in an IDLE state
-    if (write_state == IDLE) begin
-      prev_packet_read              <=  init_packet_read;
-    end
+    prev_packet_read              <=  init_packet_read;
   end
 end
 

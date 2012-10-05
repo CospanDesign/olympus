@@ -40,6 +40,8 @@ module logic_analyzer #(
   trigger,
   trigger_mask,
   trigger_after,
+  trigger_edge,
+  both_edges,
   repeat_count,
   set_strobe,
   enable,
@@ -67,6 +69,8 @@ input           clk_select;
 input [31:0]    trigger;
 input [31:0]    trigger_mask;
 input [31:0]    trigger_after;
+input [31:0]    trigger_edge;
+input [31:0]    both_edges;
 input [31:0]    repeat_count;
 input           set_strobe;
 input           enable;
@@ -115,6 +119,9 @@ reg     [3:0]                         read_state;
 reg     [31:0]                        trigger_after_count;
 reg     [31:0]                        rep_count;
 reg     [31:0]                        prev_cap;
+wire    [31:0]                        cap_pos_edge;
+wire    [31:0]                        cap_neg_edge;
+wire    [31:0]                        cap_sig_start;
 
 
 
@@ -142,14 +149,27 @@ dual_port_bram #(
 assign  data_out_read_size  = (FIFO_WIDTH);
 assign  last                = start - 1;
 assign  full                = (in_pointer == last);
-assign  empty               = ((out_pointer == start) && (finished) && (!data_out_read_strobe));
+assign  empty               = ((out_pointer == start) && (finished));
 //this may not be the best place for this
 assign  finished            = (cap_state == FINISHED);
 
-assign  cap_pos_start       = (((cap_data & trigger_mask) == (trigger & trigger_mask)) && ((trigger & trigger_mask) > 0));
-assign  cap_neg_start       = (((~cap_data & trigger_mask) == (~trigger & trigger_mask)) && ((~trigger & trigger_mask) > 0));
+assign cap_start            = cap_sig_start == 32'hFFFFFFFF;
 
-assign  cap_start           = cap_pos_start || cap_neg_start || (trigger_mask == 0);
+genvar i;
+generate
+  for (i = 0; i < 32; i = i + 1) begin : tsbuf
+    assign cap_pos_edge[i] = cap_data[i] & ~prev_cap[i];
+    assign cap_neg_edge[i] = ~cap_data[i] & prev_cap[i];
+    assign cap_sig_start[i]   = 
+            (~trigger_mask[i]) ? 1 :                                            //if the mask is 0 then this is true 
+              (trigger_edge[i]) ?                                               //if edge trigger is enabled 
+                (both_edges[i] & (cap_pos_edge[i] | cap_neg_edge[i])) |         //if both edges detected
+                (trigger[i] & cap_pos_edge[i]) | (~trigger[i] & cap_neg_edge[i]) : //if only one edge is sensative
+              (trigger[i] & cap_data[i]) | (~trigger[i] & ~cap_data[i]);        //not edge but level and data matches
+  end
+endgenerate
+
+
 
 /*
 assign  out_clk             = (clk_div > 0) ? div_clk : cap_clk; 
@@ -282,7 +302,7 @@ always @ (posedge clk) begin
     case (read_state)
       IDLE: begin
         if (finished) begin
-          out_pointer         <=  start;
+          out_pointer         <=  start + 1;
           read_state          <=  READ;
         end
       end

@@ -112,9 +112,11 @@ parameter     STATUS        = 32'h00000001;
 parameter     TRIGGER       = 32'h00000002;
 parameter     TRIGGER_MASK  = 32'h00000003;
 parameter     TRIGGER_AFTER = 32'h00000004;
-parameter     REPEAT_COUNT  = 32'h00000005;
-parameter     DATA_COUNT    = 32'h00000006;
-parameter     CLOCK_DIVIDER = 32'h00000007;
+parameter     TRIGGER_EDGE  = 32'h00000005;
+parameter     BOTH_EDGES    = 32'h00000006;
+parameter     REPEAT_COUNT  = 32'h00000007;
+parameter     DATA_COUNT    = 32'h00000008;
+parameter     CLOCK_DIVIDER = 32'h00000009;
 parameter     READ_DATA     = 32'h00000010;
 
 
@@ -125,6 +127,8 @@ wire  [31:0]                status;
 reg   [31:0]                trigger;
 reg   [31:0]                trigger_mask;
 reg   [31:0]                trigger_after;
+reg   [31:0]                trigger_edge;
+reg   [31:0]                both_edges;
 reg   [31:0]                repeat_count;
 reg   [31:0]                clock_divider;
 reg                         set_strobe;
@@ -144,9 +148,12 @@ reg   [3:0]                 sleep;
 //logic analyzer finished capture
 wire                        finished;
 
+reg                         disable_uart;
 wire  [31:0]                uart_trigger;
 wire  [31:0]                uart_trigger_mask;
 wire  [31:0]                uart_trigger_after;
+wire  [31:0]                uart_trigger_edge;
+wire  [31:0]                uart_both_edges;
 wire  [31:0]                uart_repeat_count;
 wire                        uart_set_strobe;
 wire                        uart_enable;
@@ -166,8 +173,11 @@ uart_la_interface ulac (
   .trigger(uart_trigger),
   .trigger_mask(uart_trigger_mask),
   .trigger_after(uart_trigger_after),
+  .trigger_edge(uart_trigger_edge),
+  .both_edges(uart_both_edges),
   .repeat_count(uart_repeat_count),
   .set_strobe(uart_set_strobe),
+  .disable_uart(disable_uart),
   .enable(uart_enable),
   .finished(finished),
 
@@ -194,6 +204,8 @@ logic_analyzer #(
   .trigger(trigger),
   .trigger_mask(trigger_mask),
   .trigger_after(trigger_after),
+  .trigger_edge(trigger_edge),
+  .both_edges(both_edges),
   .repeat_count(repeat_count),
   .set_strobe(set_strobe),
   .enable(enable),
@@ -218,7 +230,7 @@ assign  status[`STATUS_FINISHED]  = finished;
 assign  status[31:1]              = 31'h0000000;
 
 assign  la_data_read_strobe = (udata_read_strobe || wb_data_read_strobe);
-assign  enable              = (uart_enable || control_enable_la);
+assign  enable              = (uart_enable | control_enable_la);
 
 
 //synchronous logic
@@ -229,7 +241,6 @@ initial begin
 end
 
 //extended reset logic
-
 always @ (posedge clk) begin
   if (control_reset) begin
     reset                   <=  1;
@@ -237,7 +248,6 @@ always @ (posedge clk) begin
   end
   else begin
     reset                   <=  1;
-
     if (read_history == 4'b1111) begin
       reset                 <=  0;
     end
@@ -254,6 +264,7 @@ always @ (posedge clk) begin
     data_read_count         <=  0;
     wb_data_read_strobe     <=  0;
     sleep                   <=  0;
+    disable_uart            <=  0;
   end
 
   else if (control_reset) begin
@@ -264,14 +275,18 @@ always @ (posedge clk) begin
     trigger                 <=  0;
     trigger_mask            <=  0;
     trigger_after           <=  0;
+    trigger_edge            <=  0;
+    both_edges              <=  0;
     repeat_count            <=  0;
     data_read_en            <=  0;
     wb_data_read_strobe     <=  0;
     sleep                   <=  0;
+    disable_uart            <=  0;
   end
 
   else begin
     control[`CONTROL_RESTART_LA]  <=  0;
+    disable_uart            <=  0;
 
     if (~wbs_cyc_i) begin
       set_strobe                  <=  0;
@@ -282,6 +297,8 @@ always @ (posedge clk) begin
       trigger               <=  uart_trigger;
       trigger_mask          <=  uart_trigger_mask;
       trigger_after         <=  uart_trigger_after;
+      trigger_edge          <=  uart_trigger_edge;
+      both_edges            <=  uart_both_edges;
       repeat_count          <=  uart_repeat_count;
       set_strobe            <=  1;
     end
@@ -302,6 +319,7 @@ always @ (posedge clk) begin
         case (wbs_adr_i) 
           CONTROL: begin
             control         <=  wbs_dat_i;
+            disable_uart    <=  1;
           end
           TRIGGER: begin
             trigger         <=  wbs_dat_i;
@@ -313,6 +331,14 @@ always @ (posedge clk) begin
           end
           TRIGGER_AFTER: begin
             trigger_after   <=  wbs_dat_i;
+            set_strobe      <=  1;
+          end
+          TRIGGER_EDGE: begin
+            trigger_edge    <=  wbs_dat_i;
+            set_strobe      <=  1;
+          end
+          BOTH_EDGES: begin
+            both_edges      <=  wbs_dat_i;
             set_strobe      <=  1;
           end
           REPEAT_COUNT: begin
@@ -363,6 +389,12 @@ always @ (posedge clk) begin
             TRIGGER_AFTER: begin
               wbs_dat_o <=  trigger_after;
             end
+            TRIGGER_EDGE: begin
+              wbs_dat_o <=  trigger_edge;
+            end
+            BOTH_EDGES: begin
+              wbs_dat_o <=  both_edges;
+            end
             REPEAT_COUNT: begin
               wbs_dat_o <=  repeat_count;
             end
@@ -374,7 +406,7 @@ always @ (posedge clk) begin
             end
 
             READ_DATA: begin
-              wb_data_read_strobe   <=  1;
+              //wb_data_read_strobe   <=  1;
               data_read_en          <=  1;
               data_read_count       <=  la_data_read_size - 1;
               sleep                 <=  4;
