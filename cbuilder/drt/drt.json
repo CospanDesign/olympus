@@ -56,6 +56,10 @@
     "Camera":{
       "description":"Camera",
       "ID":"0x000D"
+    },
+    "Experiment":{
+      "description":"Experiment",
+      "ID":"0x000E"
     }
   },
   "flags":{
