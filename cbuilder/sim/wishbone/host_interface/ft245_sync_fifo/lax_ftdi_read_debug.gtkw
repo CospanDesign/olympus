@@ -1,0 +1,61 @@
+[*]
+[*] GTKWave Analyzer v3.3.34 (w)1999-2012 BSI
+[*] Fri Oct  5 19:45:08 2012
+[*]
+[dumpfile] "/home/cospan/Projects/olympus/host/logic_analyzer/output.vcd"
+[dumpfile_mtime] "Fri Oct  5 18:04:46 2012"
+[dumpfile_size] 1733
+[savefile] "/home/cospan/Projects/olympus/cbuilder/sim/wishbone/host_interface/ft245_sync_fifo/lax_ftdi_read_debug.gtkw"
+[timestart] 0
+[size] 1118 879
+[pos] 478 -1
+*-10.162409 3482 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[sst_width] 223
+[signals_width] 142
+[sst_expanded] 1
+[sst_vpaned_height] 250
+@200
+-FTDI
+@c00022
+#{FTDI Data} logic_analyzer.signal7 logic_analyzer.signal6 logic_analyzer.signal5 logic_analyzer.signal4 logic_analyzer.signal3 logic_analyzer.signal2 logic_analyzer.signal1 logic_analyzer.signal0
+@28
+logic_analyzer.signal7
+logic_analyzer.signal6
+logic_analyzer.signal5
+logic_analyzer.signal4
+logic_analyzer.signal3
+logic_analyzer.signal2
+logic_analyzer.signal1
+logic_analyzer.signal0
+@1401200
+-group_end
+@28
++{FTDI RXE_N} logic_analyzer.signal10
++{FTDI OE_N} logic_analyzer.signal12
++{FTDI RD_N} logic_analyzer.signal11
++{FTDI TX_N} logic_analyzer.signal8
++{FTDI WR_N} logic_analyzer.signal9
++{FTDI SIWUA} logic_analyzer.signal13
++{FTDI SUSPEND_N} logic_analyzer.signal14
+@201
+-Debug Data
+@28
+logic_analyzer.signal15
+logic_analyzer.signal16
+logic_analyzer.signal17
+logic_analyzer.signal18
+logic_analyzer.signal19
+logic_analyzer.signal20
+logic_analyzer.signal21
+logic_analyzer.signal22
+logic_analyzer.signal23
+logic_analyzer.signal24
+logic_analyzer.signal25
+logic_analyzer.signal26
+logic_analyzer.signal27
+logic_analyzer.signal28
+logic_analyzer.signal29
+logic_analyzer.signal30
+logic_analyzer.signal31
+[pattern_trace] 1
+[pattern_trace] 0
