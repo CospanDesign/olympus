@@ -129,14 +129,11 @@
     "lax1_la_clk" : {
       "signal":"clk"
     },
-		"lax1_la_data[7:0]":{
-			"signal":"wbm_debug_out"
-		},
-    "lax1_la_data[9:8]":{
+    "lax1_la_data[1:0]":{
       "signal":"button[1:0]"
     },
-    "lax1_la_data[31:10]":{
-      "signal":"22'h0"
+    "lax1_la_data[31:2]":{
+      "signal":"30'h0"
     },
     "lax1_la_ext_trig":{
       "signal":"0"
