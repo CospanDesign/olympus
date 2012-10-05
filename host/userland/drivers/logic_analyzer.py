@@ -25,7 +25,7 @@ Facilitates communication with the Logic Analyzer core independent of medium
 
 For more details see:
 
-http://wiki.cospandesign.com/index.php?title=logic_analyzer
+http://wiki.cospandesign.com/index.php?title=Wb_logic_analyzer
 
 """
 
@@ -38,15 +38,17 @@ from array import array as Array
 from userland import olympus
 
 #Register Constants
-CONTROL             = 0
-STATUS              = 1
-TRIGGER             = 2
-TRIGGER_MASK        = 3
-TRIGGER_AFTER       = 4
-REPEAT_COUNT        = 5
-DATA_COUNT          = 6
+CONTROL             = 0x00
+STATUS              = 0x01
+TRIGGER             = 0x02
+TRIGGER_MASK        = 0x03
+TRIGGER_AFTER       = 0x04
+TRIGGER_EDGE        = 0x05
+BOTH_EDGES          = 0x06
+REPEAT_COUNT        = 0x07
+DATA_COUNT          = 0x08
 
-DATA                = 16
+DATA                = 0x10
 
 #Control Bits
 CONTROL_RESET       = 1 << 0
@@ -74,7 +76,6 @@ class LogicAnalyzer:
   Logic Analyzer core
   """
   def __init__(self, olympus, dev_id=None, debug=False):
-    print "entered init"
     self.dev_id  = dev_id
     self.o = olympus
     self.debug = debug
@@ -393,6 +394,75 @@ class LogicAnalyzer:
     """
     return self.o.read_register(self.dev_id, TRIGGER_AFTER)
 
+
+  def set_trigger_edge(self, trigger_edge):
+    """set_trigger_edge
+
+    Bit wise register to enable triggering on edges
+
+    Args:
+      trigger_edge: 32-bit (bitwise) trigger on edge
+
+    Return:
+      Nothing
+
+    Raises:
+      OlympusCommError: Error in communication
+    """
+    self.o.write_register(self.dev_id, TRIGGER_EDGE, trigger_edge)
+
+
+  def get_trigger_edge(self):
+    """get_trigger_edge
+
+    read the edge trigger register
+
+    Args:
+      Nothing
+
+    Return:
+      32-bit read the edge trigger
+
+    Raises:
+      OlympusCommError: Error in communication
+    """
+    return self.o.read_register(self.dev_id, TRIGGER_EDGE)
+
+  def set_both_edges(self, both_edges):
+    """set_both_edges
+
+    Bit wise register to enable triggering on both edges
+
+    Args:
+      both_edges: 32-bit (bitwise) both edges
+
+    Return:
+      Nothing
+
+    Raises:
+      OlympusCommError: Error in communication
+    """
+    self.o.write_register(self.dev_id, BOTH_EDGES, both_edges)
+
+
+  def get_both_edges(self):
+    """get_both_edges
+
+    read the both edges register
+
+    Args:
+      Nothing
+
+    Return:
+      32-bit read the both edges
+
+    Raises:
+      OlympusCommError: Error in communication
+    """
+    return self.o.read_register(self.dev_id, BOTH_EDGES)
+
+
+
   def set_repeat_count(self, repeat_count):
     """set_repeat_count
 
@@ -462,6 +532,7 @@ class LogicAnalyzer:
     if not self.is_capture_finished():
       raise LAError("Capture is not finished")
 
+
     #get the number of 32-bits to read
     count = self.get_data_count()
     
@@ -470,6 +541,9 @@ class LogicAnalyzer:
     data_in = self.o.read(self.dev_id, DATA, count)
     #change this to 32-bit value
     data_out = Array('L')
+    print "Data in Lenght: %d" % len(data_in)
+    print "Data length: %d" % len(data_out)
+
     for i in range(0, len(data_in), 4):
       data_out.append (data_in[i] << 24 | data_in[i + 1] << 16 | data_in[i + 2] << 8 | data_in[i + 3])
 
@@ -546,13 +620,18 @@ def unit_test(oly, dev_id):
   lax.enable_interrupt(True)
 
   print "set the trigger"
-  lax.set_trigger(0x00300)
+  lax.set_trigger(0x00000001)
   print "set the trigger mask to 0 to trigger on anything"
-  lax.set_trigger_mask(0x00100)
+  lax.set_trigger_mask(0x000000001)
   print "set the trigger after"
   lax.set_trigger_after(0x000)
+  print "set the trigger edge to trigger on the positive edge"
+  lax.set_trigger_edge(0x0000)
+  print "do not trigger on both edges"
+  lax.set_both_edges(0x00)
+
   print "set the repeat count"
-  lax.set_repeat_count(10)
+  lax.set_repeat_count(0)
 
   print "Enable the capture"
   lax.enable_capture(True)
@@ -560,11 +639,14 @@ def unit_test(oly, dev_id):
   
 
   data_out  = Array('L')
-  print "Wait for interrupts, Press a button!"
-  if oly.wait_for_interrupts(wait_time = 5):
-    if oly.is_interrupt_for_slave(dev_id):
-      print "Found an interrupt for LAX!"
-      data_out  = lax.get_capture_data()
+  if lax.is_capture_finished():
+    data_out  = lax.get_capture_data()
+  else: 
+    print "Wait for interrupts, Press a button!"
+    if oly.wait_for_interrupts(wait_time = 5):
+      if oly.is_interrupt_for_slave(dev_id):
+        print "Found an interrupt for LAX!"
+        data_out  = lax.get_capture_data()
 
   if len(data_out) > 0:
     for i in data_out:
