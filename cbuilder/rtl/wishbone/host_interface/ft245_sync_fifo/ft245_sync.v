@@ -172,13 +172,13 @@ parameter                   READ            = 4'h2;
 parameter                   SEND_TO_FIFO    = 4'h3;
 
 
-//assign debug_w[2:0]   = rstate;
-//assign debug_w[3]     = in_fifo_wr;
-//assign debug_w[4]     = in_fifo_full;
-//assign debug_w[5]     = in_fifo_rd;
-//assign debug_w[6]     = in_fifo_empty;
-//assign debug_w[7]     = sof;
-//assign debug_w[15:8]  = data_in;
+assign debug_w[2:0]   = rstate;
+assign debug_w[3]     = in_fifo_wr;
+assign debug_w[4]     = in_fifo_full;
+assign debug_w[5]     = in_fifo_rd;
+assign debug_w[6]     = in_fifo_empty;
+assign debug_w[7]     = sof;
+assign debug_w[15:8]  = data_in;
 
 //assign debug_w[2] = out_fifo_empty;
 //assign debug_w[3] = out_fifo_rd;
@@ -300,11 +300,11 @@ parameter                   WRITE               = 4'h1;
 parameter                   GET_WRITE_DATA      = 4'h2;
 parameter                   SLEEP               = 4'h3;
 
-assign debug_w[1:0] = wstate;
-assign debug_w[2] = out_fifo_empty;
-assign debug_w[3] = out_fifo_rd;
-assign debug_w[4] = out_cache_valid;
-assign debug_w[5] = out_fifo_full;
+//assign debug_w[1:0] = wstate;
+//assign debug_w[2] = out_fifo_empty;
+//assign debug_w[3] = out_fifo_rd;
+//assign debug_w[4] = out_cache_valid;
+//assign debug_w[5] = out_fifo_full;
 
 
 
