@@ -61,7 +61,7 @@ class GPIO:
   def set_dev_id(self, dev_id):
     self.dev_id = dev_id
 
-  def set_port_direction(self, direction_mask):
+  def set_port_direction(self, direction):
     """set_port_diretion
 
     Set the direction of the port
@@ -78,15 +78,7 @@ class GPIO:
     if self.debug:
       print "Writing GPIO direction"
 
-    direction_value = Array('B', [0x00, 0x00, 0x00, 0x00])
-
-    direction_value[0] = (direction_mask >> 24) & 0xFF
-    direction_value[1] = (direction_mask >> 16) & 0xFF
-    direction_value[2] = (direction_mask >> 8) & 0xFF
-    direction_value[3] = (direction_mask) & 0xFF
-
-
-    self.o.write(self.dev_id, GPIO_OUTPUT_ENABLE, direction_value)
+    self.o.write_register(self.dev_id, GPIO_OUTPUT_ENABLE, direction)
 
   def set_port_raw(self, value):
     """set_port_raw
@@ -102,17 +94,7 @@ class GPIO:
     Raises:
       OlympusCommError
     """
-    port_value = Array('B', [0x00, 0x00, 0x00, 0x00])
-
-    port_value[0] = (value >> 24) & 0xFF
-    port_value[1] = (value >> 16) & 0xFF
-    port_value[2] = (value >> 8) & 0xFF
-    port_value[3] = (value) & 0xFF
-
-
-    if self.debug:
-      print "Writing GPIO raw value"
-    self.o.write(self.dev_id, GPIO_PORT, port_value)
+    self.o.write_register(self.dev_id, GPIO_PORT, value)
 
   def get_port_raw(self):
     """get_port_raw
@@ -128,13 +110,7 @@ class GPIO:
     Raises:
       OlympusCommError
     """
-    if self.debug:
-      print "Reading GPIO raw value"
-
-    port = self.o.read(self.dev_id, GPIO_PORT, 1)
-    port_raw = port[0] << 24 | port[1] << 16 | port[2] << 8 | port[3]
-
-    return port_raw
+    return self.o.read_register(self.dev_id, GPIO_PORT)
 
   def set_bit_value(self, bit, value):
     """set_bit_value
@@ -217,17 +193,7 @@ class GPIO:
     Raises:
       OlympusComError
     """
-    if self.debug:
-      print "Setting interrupt mask"
-
-    interrupt_array = Array('B', [0x00, 0x00, 0x00, 0x00])
-
-    interrupt_array[0] = (interrupt_enable >> 24) & 0xFF
-    interrupt_array[1] = (interrupt_enable >> 16) & 0xFF
-    interrupt_array[2] = (interrupt_enable >> 8) & 0xFF
-    interrupt_array[3] = (interrupt_enable) & 0xFF
-
-    self.o.write(self.dev_id, INTERRUPT_ENABLE, interrupt_array)
+    self.o.write_register(self.dev_id, INTERRUPT_ENABLE, interrupt_enable)
 
   def get_interrupt_enable(self):
     """get_interrupt_enable
@@ -243,10 +209,7 @@ class GPIO:
     Raises:
       Nothing
     """
-    level_array = self.o.read(self.dev_id, INTERRUPT_ENABLE, 1)
-    interrupt_edge = 0
-    interrupt_edge = level_array[0] << 24 | level_array[1] << 16 | level_array[2] << 8 | level_array[3]
-    return interrupt_edge
+    return self.o.get_register(self.dev_id, INTERRUPT_ENABLE)
 
   def set_interrupt_edge(self, interrupt_edge):
     """set_interrupt_edge
@@ -262,17 +225,7 @@ class GPIO:
     Raises:
       OlympusCommError
     """
-    if self.debug:
-      print "Setting interrupt level"
-
-    edge_array = Array('B', [0x00, 0x00, 0x00, 0x00])
-
-    edge_array[0] = (interrupt_edge >> 24) & 0xFF
-    edge_array[1] = (interrupt_edge >> 16) & 0xFF
-    edge_array[2] = (interrupt_edge >> 8) & 0xFF
-    edge_array[3] = (interrupt_edge) & 0xFF
-
-    self.o.write(self.dev_id, INTERRUPT_EDGE, edge_array)
+    self.o.write_register(self.dev_id, INTERRUPT_EDGE, interrupt_edge)
 
   def get_interrupt_edge(self):
     """get_interrupt_edge
@@ -288,10 +241,7 @@ class GPIO:
     Raises:
       OlympusCommError
     """
-    edge_array = self.o.read(self.dev_id, INTERRUPT_EDGE, 1)
-    interrupt_edge = 0
-    interrupt_edge = edge_array[0] << 24 | edge_array[1] << 16 | edge_array[2] << 8 | edge_array[3]
-    return interrupt_edge
+    return self.o.read_register(self.dev_id, INTERRUPT_EDGE)
 
   def get_interrupts(self):
     """get_interrupts
@@ -307,9 +257,7 @@ class GPIO:
     Raises:
       OlympusCommError
     """
-    interrupt_array = self.o.read(self.dev_id, INTERRUPTS, 1)
-    interrupts = interrupt_array[0] << 24 | interrupt_array[1] << 16 | interrupt_array[2] << 8 | interrupt_array[3]
-    return interrupts
+    return self.o.read_register(self.dev_id, INTERRUPTS)
 
 
 def unit_test(oly, dev_index):
@@ -331,16 +279,6 @@ def unit_test(oly, dev_index):
   time.sleep(1)
   gpio.set_port_raw(0x00000000)
 
-  """
-  print "flash only one bit"
-  period = .1
-  for i in range (0, 10):
-    gpio.set_bit_value(0, 1)
-    time.sleep( (i + 1) * (period / 10.0))
-    gpio.set_bit_value(0, 0)
-    time.sleep(period - ((i + 1) * (period / 10.0)))
-  """
-
   print "Reading inputs (Like buttons) in 2 second"
   gpio.set_port_direction(0x00000000)
   
@@ -361,8 +299,6 @@ def unit_test(oly, dev_index):
       print "Interrupt for GPIO detected!"
       print "Interrupts: " + hex(gpio.get_interrupts())
       print "Read value: " + hex(gpio.get_port_raw())
-
-    
 
 
  
