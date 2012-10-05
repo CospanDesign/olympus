@@ -1,4 +1,4 @@
-import pyftdi.pyftdi.spi
+from pyftdi.pyftdi import spi
 from array import array as Array
 import serialflash
 import time
@@ -156,7 +156,7 @@ class Numonyx_FlashDevice(SerialFlash):
 			raise SerialFlashValueError("Out of Range")
 		buf = Array('B')
 		while length > 0:
-			size = min(length, pyftdi.spi.SpiController.PAYLOAD_MAX_LENGTH)
+			size = min(length, spi.SpiController.PAYLOAD_MAX_LENGTH)
 #			print "reading %d bytes from address 0x%06X" % (size, address)
 			data = self._read_hi_speed(address, size)
 			length -= len(data)
