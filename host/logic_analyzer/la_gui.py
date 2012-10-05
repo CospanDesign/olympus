@@ -33,15 +33,41 @@ import gtk
 import gobject
 import sys
 import os
+import glib
+import argparse
 
-import la_controller
+import dionysus_la_controller
+import uart_la_controller
 
 NUMBER_OF_SIGNALS = 32
+
+
+DESCRIPTION = "\n" \
+"GUI Interface to the Logic Analyzer core\n" + \
+"\n" + \
+"Can be used in one of two ways:\n" + \
+"\tAn Olympus Peripheral: \t\tAccessed in the same way as other slaves\n" + \
+"\tStand alone UART device:\tThis is useful to debug internal signals\n"
+
+EPILOG = "\n" + \
+"Examples:\n" + \
+"\n" + \
+"Attach to an Olympus core\n" + \
+"\tla_gui.py\n" + \
+"\n" + \
+"Attached to the specified UART\n" + \
+"\tla_gui.py -u /dev/ttyUSB0"
+
 
 class LAGUI:
 
 
-  def __init__ (self, filename = "./gui/logic_analyzer.glade"):
+  def __init__ (self, controller_name="dionysus", device="/dev/ttyUSB0"):
+
+    filename = "./gui/logic_analyzer.glade" 
+
+    #enable threading
+    gobject.threads_init()
 
     #Load the Glade File
     builder = gtk.Builder()
@@ -56,6 +82,7 @@ class LAGUI:
     self.b_go = builder.get_object("toolbutton_go")
     self.l_status = builder.get_object("label_status")
     self.tv_status = builder.get_object("textview_status")
+    self.tb_main = builder.get_object("toolbar_main")
     self.buf_status = self.tv_status.get_buffer()
 
     self.buf_status.set_text("Logic Analyzer Started\n")
@@ -63,7 +90,7 @@ class LAGUI:
 
     #Connect Callbacks
     builder.connect_signals(self)
-    self.window.connect("destroy", gtk.main_quit)
+    self.window.connect("destroy", self.la_gui_quit)
     self.sb_trigger_after.connect("value-changed", self.ta_changed)
     self.sb_repeat_count.connect("value-changed", self.rc_changed)
     self.b_connect.connect("clicked", self.connect_clicked)
@@ -72,15 +99,31 @@ class LAGUI:
 
     self.output_list = []
 
+    #adde the checkboxes
+
+
     #instantiate the controller
-    self.lac = la_controller.LAController(self)
+    color = gtk.gdk.Color(red=0xFFFF, green=0xF000, blue=0xF000)
+
+    if (controller_name == "dionysus"):
+      self.lac = dionysus_la_controller.DionysusLAController(self)
+    elif (controller_name == "UART"):
+      color = gtk.gdk.Color(red=0x00FF, green=0xFFFF, blue=0xFFFF)
+      self.lac = uart_la_controller.UARTLAController(self)
+
     self.lac.set_gui_callback(self.logic_analyzer_interrupt)
 
-    #adde the checkboxes
-    self.add_check_boxes()
-
+    #Set the background color to indicate that this is for the Wishbone LA
+    #color = gtk.gdk.color_parse('#84AB3E')
+    #self.tb_main.modify_bg(gtk.STATE_NORMAL, color)
+    #self.tb_main.show()
     #Show Window
+    self.window.modify_bg(gtk.STATE_NORMAL, color)
+    self.add_check_boxes()
     self.window.show()
+
+    #gobject.timeout_add(50, self.tick)
+    #self.thread_status = None
 
 #  def update_counts(self):
 #    trigger_after = self.lac.get_trigger_after()
@@ -88,10 +131,24 @@ class LAGUI:
 #    self.sb_trigger_after.set_text(str(trigger_after))
 #    self.sb_repeat_count.set_text(str(repeat_count))
 
+  def la_gui_quit(self, value):
+    self.lac.quit()
+    gtk.main_quit()
+
+  def tick(self):
+    if self.thread_status is not None:
+      self.buf_status.insert_at_cursor(self.thread_status + "\n")
+
+    self.thread_status = None
+    return True
+    
   def logic_analyzer_interrupt(self):
-    self.buf_status.insert_at_cursor("Capture!\n")
-    self.buf_status.insert_at_cursor("Processing Capture Data\n")
     self.lac.process_capture_data()
+    glib.idle_add(self.logic_analyzer_done, "Captured!")
+    #self.thread_status  = "Captured"
+
+  def logic_analyzer_done(self, output_status):
+    self.buf_status.insert_at_cursor(output_status + "\n")
 
   def connect_clicked(self, widget, data=None):
     result = self.lac.connect()
@@ -130,6 +187,13 @@ class LAGUI:
 
     if name == "mask":
       self.lac.set_mask_bit(index, widget.get_active())
+
+    if name == "edge":
+      self.lac.set_edge_bit(index, widget.get_active())
+
+    if name == "both":
+      self.lac.set_both_bit(index, widget.get_active())
+
     #need to update the output with this setting
     self.update_output_bit(index)
 
@@ -141,7 +205,7 @@ class LAGUI:
       cb =  gtk.CheckButton()
       name = "trigger %d" % i
       cb.connect("toggled", self.checkbox_callback, name)
-      self.ctable.attach(cb, 1, 2, i + 1, i + 2, xoptions=gtk.EXPAND, yoptions=gtk.EXPAND | gtk.FILL)
+      self.ctable.attach(cb, 1, 2, i + 1, i + 2, xoptions=gtk.EXPAND, yoptions=gtk.EXPAND)
       cb.show()
 
     #add the checkboxes for mask
@@ -149,15 +213,31 @@ class LAGUI:
       cb =  gtk.CheckButton()
       name = "mask %d" % i
       cb.connect("toggled", self.checkbox_callback, name)
-      self.ctable.attach(cb, 2, 3, i + 1, i + 2, xoptions=gtk.EXPAND, yoptions=gtk.EXPAND | gtk.FILL)
+      self.ctable.attach(cb, 2, 3, i + 1, i + 2, xoptions=gtk.EXPAND, yoptions=gtk.EXPAND)
       cb.show()
 
-    #add the checkboxes for mask
+    #add the checkboxes for edges
+    for i in range (0, NUMBER_OF_SIGNALS):
+      cb =  gtk.CheckButton()
+      name = "edge %d" % i
+      cb.connect("toggled", self.checkbox_callback, name)
+      self.ctable.attach(cb, 3, 4, i + 1, i + 2, xoptions=gtk.EXPAND, yoptions=gtk.EXPAND)
+      cb.show()
+
+    #add the checkboxes for both edges
+    for i in range (0, NUMBER_OF_SIGNALS):
+      cb =  gtk.CheckButton()
+      name = "both %d" % i
+      cb.connect("toggled", self.checkbox_callback, name)
+      self.ctable.attach(cb, 4, 5, i + 1, i + 2, xoptions=gtk.EXPAND, yoptions=gtk.EXPAND)
+      cb.show()
+
+    #add the labels for the output
     for i in range (0, NUMBER_OF_SIGNALS):
       out_text = gtk.Label()
       #out_text.set_text("X")
       #out_text.set_max_length(1)
-      self.ctable.attach(out_text, 3, 4, i + 1, i + 2, xoptions=gtk.EXPAND, yoptions=gtk.EXPAND | gtk.FILL)
+      self.ctable.attach(out_text, 5, 6, i + 1, i + 2, xoptions=gtk.EXPAND, yoptions=gtk.EXPAND)
       self.output_list.append(out_text)
       out_text.show()
       self.update_output_bit(i)
@@ -166,20 +246,51 @@ class LAGUI:
     #print "updating output"
     trigger_bit = self.lac.get_trigger_bit(index)
     mask_bit = self.lac.get_mask_bit(index)
+    edge_bit = self.lac.get_edge_bit(index)
+    both_bit = self.lac.get_both_bit(index)
     #print "trigger: %s" % str(trigger_bit)
     #print "mask: %s" % str(mask_bit)
     if not mask_bit:
-      self.output_list[index].set_label("X")
+      self.output_list[index].set_label("?")
     else:
-      if trigger_bit:
-        self.output_list[index].set_label("1")
+      if edge_bit:
+        if both_bit:
+          self.output_list[index].set_label("X")
+        else:
+          if trigger_bit:
+            self.output_list[index].set_label("/")
+          else:
+            self.output_list[index].set_label("\\")
       else:
-        self.output_list[index].set_text("0")
+        if trigger_bit:
+          self.output_list[index].set_label("1")
+        else:
+          self.output_list[index].set_text("0")
 
 
 
 
 
 if __name__ == "__main__":
-  la = LAGUI()
+  parser = argparse.ArgumentParser(
+  formatter_class=argparse.RawDescriptionHelpFormatter,
+    description=DESCRIPTION,
+    epilog=EPILOG
+    )
+
+  #parser.add_argument("echo")
+  parser.add_argument("-u", "--uart", type=str, help="Uses the UART logic analyzer interface specified")
+  parser.parse_args()
+  args = parser.parse_args()
+
+  la = None
+  if args.uart:
+    print "uart set"
+    la = LAGUI(controller_name = "UART", device = args.uart)
+
+
+  else:
+    print "Olympus Slave"
+    la = LAGUI()
+ 
   gtk.main()

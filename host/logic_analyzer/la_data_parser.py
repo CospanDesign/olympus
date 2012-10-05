@@ -104,6 +104,7 @@ def set_waveforms(data, signal_dict):
 
   #go through all the values for every time instance and look for changes
   print "Data Length: %d" % len(data)
+  length = len(data)
   for i in range (1, len(data) - 1):
     if (data[i - 1] != data[i]):
       #there is a difference at this time
@@ -112,7 +113,7 @@ def set_waveforms(data, signal_dict):
         if ((data[i - 1] >> j) & 0x01) != ((data[i] >> j) & 0x01):
           buf += "%d%c\n" % (((data[i] >> j) & 0x01), (33 + j))
 
-  buf += "#%d" % len(data) 
+  buf += "#%d\n" % length 
   for i in range (0, 32):
     buf += "%d%c\n" % (((data[-1] >> i) & 0x01), (33 + i))
 

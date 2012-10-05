@@ -172,7 +172,7 @@
           </packing>
         </child>
         <child>
-          <object class="GtkToolbar" id="toolbar1">
+          <object class="GtkToolbar" id="toolbar_main">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="toolbar_style">both</property>
@@ -232,13 +232,16 @@
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="n_rows">33</property>
-                <property name="n_columns">4</property>
+                <property name="n_columns">6</property>
                 <child>
                   <object class="GtkLabel" id="label4">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="label" translatable="yes">Signal</property>
                   </object>
+                  <packing>
+                    <property name="y_options">GTK_EXPAND</property>
+                  </packing>
                 </child>
                 <child>
                   <object class="GtkLabel" id="label5">
@@ -249,6 +252,7 @@
                   <packing>
                     <property name="top_attach">32</property>
                     <property name="bottom_attach">33</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -260,6 +264,7 @@
                   <packing>
                     <property name="top_attach">31</property>
                     <property name="bottom_attach">32</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -271,6 +276,7 @@
                   <packing>
                     <property name="top_attach">30</property>
                     <property name="bottom_attach">31</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -282,6 +288,7 @@
                   <packing>
                     <property name="top_attach">29</property>
                     <property name="bottom_attach">30</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -293,6 +300,7 @@
                   <packing>
                     <property name="top_attach">28</property>
                     <property name="bottom_attach">29</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -304,6 +312,7 @@
                   <packing>
                     <property name="top_attach">1</property>
                     <property name="bottom_attach">2</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -315,6 +324,7 @@
                   <packing>
                     <property name="top_attach">2</property>
                     <property name="bottom_attach">3</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -326,6 +336,7 @@
                   <packing>
                     <property name="top_attach">3</property>
                     <property name="bottom_attach">4</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -337,6 +348,7 @@
                   <packing>
                     <property name="top_attach">4</property>
                     <property name="bottom_attach">5</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -348,6 +360,7 @@
                   <packing>
                     <property name="top_attach">5</property>
                     <property name="bottom_attach">6</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -359,6 +372,7 @@
                   <packing>
                     <property name="top_attach">6</property>
                     <property name="bottom_attach">7</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -370,6 +384,7 @@
                   <packing>
                     <property name="top_attach">7</property>
                     <property name="bottom_attach">8</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -381,6 +396,7 @@
                   <packing>
                     <property name="top_attach">8</property>
                     <property name="bottom_attach">9</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -392,6 +408,7 @@
                   <packing>
                     <property name="top_attach">9</property>
                     <property name="bottom_attach">10</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -403,6 +420,7 @@
                   <packing>
                     <property name="top_attach">10</property>
                     <property name="bottom_attach">11</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -414,6 +432,7 @@
                   <packing>
                     <property name="top_attach">11</property>
                     <property name="bottom_attach">12</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -425,6 +444,7 @@
                   <packing>
                     <property name="top_attach">12</property>
                     <property name="bottom_attach">13</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -436,6 +456,7 @@
                   <packing>
                     <property name="top_attach">13</property>
                     <property name="bottom_attach">14</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -447,6 +468,7 @@
                   <packing>
                     <property name="top_attach">14</property>
                     <property name="bottom_attach">15</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -458,6 +480,7 @@
                   <packing>
                     <property name="top_attach">15</property>
                     <property name="bottom_attach">16</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -469,6 +492,7 @@
                   <packing>
                     <property name="top_attach">16</property>
                     <property name="bottom_attach">17</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -480,6 +504,7 @@
                   <packing>
                     <property name="top_attach">17</property>
                     <property name="bottom_attach">18</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -491,6 +516,7 @@
                   <packing>
                     <property name="top_attach">18</property>
                     <property name="bottom_attach">19</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -502,6 +528,7 @@
                   <packing>
                     <property name="top_attach">19</property>
                     <property name="bottom_attach">20</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -513,6 +540,7 @@
                   <packing>
                     <property name="top_attach">20</property>
                     <property name="bottom_attach">21</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -524,6 +552,7 @@
                   <packing>
                     <property name="top_attach">21</property>
                     <property name="bottom_attach">22</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -535,6 +564,7 @@
                   <packing>
                     <property name="top_attach">22</property>
                     <property name="bottom_attach">23</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -546,6 +576,7 @@
                   <packing>
                     <property name="top_attach">23</property>
                     <property name="bottom_attach">24</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -557,6 +588,7 @@
                   <packing>
                     <property name="top_attach">24</property>
                     <property name="bottom_attach">25</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -568,6 +600,7 @@
                   <packing>
                     <property name="top_attach">25</property>
                     <property name="bottom_attach">26</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -579,6 +612,7 @@
                   <packing>
                     <property name="top_attach">26</property>
                     <property name="bottom_attach">27</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -590,6 +624,7 @@
                   <packing>
                     <property name="top_attach">27</property>
                     <property name="bottom_attach">28</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -601,11 +636,12 @@
                     <property name="has_tooltip">True</property>
                     <property name="use_action_appearance">False</property>
                     <property name="relief">none</property>
-                    <property name="uri">http://wiki.cospandesign.com/index.php?title=Logic_analyzer#Trigger</property>
+                    <property name="uri">http://wiki.cospandesign.com/index.php?title=Wb_logic_analyzer#Trigger</property>
                   </object>
                   <packing>
                     <property name="left_attach">1</property>
                     <property name="right_attach">2</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -617,11 +653,12 @@
                     <property name="has_tooltip">True</property>
                     <property name="use_action_appearance">False</property>
                     <property name="relief">none</property>
-                    <property name="uri">http://wiki.cospandesign.com/index.php?title=Logic_analyzer#Trigger_Mask</property>
+                    <property name="uri">http://wiki.cospandesign.com/index.php?title=Wb_logic_analyzer#Trigger_Mask</property>
                   </object>
                   <packing>
                     <property name="left_attach">2</property>
                     <property name="right_attach">3</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -631,8 +668,9 @@
                     <property name="label" translatable="yes">Output</property>
                   </object>
                   <packing>
-                    <property name="left_attach">3</property>
-                    <property name="right_attach">4</property>
+                    <property name="left_attach">5</property>
+                    <property name="right_attach">6</property>
+                    <property name="y_options">GTK_EXPAND</property>
                   </packing>
                 </child>
                 <child>
@@ -922,6 +960,230 @@
                 </child>
                 <child>
                   <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <object class="GtkLinkButton" id="linkbutton_trigger_edge">
+                    <property name="label" translatable="yes">Edge</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
+                    <property name="has_tooltip">True</property>
+                    <property name="use_action_appearance">False</property>
+                    <property name="relief">none</property>
+                    <property name="uri">http://wiki.cospandesign.com/index.php?title=Wb_logic_analyzer#Trigger_Edge</property>
+                  </object>
+                  <packing>
+                    <property name="left_attach">3</property>
+                    <property name="right_attach">4</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkLinkButton" id="linkbutton_both_edges">
+                    <property name="label" translatable="yes">Both Edges</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
+                    <property name="has_tooltip">True</property>
+                    <property name="use_action_appearance">False</property>
+                    <property name="relief">none</property>
+                    <property name="uri">http://wiki.cospandesign.com/index.php?title=Wb_logic_analyzer#Both_Edges</property>
+                  </object>
+                  <packing>
+                    <property name="left_attach">4</property>
+                    <property name="right_attach">5</property>
+                  </packing>
                 </child>
               </object>
               <packing>
@@ -943,11 +1205,11 @@
                     <property name="has_tooltip">True</property>
                     <property name="use_action_appearance">False</property>
                     <property name="relief">none</property>
-                    <property name="uri">http://wiki.cospandesign.com/index.php?title=Logic_analyzer#Trigger_After</property>
+                    <property name="uri">http://wiki.cospandesign.com/index.php?title=Wb_logic_analyzer#Trigger_After</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
-                    <property name="fill">True</property>
+                    <property name="fill">False</property>
                     <property name="position">0</property>
                   </packing>
                 </child>
@@ -992,7 +1254,7 @@
                     <property name="has_tooltip">True</property>
                     <property name="use_action_appearance">False</property>
                     <property name="relief">none</property>
-                    <property name="uri">http://wiki.cospandesign.com/index.php?title=Logic_analyzer#Repeat_Count</property>
+                    <property name="uri">http://wiki.cospandesign.com/index.php?title=Wb_logic_analyzer#Repeat_Count</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
