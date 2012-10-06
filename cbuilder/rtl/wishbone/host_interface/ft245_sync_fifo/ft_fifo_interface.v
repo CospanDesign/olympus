@@ -108,8 +108,8 @@ wire                ftdi_transmit_ready;
 wire                ftdi_read_available;
 reg                 ftdi_output_enable;
 //PART OF THE ASYNCHRONOUS WRITE APPROACH
-//wire              ftdi_write_strobe;
-reg                 ftdi_write_strobe;
+wire                ftdi_write_strobe;
+//reg                 ftdi_write_strobe;
 wire                ftdi_read_strobe;
 reg                 ftdi_send_immediately;
 wire                ftdi_suspend;
@@ -127,7 +127,8 @@ reg   [1:0]                         read_state;
 wire                                read_busy;
 reg   [23:0]                        if_write_count;
 reg                                 enable_reading;
-reg   [(`OUT_FIFO_DATA_SIZE - 1):0] ftdi_out_data;
+//reg   [(`OUT_FIFO_DATA_SIZE - 1):0] ftdi_out_data;
+wire  [(`OUT_FIFO_DATA_SIZE - 1):0] ftdi_out_data;
 
 //write state machine
 parameter                           PRESTROBE_FIFO      = 1;
@@ -270,8 +271,9 @@ assign  ftdi_read_strobe    = (if_write_activate != 0) &&
 assign  ftdi_data           = (ftdi_output_enable) ? 8'hZZ : ftdi_out_data;
 
 //ASYNCHRONOUS WRITE TO FTDI STATEMENTS
-//assign  ftdi_data           = (ftdi_output_enable) ? 8'hZZ : of_read_data;
 //assign  ftdi_write_strobe   = of_read_strobe & !prestrobe;
+assign  ftdi_out_data       = of_read_data;
+assign  ftdi_write_strobe   = of_read_strobe;
 //assign  of_read_strobe      = (!read_busy && ftdi_transmit_ready && (out_data_count > 0)) ? 1 : prestrobe;
 
 assign  debug               =  wdebug;
@@ -396,8 +398,8 @@ integer i;
 
 always @ (posedge ftdi_clk) begin
   if (rst) begin
-    ftdi_out_data           <=  0;
-    ftdi_write_strobe       <=  0;
+    //ftdi_out_data           <=  0;
+    //ftdi_write_strobe       <=  0;
     of_read_strobe          <=  0;
     of_read_activate        <=  0;
     ftdi_send_immediately   <=  0;
@@ -417,7 +419,8 @@ always @ (posedge ftdi_clk) begin
 //      end
 //      data_buffer[0]        <=  of_read_data;
 //    end
-    ftdi_write_strobe       <=  0;
+
+//    ftdi_write_strobe       <=  0;
     of_read_strobe          <=  0;
     ftdi_send_immediately   <=  0;
     case (write_state)
@@ -430,18 +433,18 @@ always @ (posedge ftdi_clk) begin
         end
       end
       FIFO_READY: begin
-        of_read_strobe      <=  1;
+        //of_read_strobe      <=  1;
         write_state         <=  SEND_TO_FTDI;
       end
       SEND_TO_FTDI: begin
-        ftdi_out_data       <= of_read_data;
+        //ftdi_out_data       <= of_read_data;
         if (out_data_count  == 0) begin
           of_read_activate  <=  0;
           write_state       <=  IDLE;
         end
         else if (!read_busy && ftdi_transmit_ready) begin
           of_read_strobe    <=  1;
-          ftdi_write_strobe <=  1;
+          //ftdi_write_strobe <=  1;
           out_data_count    <=  out_data_count  - 1;
         end
       end

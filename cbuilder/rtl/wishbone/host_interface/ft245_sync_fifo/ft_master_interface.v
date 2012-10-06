@@ -133,11 +133,9 @@ parameter           READ                    = 2;
 parameter           RESET                   = 3;
 
 //assembler specific states
-//parameter           PASSTHROUGH_ID          = 1;
-parameter           WAIT_FOR_ID_BYTE        = 2;
-//parameter           PASSTHROUGH_DATA        = 3;
-parameter           PROCESS_DATA            = 4;
-parameter           WAIT_FOR_INPUT_HANDLER  = 5;
+parameter           WAIT_FOR_ID_BYTE        = 1;
+parameter           PROCESS_DATA            = 2;
+parameter           WAIT_FOR_INPUT_HANDLER  = 3;
 reg     [3:0]       assembler_state;
 reg     [23:0]      read_count;
 reg     [1:0]       packet_count;
@@ -221,7 +219,8 @@ assign  dword_ready         = (assembler_state == WAIT_FOR_INPUT_HANDLER);
 
 
 //debug connections
-assign  wdebug[2:0]         = assembler_state;
+assign  wdebug[1:0]         = assembler_state;
+assign  wdebug[2]           = dword_ready;
 assign  wdebug[3]           = in_fifo_ready;
 assign  wdebug[4]           = in_fifo_activate;
 assign  wdebug[5]           = in_fifo_read;
@@ -256,19 +255,12 @@ always @ (posedge clk ) begin
 
           if (waiting_for_id) begin
             assembler_state <=  WAIT_FOR_ID_BYTE;
-            //assembler_state <=  PASSTHROUGH_ID;
           end
           else begin
             assembler_state <=  PROCESS_DATA;
-            //assembler_state <=  PASSTHROUGH_DATA;
           end
         end
       end
-      //PASSTHROUGH_ID: begin
-      //  in_fifo_read        <=  1;
-      //  assembler_state     <=  WAIT_FOR_ID_BYTE;
-      //  read_count            <=  read_count - 1;
-      //end
       WAIT_FOR_ID_BYTE: begin
         packet_count          <=  0;
         if (start_of_frame && in_fifo_data == 8'hCD) begin
@@ -287,10 +279,6 @@ always @ (posedge clk ) begin
           assembler_state     <=  IDLE;
         end
       end
-      //PASSTHROUGH_DATA: begin
-      //  in_fifo_read        <=  1;
-      //  assembler_state     <=  PROCESS_DATA;
-      //end
       PROCESS_DATA: begin
         input_dword             <= {input_dword[23:0], in_fifo_data};
         if (packet_count == 3) begin
@@ -405,7 +393,7 @@ always @ (posedge clk ) begin
         end
       end
       WAIT_FOR_DATA: begin
-        if (dword_ready) begin
+        if (dword_ready && !ih_ready && master_ready) begin
           read_dword          <=  1;
           in_data             <=  input_dword;
           if(local_data_count > 0) begin
