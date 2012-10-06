@@ -108,7 +108,7 @@ wire                ftdi_transmit_ready;
 wire                ftdi_read_available;
 reg                 ftdi_output_enable;
 //PART OF THE ASYNCHRONOUS WRITE APPROACH
-//wire                ftdi_write_strobe;
+//wire              ftdi_write_strobe;
 reg                 ftdi_write_strobe;
 wire                ftdi_read_strobe;
 reg                 ftdi_send_immediately;
@@ -280,7 +280,7 @@ assign  debug               =  wdebug;
 assign  wdebug[1:0]           =   read_state[1:0];
 assign  wdebug[3:2]           =   if_write_ready;
 assign  wdebug[5:4]           =   if_write_activate;
-assign  wdebug[6]             =   (if_write_count == if_write_fifo_size - 1);
+assign  wdebug[6]             =   (if_write_count == 0);
 assign  wdebug[7]             =   if_write_strobe;
 assign  wdebug[9:8]           =   write_state[1:0];
 assign  wdebug[10]            =   of_read_ready;
@@ -355,7 +355,13 @@ always @ (posedge ftdi_clk) begin
         enable_reading        <=  1;
         if (if_write_count == 0) begin
           //filled up the in FIFO
+          enable_reading        <=  0;
           if_write_activate     <=  0;
+          ftdi_output_enable    <=  0;
+          read_state            <=  IDLE;
+        end
+        else if (if_write_strobe) begin
+          if_write_count  <=  if_write_count - 1;
         end
         //if the FTDI chip is empty release the write FIFO and disable the output enable
         if (!ftdi_read_available) begin
@@ -364,11 +370,6 @@ always @ (posedge ftdi_clk) begin
           //deactivate any currently used FIFOs
           if_write_activate   <=  0;
         end
-
-        if (ftdi_write_strobe) begin
-          if_write_count  <=  if_write_count - 1;
-        end
-
       end
       default: begin
         ftdi_output_enable    <=  0;
