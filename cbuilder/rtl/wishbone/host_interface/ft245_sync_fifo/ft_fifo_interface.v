@@ -277,6 +277,24 @@ assign  ftdi_data           = (ftdi_output_enable) ? 8'hZZ : ftdi_out_data;
 assign  debug               =  wdebug;
 //synchronous logic
 
+assign  wdebug[1:0]           =   read_state[1:0];
+assign  wdebug[3:2]           =   if_write_ready;
+assign  wdebug[5:4]           =   if_write_activate;
+assign  wdebug[6]             =   (if_write_count == if_write_fifo_size - 1);
+assign  wdebug[7]             =   if_write_strobe;
+assign  wdebug[9:8]           =   write_state[1:0];
+assign  wdebug[10]            =   of_read_ready;
+assign  wdebug[11]            =   of_read_activate;
+assign  wdebug[12]            =   (out_data_count > 0);
+assign  wdebug[13]            =   read_busy;
+assign  wdebug[14]            =   write_busy;
+assign  wdebug[15]            =   ftdi_start_of_frame;
+
+
+
+
+
+
 //logic for detecting the start of a frame detect
 always @ (posedge ftdi_clk) begin
   if (rst) begin
@@ -317,7 +335,7 @@ always @ (posedge ftdi_clk) begin
           else begin
             if_write_activate[1]  <=  1;
           end
-          if_write_count          <=  if_write_fifo_size;
+          if_write_count          <=  if_write_fifo_size - 1;
           read_state              <=  WAIT_FOR_FTDI;
         end
       end
@@ -361,17 +379,17 @@ always @ (posedge ftdi_clk) begin
 end
 
 
-assign  wdebug[1:0]           =   write_state[1:0];
-assign  wdebug[5:2]           =   out_data_count[3:0];
-assign  wdebug[6]             =   of_read_strobe;
-assign  wdebug[7]             =   of_read_ready;
-assign  wdebug[8]             =   of_starved;
-assign  wdebug[10:9]          =   of_write_ready[1:0];
-assign  wdebug[11]            =   read_busy;
-assign  wdebug[12]            =   write_busy;
-assign  wdebug[13]            =   enable_reading;
-assign  wdebug[14]            =   ftdi_start_of_frame;
-assign  wdebug[15]            =   0;
+//assign  wdebug[1:0]           =   write_state[1:0];
+//assign  wdebug[5:2]           =   out_data_count[3:0];
+//assign  wdebug[6]             =   of_read_strobe;
+//assign  wdebug[7]             =   of_read_ready;
+//assign  wdebug[8]             =   of_starved;
+//assign  wdebug[10:9]          =   of_write_ready[1:0];
+//assign  wdebug[11]            =   read_busy;
+//assign  wdebug[12]            =   write_busy;
+//assign  wdebug[13]            =   enable_reading;
+//assign  wdebug[14]            =   ftdi_start_of_frame;
+//assign  wdebug[15]            =   0;
 
 integer i;
 
