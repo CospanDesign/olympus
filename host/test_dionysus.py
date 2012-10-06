@@ -97,6 +97,16 @@ def test_memory(dyn, dev_index):
     print str(hex(data_in[i])) + ", ",
   print " "
 
+  '''
+  dev_size = dyn.get_device_size(dev_index)
+  print "Reading memory before writing"
+  data_in = dyn.read_memory((0x164), 8)
+  print "mem data: %s" % str(data_in)
+  print "hex: "
+  for i in range (0, len(data_in)):
+    print str(hex(data_in[i])) + ", ",
+  print " "
+  '''
 
 
   print "Testing a write/read at the end of memory"
@@ -106,13 +116,19 @@ def test_memory(dyn, dev_index):
   print "reading from memory location 0x%08X" % (dev_size - 8)
   data_in = dyn.read_memory(dev_size - 8, 2)
 
+
+
+
+
   print "mem data: %s" % str(data_in)
   print "hex: "
   for i in range (0, len(data_in)):
     print str(hex(data_in[i])) + ", ",
   print " "
 
+
   dev_size = (dyn.get_device_size(dev_index) / 4)
+  dev_size = 256/4
   print "Memory size: 0x%X" % (dyn.get_device_size(dev_index))
   
   data_out = Array('B')
@@ -136,8 +152,10 @@ def test_memory(dyn, dev_index):
   dyn.debug = False
   #dyn.write(dev_index, 0, data_out, mem_bus)
   print "Reading %d bytes of data" % (len(data_out))
+  dyn.debug = True
   data_in = dyn.read_memory(0, len(data_out) / 4)
   #data_in = dyn.read(dev_index, 0, len(data_out) / 4, mem_bus)
+  dyn.debug = False
 
   print "Comparing values"
   fail = False
@@ -151,7 +169,7 @@ def test_memory(dyn, dev_index):
     for i in range (0, len(data_out)):
       if data_in[i] != data_out[i]:
         fail = True
-        #print "Mismatch at %d: READ DATA %d != WRITE DATA %d" % (i, data_in[i], data_out[i])
+        print "Mismatch at %d: READ DATA %d != WRITE DATA %d" % (i, data_in[i], data_out[i])
         fail_count += 1
 
   if not fail:
@@ -160,6 +178,7 @@ def test_memory(dyn, dev_index):
     print "Data length of data_in and data_out do not match"
   else:
     print "Failed: %d mismatches" % fail_count
+
 
 
 
