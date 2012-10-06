@@ -278,9 +278,9 @@ assign  debug               =  wdebug;
 //synchronous logic
 
 assign  wdebug[1:0]           =   read_state[1:0];
-assign  wdebug[3:2]           =   if_write_ready;
-assign  wdebug[5:4]           =   if_write_activate;
-assign  wdebug[6]             =   (if_write_count == 0);
+assign  wdebug[3:2]           =   if_write_ready[1:0];
+assign  wdebug[5:4]           =   if_write_activate[1:0];
+assign  wdebug[6]             =   (if_write_count > 0);
 assign  wdebug[7]             =   if_write_strobe;
 assign  wdebug[9:8]           =   write_state[1:0];
 assign  wdebug[10]            =   of_read_ready;

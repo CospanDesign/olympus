@@ -66,7 +66,6 @@ module ft_master_interface (
   ftdi_suspend_n,
   ftdi_siwu,
 
-  //debug
   debug
 );
 
@@ -174,12 +173,12 @@ reg     [3:0]       oh_status;
 wire    [15:0]      ftdi_debug;
 wire    [15:0]      wdebug;
 //reg     [15:0]      rdebug;
-//assign  debug       = wdebug;
-assign  debug     = ftdi_debug;
+assign  debug       = wdebug;
+//assign  debug     = ftdi_debug;
 
 wire    [7:0]       out_d;
 assign              out_d = out_packet[position];
-assign  ih_reset  = 0;
+assign              ih_reset  = 0;
 
 //modules
 ft_fifo_interface ft (
@@ -222,14 +221,12 @@ assign  dword_ready         = (assembler_state == WAIT_FOR_INPUT_HANDLER);
 
 
 //debug connections
-/*
 assign  wdebug[2:0]         = assembler_state;
 assign  wdebug[3]           = in_fifo_ready;
 assign  wdebug[4]           = in_fifo_activate;
 assign  wdebug[5]           = in_fifo_read;
 assign  wdebug[7:6]         = packet_count[1:0];
 assign  wdebug[15:8]        = in_fifo_data;
-*/
 
 //synchronous logic
 
@@ -435,7 +432,7 @@ always @ (posedge clk ) begin
   end
 end
 
-
+/*
 assign  wdebug[1:0]         = output_handler_state;
 assign  wdebug[3:2]         = out_fifo_ready[1:0];
 assign  wdebug[5:4]         = out_fifo_activate[1:0];
@@ -446,7 +443,7 @@ assign  wdebug[12]          = (out_packet_count == 0);
 assign  wdebug[13]          = (out_packet[position][7:0] == 0);
 assign  wdebug[14]          = oh_ready;
 assign  wdebug[15]          = oh_en;
-
+*/
 
 //assign  wdebug[15:8]        = in_fifo_data;
 
