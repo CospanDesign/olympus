@@ -120,10 +120,10 @@ def test_memory(dyn, dev_index):
   try:
     for i in range (0, 4 * dev_size):
       num = (i) % 255
-      if (i / 256) % 2 == 1:
-        data_out.append( 255 - (num))
-      else:
-        data_out.append(num)
+      #if (i / 256) % 2 == 1:
+      #  data_out.append( 255 - (num))
+      #else:
+      data_out.append(num)
 
 
   except OverflowError as err:
@@ -131,7 +131,9 @@ def test_memory(dyn, dev_index):
     sys.exit(1)
  
   print "Writing %d bytes of data" % (len(data_out))
+  dyn.debug = True
   dyn.write_memory(0, data_out)
+  dyn.debug = False
   #dyn.write(dev_index, 0, data_out, mem_bus)
   print "Reading %d bytes of data" % (len(data_out))
   data_in = dyn.read_memory(0, len(data_out) / 4)
