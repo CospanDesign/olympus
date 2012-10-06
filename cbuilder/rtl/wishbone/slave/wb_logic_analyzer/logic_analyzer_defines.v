@@ -2,7 +2,7 @@
 `define __LA_DEFINES__
 
 `define CAP_DAT_WIDTH 32
-`define CAP_MEM_SIZE  15
+`define CAP_MEM_SIZE  13
 `define TRIG          32'h00000000
 
 //UART Interface
