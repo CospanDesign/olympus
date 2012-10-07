@@ -6,6 +6,7 @@ unisims/BUFG.v
 unisims/ODDR2.v
 unisims/PLL_BASE.v
 unisims/PLL_ADV.v
+../../../../rtl/generic/ppfifo.v
 ../../../../rtl/generic/afifo.v
 ../../../../rtl/generic/graycounter.v
 ../../interconnect/example_2port_interconnect/wishbone_interconnect.v

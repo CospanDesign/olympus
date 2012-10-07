@@ -29,20 +29,28 @@ module sdram (
   clk,
   rst,
 
-  app_write_pulse,
-  app_write_data,
-  app_write_mask,
-  write_fifo_full,
+  //write path
+  if_write_pulse,
+  if_write_data,
+  if_write_mask,
+  if_write_ready,
+  if_write_activate,
+  if_write_fifo_size,
+  //write_fifo_full,
 
-  app_read_pulse,
-  app_read_data,
-  read_fifo_empty,
+  //read path
+  of_read_pulse,
+  of_read_ready,
+  of_read_activate,
+  of_read_count,
+  of_read_data,
+  //read_fifo_empty,
 
   //Wishbone command
   sdram_ready,
 
-  app_write_enable,
-  app_read_enable,
+  sdram_write_enable,
+  sdram_read_enable,
   app_address,
 
   sd_clk,
@@ -58,30 +66,36 @@ module sdram (
   data_mask
 );
 
-input         clk;
-input         rst;
+input               clk;
+input               rst;
 
-input         app_write_pulse;
-input [31:0]  app_write_data;
-input [3:0]   app_write_mask;
-output        write_fifo_full;
+input               if_write_pulse;
+input       [31:0]  if_write_data;
+input       [3:0]   if_write_mask;
+output      [1:0]   if_write_ready;
+input       [1:0]   if_write_activate;
+output      [23:0]  if_write_fifo_size;
+//output        write_fifo_full;
 
-input         app_read_pulse;
-output [31:0] app_read_data;
-output        read_fifo_empty;
+input               of_read_pulse;
+output              of_read_ready;
+input               of_read_activate;
+output      [23:0]  of_read_count;
+output      [31:0]  of_read_data;
+//output        read_fifo_empty;
 
-input         app_write_enable;
-input         app_read_enable;
+input               sdram_write_enable;
+input               sdram_read_enable;
 
-input [21:0]  app_address;
-output reg    sdram_ready;
+input       [21:0]  app_address;
+output reg          sdram_ready;
 
-output        sd_clk;
-output reg    cke;
-output reg    cs_n;
-output        ras;
-output        cas;
-output        we;
+output              sd_clk;
+output reg          cke;
+output reg          cs_n;
+output              ras;
+output              cas;
+output              we;
 
 output      [11:0]  address;
 output      [1:0]   bank;
@@ -89,8 +103,8 @@ inout       [15:0]  data;
 output      [1:0]   data_mask;
 
 
-wire          sdram_clock_ready;
-wire          sdram_clk;
+wire                sdram_clock_ready;
+wire                sdram_clk;
 
 //Generate the SDRAM Clock
 sdram_clkgen clkgen (
@@ -118,21 +132,68 @@ end
 reg           refresh;
 
 //Write path
-wire  [2:0]   write_command;
-wire  [11:0]  write_address;
-wire  [1:0]   write_bank;
-wire          write_idle;
-wire  [1:0]   write_data_mask;
-wire  [35:0]  write_path_data;
-//reg           write_enable;
-wire  [15:0]  data_out;
+wire        [2:0]   write_command;
+wire        [11:0]  write_address;
+wire        [1:0]   write_bank;
+wire                write_idle;
+wire        [1:0]   write_data_mask;
+wire        [35:0]  write_path_data;
+//reg               write_enable;
+wire        [15:0]  data_out;
 
-wire          writing;
-wire          write_fifo_empty;
-assign        writing = ~write_idle;
+wire                writing;
+wire                write_fifo_empty;
+assign              writing = ~write_idle;
 
 
 //Write FIFO
+/*
+wire        [1:0]   if_write_ready;
+wire        [1:0]   if_write_activate;   
+wire        [23:0]  if_write_fifo_size;
+wire                if_write_strobe;
+wire        [35:0]  if_write_data;
+*/
+
+wire                if_read_strobe;
+wire                if_read_ready;
+wire                if_read_activate;
+wire        [23:0]  if_read_count;
+wire        [35:0]  if_read_data;
+
+/*
+assign              if_write_strobe     = if_write_pulse;
+assign              if_write_ready     = if_write_ready;
+assign              if_write_activate   = if_write_activate;
+assign              if_write_fifo_size = if_write_fifo_size;
+*/
+
+ppfifo#(
+  .DATA_WIDTH(36),
+  .ADDRESS_WIDTH(9)
+)ppfifo_wr (
+  .reset(rst || ~sdram_ready),
+
+  //Write
+  .write_clock(clk),
+  .write_ready(if_write_ready),
+  .write_activate(if_write_activate),
+  .write_fifo_size(if_write_fifo_size),
+  .write_strobe(if_write_strobe),
+  .write_data({if_write_mask, if_write_data}),
+
+  .starved(if_starved),
+
+  //Read
+  .read_clock(sdram_clk),
+  .read_strobe(if_read_strobe),
+  .read_ready(if_read_ready),
+  .read_activate(if_read_activate),
+  .read_count(if_read_count),
+  .read_data(if_read_data)
+);
+
+/*
 afifo 
 	#(		.DATA_WIDTH(36),
 			.ADDRESS_WIDTH(10)
@@ -145,7 +206,7 @@ fifo_wr (
 	.dout_clk(sdram_clk),
 
   //Data
-	.data_in({app_write_mask, app_write_data}),
+	.data_in({if_write_mask, if_write_data}),
 	.data_out(write_path_data),
 
   //Status
@@ -153,9 +214,10 @@ fifo_wr (
 	.empty(write_fifo_empty),
 
   //Commands
-	.wr_en(app_write_pulse),
+	.wr_en(if_write_pulse),
 	.rd_en(write_path_read_pulse)
 );
+*/
 
 sdram_write write_path (
   .rst(rst || ~sdram_ready),
@@ -170,7 +232,7 @@ sdram_write write_path (
 
   //Control
   .idle(write_idle),
-  .enable(app_write_enable),
+  .enable(sdram_write_enable),
   .auto_refresh(refresh),
   .wait_for_refresh(wwfr),
   
@@ -185,19 +247,73 @@ sdram_write write_path (
 );
 
 //Read path
-wire  [2:0]   read_command;
-wire          read_idle;
-wire  [11:0]  read_address;
-wire  [1:0]   read_bank;
-wire  [31:0]  read_path_data;
+wire        [2:0]   read_command;
+wire                read_idle;
+wire        [11:0]  read_address;
+wire        [1:0]   read_bank;
+wire        [31:0]  read_path_data;
 
-wire  [15:0]  data_in;
-assign        data_in = data;
-wire          read_fifo_reset;
-wire          read_enable;
-assign        read_enable = app_read_enable & write_idle & write_fifo_empty;
+wire        [15:0]  data_in;
+assign              data_in = data;
+wire                read_fifo_reset;
+
+//Control Signals
+wire                read_enable;
+
+//XXX: WRITE FIFO EMPTY NEEDS TO BE FIXED!!
+assign              read_enable = sdram_read_enable & write_idle & write_fifo_empty;
+
+//Read Signals
+wire        [1:0]   of_write_ready;
+wire        [1:0]   of_write_activate;
+wire        [23:0]  of_write_fifo_size;
+wire                of_write_strobe;
+wire        [31:0]  of_write_data;
+
+/*
+wire                of_read_strobe;
+wire                of_read_ready;
+wire                of_read_activate;
+wire        [23:0]  of_read_count;
+wire        [31:0]  of_read_data;
+
+assign              of_read_strobe    = of_read_pulse;
+assign              of_read_ready    = of_read_ready;
+assign              of_read_activate  = of_read_activate;
+assign              of_read_count    = of_read_count;
+assign              of_read_data     = of_read_data;
+*/
+
+//Read FIFO
+ppfifo#(
+  .DATA_WIDTH(32),
+  .ADDRESS_WIDTH(9)
+)ppfifo_rd (
+  .reset(rst || ~sdram_ready),
+
+  //Write
+  .write_clock(sdram_clk),
+  .write_ready(of_write_ready),
+  .write_activate(of_write_activate),
+  .write_fifo_size(of_write_fifo_size),
+  .write_strobe(of_write_strobe),
+  .write_data(of_write_data),
+  
+  .starved(of_starved),
+
+  //Read
+  .read_clock(clk),
+  .read_strobe(of_read_strobe),
+  .read_ready(of_read_ready),
+  .read_activate(of_read_activate),
+  .read_count(of_read_count),
+  .read_data(of_read_data)
+
+);
+
 
 //instantiate the read fifo (32 bits)
+/*
 afifo 
 	#(		
       .DATA_WIDTH(32),
@@ -212,7 +328,7 @@ fifo_rd (
 
   //Data
 	.data_in(read_path_data),
-	.data_out(app_read_data),
+	.data_out(of_read_data),
 
   //Status
 	.full(read_fifo_full),
@@ -220,8 +336,9 @@ fifo_rd (
 
   //Commands
 	.wr_en(read_path_write_pulse),
-	.rd_en(app_read_pulse)
+	.rd_en(of_read_pulse)
 );
+*/
 
 
 sdram_read read_path (
