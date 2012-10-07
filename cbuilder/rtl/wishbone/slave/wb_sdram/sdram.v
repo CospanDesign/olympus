@@ -36,7 +36,7 @@ module sdram (
   if_write_ready,
   if_write_activate,
   if_write_fifo_size,
-  //write_fifo_full,
+  if_starved,
 
   //read path
   of_read_pulse,
@@ -44,7 +44,6 @@ module sdram (
   of_read_activate,
   of_read_count,
   of_read_data,
-  //read_fifo_empty,
 
   //Wishbone command
   sdram_ready,
@@ -75,14 +74,13 @@ input       [3:0]   if_write_mask;
 output      [1:0]   if_write_ready;
 input       [1:0]   if_write_activate;
 output      [23:0]  if_write_fifo_size;
-//output        write_fifo_full;
+output              if_starved;
 
 input               of_read_pulse;
 output              of_read_ready;
 input               of_read_activate;
 output      [23:0]  of_read_count;
 output      [31:0]  of_read_data;
-//output        read_fifo_empty;
 
 input               sdram_write_enable;
 input               sdram_read_enable;
@@ -137,36 +135,21 @@ wire        [11:0]  write_address;
 wire        [1:0]   write_bank;
 wire                write_idle;
 wire        [1:0]   write_data_mask;
-wire        [35:0]  write_path_data;
+wire        [35:0]  if_read_data;
 //reg               write_enable;
 wire        [15:0]  data_out;
 
 wire                writing;
-wire                write_fifo_empty;
 assign              writing = ~write_idle;
 
 
 //Write FIFO
-/*
-wire        [1:0]   if_write_ready;
-wire        [1:0]   if_write_activate;   
-wire        [23:0]  if_write_fifo_size;
-wire                if_write_strobe;
-wire        [35:0]  if_write_data;
-*/
+wire                if_fifo_idle;
 
 wire                if_read_strobe;
 wire                if_read_ready;
 wire                if_read_activate;
 wire        [23:0]  if_read_count;
-wire        [35:0]  if_read_data;
-
-/*
-assign              if_write_strobe     = if_write_pulse;
-assign              if_write_ready     = if_write_ready;
-assign              if_write_activate   = if_write_activate;
-assign              if_write_fifo_size = if_write_fifo_size;
-*/
 
 ppfifo#(
   .DATA_WIDTH(36),
@@ -193,32 +176,6 @@ ppfifo#(
   .read_data(if_read_data)
 );
 
-/*
-afifo 
-	#(		.DATA_WIDTH(36),
-			.ADDRESS_WIDTH(10)
-	)
-fifo_wr (
-	.rst(rst || ~sdram_ready),
-
-  //Clocks
-	.din_clk(clk),
-	.dout_clk(sdram_clk),
-
-  //Data
-	.data_in({if_write_mask, if_write_data}),
-	.data_out(write_path_data),
-
-  //Status
-	.full(write_fifo_full),
-	.empty(write_fifo_empty),
-
-  //Commands
-	.wr_en(if_write_pulse),
-	.rd_en(write_path_read_pulse)
-);
-*/
-
 sdram_write write_path (
   .rst(rst || ~sdram_ready),
   .clk(sdram_clk),
@@ -240,9 +197,11 @@ sdram_write write_path (
   .app_address(app_address),
 
   //Data Out Path
-  .fifo_data(write_path_data),
-  .fifo_read(write_path_read_pulse),
-  .fifo_empty(write_fifo_empty)
+  .fifo_data(if_read_data),
+  .fifo_read(if_read_strobe),
+  .fifo_ready(if_read_ready),
+  .fifo_activate(if_read_activate),
+  .fifo_size(if_read_count)
 
 );
 
@@ -251,17 +210,17 @@ wire        [2:0]   read_command;
 wire                read_idle;
 wire        [11:0]  read_address;
 wire        [1:0]   read_bank;
-wire        [31:0]  read_path_data;
 
 wire        [15:0]  data_in;
 assign              data_in = data;
-wire                read_fifo_reset;
+wire                of_fifo_reset;
 
 //Control Signals
 wire                read_enable;
 
 //XXX: WRITE FIFO EMPTY NEEDS TO BE FIXED!!
-assign              read_enable = sdram_read_enable & write_idle & write_fifo_empty;
+assign              if_fifo_idle  = (if_write_ready == 3); //write FIFO is completely IDLE
+assign              read_enable = sdram_read_enable & write_idle & (if_fifo_idle);
 
 //Read Signals
 wire        [1:0]   of_write_ready;
@@ -270,26 +229,13 @@ wire        [23:0]  of_write_fifo_size;
 wire                of_write_strobe;
 wire        [31:0]  of_write_data;
 
-/*
-wire                of_read_strobe;
-wire                of_read_ready;
-wire                of_read_activate;
-wire        [23:0]  of_read_count;
-wire        [31:0]  of_read_data;
-
-assign              of_read_strobe    = of_read_pulse;
-assign              of_read_ready    = of_read_ready;
-assign              of_read_activate  = of_read_activate;
-assign              of_read_count    = of_read_count;
-assign              of_read_data     = of_read_data;
-*/
 
 //Read FIFO
 ppfifo#(
   .DATA_WIDTH(32),
   .ADDRESS_WIDTH(9)
 )ppfifo_rd (
-  .reset(rst || ~sdram_ready),
+  .reset(rst || ~sdram_ready || of_fifo_reset),
 
   //Write
   .write_clock(sdram_clk),
@@ -311,36 +257,7 @@ ppfifo#(
 
 );
 
-
-//instantiate the read fifo (32 bits)
-/*
-afifo 
-	#(		
-      .DATA_WIDTH(32),
-			.ADDRESS_WIDTH(10)
-	)
-fifo_rd (
-	.rst(read_fifo_reset),
-
-  //Clocks
-	.din_clk(sdram_clk),
-	.dout_clk(clk),
-
-  //Data
-	.data_in(read_path_data),
-	.data_out(of_read_data),
-
-  //Status
-	.full(read_fifo_full),
-	.empty(read_fifo_empty),
-
-  //Commands
-	.wr_en(read_path_write_pulse),
-	.rd_en(of_read_pulse)
-);
-*/
-
-
+//Read Path
 sdram_read read_path (
   .rst(rst || ~sdram_ready),
   .clk(sdram_clk),
@@ -361,11 +278,13 @@ sdram_read read_path (
   .app_address(app_address),
 
   //Data In Path
-  .fifo_reset(read_fifo_reset),
-  .fifo_data(read_path_data),
-  .fifo_write(read_path_write_pulse),
-  .fifo_full(read_fifo_full),
-  .fifo_empty(read_fifo_empty)
+  .fifo_reset(of_fifo_reset),
+  .fifo_data(of_write_data),
+  .fifo_write(of_write_strobe),
+  .fifo_ready(of_write_ready),
+  .fifo_activate(of_write_activate),
+  .fifo_size(of_write_fifo_size),
+  .starved(of_starved)
 );
 
 //Initialization Write Path

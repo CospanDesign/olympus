@@ -47,8 +47,10 @@ module sdram_read (
   fifo_reset,
   fifo_data,
   fifo_write,
-  fifo_full,
-  fifo_empty
+  fifo_ready,
+  fifo_activate,
+  fifo_size,
+  starved
 );
 
 input               rst;
@@ -69,11 +71,14 @@ output  reg         wait_for_refresh;
 input       [21:0]  app_address;
 
 //FIFO
+output  reg         fifo_reset;
 output  reg [31:0]  fifo_data;
 output  reg         fifo_write;
-output  reg         fifo_reset;
-input               fifo_full;
-input               fifo_empty;
+input       [1:0]   fifo_ready;
+output  reg [1:0]   fifo_activate;
+input       [23:0]  fifo_size;
+input               starved;
+
 
 parameter           IDLE            = 4'h0;
 parameter           ACTIVATE        = 4'h1;
@@ -91,6 +96,7 @@ reg         [21:0]  read_address;
 reg                 read_top;
 reg                 read_bottom;
 reg         [10:0]  dword_count;
+reg         [23:0]  fifo_count;
 
 wire        [11:0]  row;
 wire        [7:0]   column;
@@ -106,21 +112,22 @@ reg         [31:0]  ram_data;
 
 always @ (posedge clk) begin
   if (rst) begin
-    command     <=  `SDRAM_CMD_NOP;
-    delay       <=  0;
-    state       <=  IDLE;
-    address     <=  12'h000;
-    bank        <=  2'b0;
-    read_top    <=  0;
-    read_bottom <=  0;
+    command             <=  `SDRAM_CMD_NOP;
+    delay               <=  0;
+    state               <=  IDLE;
+    address             <=  12'h000;
+    bank                <=  2'b0;
+    read_top            <=  0;
+    read_bottom         <=  0;
 
     //TEST: Putting the read in this state machine
-    fifo_write  <=  0;
-    fifo_data   <=  32'h0000;
-    ram_data    <=  32'h0000;
-    fifo_reset  <=  0;
-    wait_for_refresh  <=  0;
-    dword_count <=  0;
+    fifo_write          <=  0;
+    fifo_data           <=  32'h0000;
+    ram_data            <=  32'h0000;
+    fifo_reset          <=  0;
+    wait_for_refresh    <=  0;
+    dword_count         <=  0;
+    fifo_count          <=  0;
 
   end
   else begin
@@ -136,7 +143,8 @@ always @ (posedge clk) begin
       fifo_data[15:0]   <=  data_in;
       //fifo_data[15:0] <=  16'h1A2B;
       //send a write pulse to the FIFO
-      fifo_write           <=  1;
+      fifo_write        <=  1;
+      fifo_count        <=  fifo_count - 1;
     end
 
     //reading the top and bottom should always be a pulse to the other state machine
@@ -152,35 +160,46 @@ always @ (posedge clk) begin
     else begin
       case (state)
         IDLE: begin
-          dword_count       <=  0;
-          fifo_reset        <=  1;
-          if (enable && ~fifo_full) begin
+          dword_count           <=  0;
+          fifo_reset            <=  1;
+          fifo_activate         <=  0;
+          if (enable && (fifo_ready > 0)) begin
             $display ("SDRAM_READ: IDLE: Read request");
-            state           <=  WAIT;
-            read_address    <=  app_address;
+            state               <=  WAIT;
+            read_address        <=  app_address;
+            fifo_count          <=  fifo_size;
+            if (fifo_ready[0] == 1) begin
+              fifo_activate[0]  <=  1;
+            end
+            else begin
+              fifo_activate[1]  <=  1;
+            end
           end
-          wait_for_refresh  <=  1;
+          wait_for_refresh      <=  1;
         end
         WAIT: begin
           if (auto_refresh) begin
-            wait_for_refresh  <=  1;
+            wait_for_refresh    <=  1;
+          end
+          else if (~enable) begin
+            state               <=  IDLE;
           end
           else begin
-            if (dword_count < `MAX_DWORD)begin
-              if (~enable) begin
-                state       <=  IDLE;
-              end
-              else if (~fifo_full) begin
-                state       <=  ACTIVATE;
-              end
+            if ((fifo_count == 0) && (fifo_activate > 0)) begin
+              fifo_activate     <=  0;
             end
-            else begin
-              if (fifo_empty) begin
-                dword_count <= 0;
+            else if (fifo_activate > 0) begin
+              state             <=  ACTIVATE;
+            end
+            else if (fifo_ready) begin
+              fifo_count        <=  fifo_size;
+              if (fifo_ready[0] == 1) begin
+                fifo_activate[0]<=  1;
               end
-              if (~enable) begin
-                state       <=  IDLE;
+              else begin
+                fifo_activate[1] <=  1;
               end
+              state             <=  ACTIVATE;
             end
           end
         end
@@ -216,7 +235,7 @@ always @ (posedge clk) begin
           $display ("SDRAM_READ: Reading bottom word");
           command       <=  `SDRAM_CMD_NOP;
           read_bottom   <=  1;
-          if (fifo_full || ~enable || (read_address[7:0] == 8'h00) || auto_refresh) begin
+          if ((fifo_count == 1) || ~enable || (read_address[7:0] == 8'h00) || auto_refresh) begin
             state       <=  BURST_TERMINATE;
           end
           else begin

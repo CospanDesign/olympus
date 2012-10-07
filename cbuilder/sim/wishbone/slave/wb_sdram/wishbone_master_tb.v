@@ -23,6 +23,14 @@ SOFTWARE.
 */
 
 /*
+  08/30/2012
+    -Major overhall of the testbench
+    -modfied the way reads and writes happen, now each write requires the
+    number of 32-bit data packets even if the user sends only 1
+    -there is no more streaming as the data_count will implicity declare
+    that a read/write is streaming
+    -added the ih_reset which has not been formally defined within the
+    system, but will more than likely reset the entire statemachine
   11/12/2011
     -overhauled the design to behave more similar to a real I/O handler
     -changed the timeout to 40 seconds to allow the wishbone master to catch
@@ -31,46 +39,78 @@ SOFTWARE.
     -added interrupt support
 */
 
-`timescale 1 ns/100 ps
+/**
+ *  excersize the wishbone master by executing all the commands and observing
+ *  the output
+ *
+ *  Commands to test
+ *
+ *  COMMAND_PING
+ *    -send a ping request, and observe the response
+ *      -response
+ *        - S: 0xFFFFFFFF
+ *        - A: 0x00000000
+ *        - D: 0x0000C594
+ *  COMMAND_WRITE
+ *    -send a request to write to address 0x00000000, the output wb 
+ *    signals should correspond to a the wirte... 
+ *    I might need a simulated slave for this to work
+ *      -response
+ *        - S: 0xFFFFFFFE
+ *        - A: 0x00000000
+ *  COMMAND_READ
+ *    -send a reqeust to read from address 0x00000000, the output wb signals
+ *    should correspond to a read. a simulated slave might be required for 
+ *    this
+ *    to work
+ *      -response
+ *        - S: 0xFFFFFFFD
+ *        - A: 0x00000000
+ */
 
-`define TIMEOUT_COUNT 30000
+`timescale 1 ns/1 ps
+
+`define TIMEOUT_COUNT 40
 `define INPUT_FILE "master_input_test_data.txt"  
 `define OUTPUT_FILE "master_output_test_data.txt"
 
 module wishbone_master_tb (
 );
 
-//test signals
-reg     clk = 0;
-reg     rst = 0;
-wire    master_ready;
-reg     in_ready;
-reg [31:0]  in_command;
-reg [31:0]  in_address;
-reg [31:0]  in_data;
-reg [27:0]  in_data_count = 0;
-reg     out_ready;
-wire    out_en;
-wire [31:0] out_status;
-wire [31:0] out_address;
-wire [31:0] out_data;
-wire [27:0] out_data_count;
+//Virtual Host Interface Signals
+reg               clk           = 0;
+reg               rst           = 0;
+wire              master_ready;
+reg               in_ready      = 0;
+reg   [31:0]      in_command    = 32'h00000000;
+reg   [31:0]      in_address    = 32'h00000000;
+reg   [31:0]      in_data       = 32'h00000000;
+reg   [27:0]      in_data_count = 0;
+reg               out_ready     = 0;
+wire              out_en;
+wire  [31:0]      out_status;
+wire  [31:0]      out_address;
+wire  [31:0]      out_data;
+wire  [27:0]      out_data_count;
+reg               ih_reset      = 0;
 
 //wishbone signals
-wire    wbm_we_o;
-wire    wbm_cyc_o;
-wire    wbm_stb_o;
-wire [3:0]  wbm_sel_o;
-wire [31:0] wbm_adr_o;
-wire [31:0] wbm_dat_i;
-wire [31:0] wbm_dat_o;
-wire    wbm_ack_o;
-wire    wbm_int_o;
+wire              wbm_we_o;
+wire              wbm_cyc_o;
+wire              wbm_stb_o;
+wire [3:0]        wbm_sel_o;
+wire [31:0]       wbm_adr_o;
+wire [31:0]       wbm_dat_i;
+wire [31:0]       wbm_dat_o;
+wire              wbm_ack_o;
+wire              wbm_int_i;
+
 
 
 wishbone_master wm (
   .clk(clk),
   .rst(rst),
+  .ih_reset(ih_reset),
   .in_ready(in_ready),
   .in_command(in_command),
   .in_address(in_address),
@@ -92,97 +132,40 @@ wishbone_master wm (
   .wb_we_o(wbm_we_o),
   .wb_msk_o(wbm_msk_o),
   .wb_sel_o(wbm_sel_o),
-  .wb_ack_i(wbm_ack_i)
+  .wb_ack_i(wbm_ack_i),
+  .wb_int_i(wbm_int_i)
 );
 
-//wishbone slave 0 signals
-wire    wbs0_we_o;
-wire    wbs0_cyc_o;
-wire[31:0]  wbs0_dat_o;
-wire    wbs0_stb_o;
-wire [3:0]  wbs0_sel_o;
-wire    wbs0_ack_i;
-wire [31:0] wbs0_dat_i;
-wire [31:0] wbs0_adr_o;
-wire    wbs0_int_i;
+//Wishbone Slave 0 (DRT) signals
+wire              wbs0_we_o;
+wire              wbs0_cyc_o;
+wire  [31:0]      wbs0_dat_o;
+wire              wbs0_stb_o;
+wire  [3:0]       wbs0_sel_o;
+wire              wbs0_ack_i;
+wire  [31:0]      wbs0_dat_i;
+wire  [31:0]      wbs0_adr_o;
+wire              wbs0_int_i;
 
 
-//wishbone slave 1 signals
-wire    wbs1_we_o;
-wire    wbs1_cyc_o;
-wire[31:0]  wbs1_dat_o;
-wire    wbs1_stb_o;
-wire [3:0]  wbs1_sel_o;
-wire    wbs1_ack_i;
-wire [31:0] wbs1_dat_i;
-wire [31:0] wbs1_adr_o;
-wire    wbs1_int_i;
+//wishbone slave 1 (Unit Under Test) signals
+wire              wbs1_we_o;
+wire              wbs1_cyc_o;
+wire  [31:0]      wbs1_dat_o;
+wire              wbs1_stb_o;
+wire  [3:0]       wbs1_sel_o;
+wire              wbs1_ack_i;
+wire  [31:0]      wbs1_dat_i;
+wire  [31:0]      wbs1_adr_o;
+wire              wbs1_int_i;
 
+reg               uart_finished;
 
-wire    sdram_clk;
-wire    sdram_cke;
-wire    sdram_cs_n;
-wire    sdram_ras;
-wire    sdram_cas;
-wire    sdram_we;
-
-wire  [11:0]  sdram_addr;
-wire  [1:0] sdram_bank;
-wire  [15:0]  sdram_data;
-wire  [1:0] sdram_data_mask;
-
-wire    sdram_ready;
-
-reg   [15:0]  sdram_in_data;
-//assign    sdram_data = (in_command == 2) ? sdram_in_data : 16'hZZZZ;
-
-
-mt48lc4m16 
-//#(
-//  tdevice_TRCD = 10
-//)
-ram (
-        .A11  (sdram_addr[11]),
-        .A10  (sdram_addr[10]),
-        .A9   (sdram_addr[9]),
-        .A8   (sdram_addr[8]),
-        .A7   (sdram_addr[7]),
-        .A6   (sdram_addr[6]),
-        .A5   (sdram_addr[5]),
-        .A4   (sdram_addr[4]),
-        .A3   (sdram_addr[3]),
-        .A2   (sdram_addr[2]),
-        .A1   (sdram_addr[1]),
-        .A0   (sdram_addr[0]),
-
-        .DQ15 (sdram_data[15]),
-        .DQ14 (sdram_data[14])  ,
-        .DQ13 (sdram_data[13]),
-        .DQ12 (sdram_data[12]),
-        .DQ11 (sdram_data[11]),
-        .DQ10 (sdram_data[10]),
-        .DQ9  (sdram_data[9]),
-        .DQ8  (sdram_data[8]),
-        .DQ7  (sdram_data[7]),
-        .DQ6  (sdram_data[6]),
-        .DQ5  (sdram_data[5]),
-        .DQ4  (sdram_data[4]),
-        .DQ3  (sdram_data[3]),
-        .DQ2  (sdram_data[2]),
-        .DQ1  (sdram_data[1]),
-        .DQ0  (sdram_data[0]),
-
-        .BA0  (sdram_bank[0]),
-        .BA1  (sdram_bank[1]),
-        .DQMH (sdram_data_mask[1]),
-        .DQML (sdram_data_mask[0]),
-        .CLK  (sdram_clk),
-        .CKE  (sdram_cke),
-        .WENeg  (sdram_we),
-        .RASNeg (sdram_ras),
-        .CSNeg  (sdram_cs_n),
-        .CASNeg (sdram_cas)
-);
+reg               la_clk = 0;
+reg   [31:0]      la_data;
+reg               la_ext_trigger;
+wire              la_uart_tx;
+wire              la_uart_rx;
 
 //slave 1
 wb_sdram s1 (
@@ -252,274 +235,312 @@ wishbone_interconnect wi (
 
 );
 
-integer fd_in;
-integer fd_out;
-integer read_count;
-integer timeout_count;
-integer ch;
+integer           fd_in;
+integer           fd_out;
+integer           read_count;
+integer           timeout_count;
+integer           ch;
 
-integer data_count;
+integer           data_count;
 
+
+reg               execute_command;
+reg               command_finished;
+reg               request_more_data;
+reg               request_more_data_ack;
+reg     [27:0]    data_write_count;
+
+
+//Clock rate is 50MHz
 always #10 clk = ~clk;
-
-
-reg   execute_command;
-reg   command_finished;
-reg   read_data;
-reg   data_read;
+always #5 la_clk = ~la_clk;
 
 initial begin
-  fd_out      = 0;
-  read_count    =   0;
-  data_count    = 0;
-  data_read   <=  0;
-  timeout_count = 0;
-  execute_command <=  0;
+  fd_out                      = 0;
+  read_count                  = 0;
+  data_count                  = 0;
+  timeout_count               = 0;
+  request_more_data_ack       <=  0;
+  execute_command             <=  0;
 
   $dumpfile ("design.vcd");
   $dumpvars (0, wishbone_master_tb);
-  //$dumpvars (0, wm);
-  fd_in = $fopen(`INPUT_FILE, "r");
-  fd_out = $fopen(`OUTPUT_FILE, "w");
+  fd_in                       = $fopen(`INPUT_FILE, "r");
+  fd_out                      = $fopen(`OUTPUT_FILE, "w");
 
-  rst       <= 0;
-  #20
-  rst       <= 1;
+  rst                         <= 0;
+  #40
+  rst                         <= 1;
 
   //clear the handler signals
-  in_ready    <= 0;
-  in_command    <= 0;
-  in_address    <= 32'h0;
-  in_data     <= 32'h0;
-  in_data_count <= 0;
-  out_ready   <= 32'h0;
+  in_ready                    <= 0;
+  in_command                  <= 0;
+  in_address                  <= 32'h0;
+  in_data                     <= 32'h0;
+  in_data_count               <= 0;
+  out_ready                   <= 0;
   //clear wishbone signals
-  #100
-  rst       <= 0;
-  out_ready     <= 1;
-
-  #1000
-  while (!sdram_ready) begin
-    #100
-    execute_command <= 0;
-  end
-
-  $display ("SDRAM Ready");
+  #80
+  rst                         <= 0;
+  out_ready                   <= 1;
 
   if (fd_in == 0) begin
     $display ("TB: input stimulus file was not found");
   end
   else begin
+    //while there is still data to be read from the file
     while (!$feof(fd_in)) begin
       //read in a command
-      read_count = $fscanf (fd_in, "%h:%h:%h:%h\n", in_data_count, in_command, in_address, in_data);
+      read_count              = $fscanf (fd_in, "%h:%h:%h:%h\n", in_data_count, in_command, in_address, in_data);
 
       if (read_count != 4) begin
         ch = $fgetc(fd_in);
-        $display ("Error: read_count = %h", read_count);
-        $display ("Character: %h", ch);
+        if (ch == 8'h53) begin
+          read_count = $fscanf (fd_in, "%h\n", in_data_count);
+          $display ("Sleep for %d ticks", in_data_count); 
+          for (read_count = in_data_count[27:0]; read_count > 0; read_count = read_count - 1) begin
+            #1;
+          end
+        end
+        else begin
+          ch = $fgetc(fd_in);
+          $display ("Error: read_count = %h != 4", read_count);
+          $display ("Character: %h", ch);
+        end
       end
       else begin
-        $display ("TB: executing command");
-        execute_command <= 1;
+        case (in_command)
+          0: $display ("TB: Executing PING commad");
+          1: $display ("TB: Executing WRITE command");
+          2: $display ("TB: Executing READ command");
+          3: $display ("TB: Executing RESET command");
+        endcase
+        execute_command                 <= 1;
+        #20
+
         while (~command_finished) begin
-          data_read <= 0;
+          request_more_data_ack         <= 0;
 
           if ((in_command & 32'h0000FFFF) == 1) begin
-            if (read_data && ~data_read) begin
-              read_count = $fscanf(fd_in, "%h\n", in_data); 
+            if (request_more_data && ~request_more_data_ack) begin
+              read_count      = $fscanf(fd_in, "%h\n", in_data);  
               $display ("TB: reading a new double word: %h", in_data);
-              data_read <= 1;
+              request_more_data_ack     <= 1;
             end
           end
 
           //so time porgresses wait a tick
-          #10
-          //this doesn't need to be here, but there is a bug with iverilog that wont allow me to put a delay in right before an 'end' statement
+          #20;
+          //this doesn't need to be here, but there is a weird behavior in iverilog
+          //that wont allow me to put a delay in right before an 'end' statement
           execute_command <= 1;
-        //end //while command is not finished
-        //while (~command_finished) begin
-        //  #100
-        //  execute_command <= 1;
-        //end
-               //if (!$feof(fd_in)) begin
-        //  ch = $fgetc(fd_in);
-          //$display("ch: %h", ch);
+        end //while command is not finished
+        while (command_finished) begin
+          #20;
+          execute_command <= 0;
         end
-        execute_command <= 0;
-        #500
+        #200
         $display ("TB: finished command");
-
       end //end read_count == 4
     end //end while ! eof
   end //end not reset
-  #1000
-  $display("TB: Closing Files");
+
+  while (!uart_finished) begin
+    #100;
+  end
+  #10000
   $fclose (fd_in);
   $fclose (fd_out);
   $finish();
 end
 
-parameter TB_IDLE     = 4'h0;
-parameter TB_EXECUTE  = 4'h1;
-parameter TB_WRITE    = 4'h2;
-parameter TB_READ     = 4'h3;
+parameter         IDLE            = 4'h0;
+parameter         EXECUTE         = 4'h1;
+parameter         RESET           = 4'h2;
+parameter         PING_RESPONSE   = 4'h3;
+parameter         WRITE_DATA      = 4'h4;
+parameter         WRITE_RESPONSE  = 4'h5;
+parameter         GET_WRITE_DATA  = 4'h6;
+parameter         READ_RESPONSE   = 4'h7;
+parameter         READ_MORE_DATA  = 4'h8;
 
-reg [3:0] state = TB_IDLE;
+reg [3:0]         state           =   IDLE;
 
-reg reading_multiple  = 0;
-reg prev_int      = 0;
+reg               prev_int        = 0;
 
 //initial begin
 //    $monitor("%t, state: %h", $time, state);
 //end
 
-always @ (negedge sdram_clk, rst) begin
-  if (rst) begin
-    sdram_in_data <=  16'h0000;
-  end
-  else begin
-    if (in_command == 2) begin
-      //sdram_in_data[15:8] <=  sdram_in_data[15:8] - 1;
-      //sdram_in_data[7:0]  <=  sdram_in_data[7:0] + 1;
-      sdram_in_data <=  sdram_in_data + 1;
-    end
-  end
-end
-
 always @ (posedge clk) begin
-  in_ready      <= 0;
-  out_ready     <= 1;
-  command_finished  <= 0;
-
   if (rst) begin
-    state       <= TB_IDLE;
-    read_data     <= 0;
-    reading_multiple  <= 0;
-    timeout_count   <= 0;
-    prev_int      <= 0;
+    state                     <= IDLE;
+    request_more_data         <= 0;
+    timeout_count             <= 0;
+    prev_int                  <= 0;
+    ih_reset                  <= 0;
+    data_write_count          <=  0;
   end
   else begin
-    if (timeout_count > 0) begin
-      timeout_count <= timeout_count - 1;
-    end
-    if (execute_command && timeout_count == 0) begin
-      $display ("TB: Master timed out while executing command: %h", in_command);
-      state <= TB_IDLE;
-      command_finished <= 1;
-      if (in_data_count > 0) begin
-        reading_multiple  <=  1;
-      end
+    ih_reset                  <= 0;
+    in_ready                  <= 0;
+    out_ready                 <= 1;
+    command_finished          <= 0;
 
+
+    //Countdown the NACK timeout
+    if (execute_command && timeout_count > 0) begin
+      timeout_count           <= timeout_count - 1;
+    end
+
+    if (execute_command && timeout_count == 0) begin
+      case (in_command)
+        0: $display ("TB: Master timed out while executing PING commad");
+        1: $display ("TB: Master timed out while executing WRITE command");
+        2: $display ("TB: Master timed out while executing READ command");
+        3: $display ("TB: Master timed out while executing RESET command");
+      endcase
+
+      state                   <= IDLE;
+      command_finished        <= 1;
+      timeout_count           <= `TIMEOUT_COUNT;
+      data_write_count        <= 1;
     end //end reached the end of a timeout
 
     case (state)
-      TB_IDLE: begin
-        if (out_en) begin
-          state <= TB_READ;
-          out_ready <= 0;
-        end
+      IDLE: begin
         if (execute_command & ~command_finished) begin
           $display ("TB: #:C:A:D = %h:%h:%h:%h", in_data_count, in_command, in_address, in_data);
-          timeout_count <= `TIMEOUT_COUNT;
-          state     <= TB_EXECUTE;
+          timeout_count       <= `TIMEOUT_COUNT;
+          state               <= EXECUTE;
         end
       end
-      TB_EXECUTE: begin
+      EXECUTE: begin
         if (master_ready) begin
           //send the command over 
-          in_ready  <= 1;
-          if ((in_command & 32'h0000000F) == 1) begin
-            $display ("TB: Writing");
-            //write command
-            //in_commands are read from the above initial statement
-            //in_data count
-            //in_command
-            //in_address
-            //in_data
-            if (in_data_count > 0) begin
-              in_data_count = in_data_count - 1;
+          in_ready            <= 1;
+          case (in_command & 32'h0000FFFF)
+            0: begin
+              //ping
+              state           <=  PING_RESPONSE;
             end
-            state <= TB_WRITE;
+            1: begin
+              //write
+              if (in_data_count > 1) begin
+                $display ("TB: \tWrote double word %d: %h", data_write_count, in_data);
+                state                   <=  WRITE_DATA;
+                timeout_count           <= `TIMEOUT_COUNT;
+                data_write_count        <=  data_write_count + 1;
+              end
+              else begin
+                if (data_write_count > 1) begin
+                  $display ("TB: \tWrote double word %d: %h", data_write_count, in_data);
+                end
+                state                   <=  WRITE_RESPONSE;
+              end
+            end
+            2: begin
+              //read
+              state           <=  READ_RESPONSE;
+            end
+            3: begin
+              //reset
+              state           <=  RESET;
+            end
+          endcase
+        end
+      end
+      RESET: begin
+        //reset the system
+        ih_reset                    <=  1;
+        command_finished            <=  1;
+        state                       <=  IDLE;
+      end
+      PING_RESPONSE: begin
+        if (out_en) begin
+          if (out_status == (~(32'h00000000))) begin
+            $display ("TB: Read a successful ping reponse");
           end
           else begin
-            //read command
-            $display ("TB: Reading");
-            state <= TB_READ;
+            $display ("TB: Ping response is incorrect!");
+          end
+          $display ("TB: \tS:A:D = %h:%h:%h\n", out_status, out_address, out_data);
+          command_finished  <= 1;
+          state                     <=  IDLE;
+        end
+      end
+      WRITE_DATA: begin
+        if (!in_ready && master_ready) begin
+          state                     <=  GET_WRITE_DATA;
+          request_more_data         <=  1;
+        end
+      end
+      WRITE_RESPONSE: begin
+        if (out_en) begin
+         if (out_status == (~(32'h00000001))) begin
+            $display ("TB: Read a successful write reponse");
+          end
+          else begin
+            $display ("TB: Write response is incorrect!");
+          end
+          $display ("TB: \tS:A:D = %h:%h:%h\n", out_status, out_address, out_data);
+          state                   <=  IDLE;
+          command_finished  <= 1;
+        end
+      end
+      GET_WRITE_DATA: begin
+        if (request_more_data_ack) begin
+//XXX: should request more data be a strobe?
+          request_more_data   <=  0;
+          in_ready            <=  1;
+          in_data_count       <=  in_data_count -1;
+          state               <=  EXECUTE;
+        end
+      end
+      READ_RESPONSE: begin
+        if (out_en) begin
+          if (out_status == (~(32'h00000002))) begin
+            $display ("TB: Read a successful read response");
+            if (out_data_count > 0) begin
+              state             <=  READ_MORE_DATA;
+              //reset the NACK timeout
+              timeout_count     <=  `TIMEOUT_COUNT;
+            end
+            else begin
+              state             <=  IDLE;
+              command_finished  <= 1;
+            end
+          end
+          else begin
+            $display ("TB: Read response is incorrect");
+            command_finished  <= 1;
+          end
+          $display ("TB: \tS:A:D = %h:%h:%h\n", out_status, out_address, out_data);
+        end
+      end
+      READ_MORE_DATA: begin
+        if (out_en) begin
+          out_ready             <=  0;
+          if (out_status == (~(32'h00000002))) begin
+            $display ("TB: Read a 32bit data packet");
+            $display ("Tb: \tRead Data: %h", out_data);
+          end
+          else begin
+            $display ("TB: Read reponse is incorrect");
+          end
+
+          //read the output data count to determine if there is more data
+          if (out_data_count == 0) begin
+            state             <=  IDLE;
+            command_finished  <=  1;
           end
         end
       end
-      TB_WRITE: begin
-        //write data to the master
-        if (out_en) begin
-          //got a response
-          $display ("TB: read: S:A:D = %h:%h:%h\n", out_status, out_address, out_data);
-        end
-        else if (master_ready & ~in_ready) begin
-          if (in_data_count == 0) begin
-            $display("TB: finished write");
-            //wrote last double word of data
-            command_finished  <= 1;
-            state <= TB_IDLE;
-          end
-          else begin
-            //need to write more data, ask the read block to read more
-            if (data_read) begin
-              $display ("TB: send new data: %h", in_data);
-              read_data <= 0;
-              in_ready  <= 1;
-              in_data_count <= in_data_count -1;
-              //the in data is set by the initial
-            end
-            else begin
-              $display("TB: (burst mode) get another double word");
-              timeout_count <= `TIMEOUT_COUNT;
-              read_data <= 1;
-            end//send another data
-          end
-        end
-      end //write command
-      TB_READ: begin
-        //read data from the master
-        if (out_en) begin
-          $display ("TB: read: S:A:D = %h:%h:%h", out_status, out_address, out_data);
-          //out_ready <= 0;
-          if (out_data_count == 0) begin
-            if (reading_multiple) begin
-              reading_multiple  <= 0;
-            end
-            else begin
-              command_finished  <= 1;
-              state <= TB_IDLE;
-            end
-          end
-          else begin
-            reading_multiple  <= 1;
-            timeout_count <= `TIMEOUT_COUNT;
-          end
-        end //enable an write to the output handler
-      end //read or other commands
       default: begin
         $display ("TB: state is wrong");
-        state <= TB_IDLE;
+        state <= IDLE;
       end //somethine wrong here
     endcase //state machine
-    if (out_en) begin
-      $display ("TB: read: S:A:D = %h:%h:%h", out_status, out_address, out_data);
-      if (out_data_count == 0) begin
-        if (reading_multiple) begin
-          reading_multiple  <= 0;
-        end
-        else begin
-          command_finished  <= 1;
-          state <= TB_IDLE;
-        end
-      end
-      else begin
-        reading_multiple  <= 1;
-        timeout_count <= `TIMEOUT_COUNT;
-      end
-    end
     if (out_en && out_status == `PERIPH_INTERRUPT) begin
       $display("TB: Output Handler Recieved interrupt");
       $display("TB:\tcommand: %h", out_status);

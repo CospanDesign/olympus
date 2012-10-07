@@ -108,11 +108,14 @@ reg               if_write_strobe;
 wire      [1:0]   if_write_ready;
 reg       [1:0]   if_write_activate;
 wire      [23:0]  if_write_fifo_size;
+reg       [23:0]  if_count;
+wire              if_starved;
 
 reg               of_read_strobe;
 wire              of_read_ready;
 reg               of_read_activate;
 wire      [23:0]  of_read_count;
+reg       [23:0]  of_count;
 
 //wire              wr_fifo_full;
 //wire              rd_fifo_empty;
@@ -135,6 +138,7 @@ sdram ram (
   .if_write_ready(if_write_ready),
   .if_write_activate(if_write_activate),
   .if_write_fifo_size(if_write_fifo_size),
+  .if_starved(if_starved),
 
   //read path
   .of_read_pulse(of_read_strobe),
@@ -165,59 +169,85 @@ sdram ram (
 //blocks
 always @ (posedge clk) begin
   if (rst) begin
-    wbs_ack_o   <= 0;
-    wbs_int_o   <= 0;
-    if_write_strobe     <= 0;
-    of_read_strobe     <= 0;
-    delay       <= 0;
-    wb_reading  <= 0;
-    writing     <= 0;
-    reading     <= 0;
+    wbs_ack_o         <= 0;
+    wbs_int_o         <= 0;
+    if_write_strobe   <= 0;
+    of_read_strobe    <= 0;
+    delay             <= 0;
+    wb_reading        <= 0;
+    writing           <= 0;
+    reading           <= 0;
+    if_count          <= 0;
   end
   else begin
-    if_write_strobe   <=  0;
-    of_read_strobe   <=  0;
+    if_write_strobe   <= 0;
+    of_read_strobe    <= 0;
     
     //when the master acks our ack, then put our ack down
     if (~wbs_cyc_i) begin
-      writing <=  0;
-      reading <=  0;
+      writing           <= 0;
+      reading           <= 0;
+      of_read_activate  <= 0;
     end
     if (wbs_ack_o & ~wbs_stb_i)begin
-      wbs_ack_o <= 0;
+      wbs_ack_o       <= 0;
     end
 
-    if (wbs_stb_i & wbs_cyc_i) begin
-      //master is requesting somethign
+    if (if_write_activate > 0 && if_starved) begin
+      //release any previously held FIFOs
+      if_count                      <= 0;
+      if_write_activate             <=  0;
+    end
+    else if (wbs_stb_i & wbs_cyc_i) begin
+      //master is requesting something
       if (wbs_we_i) begin
-        writing <=  1;
-        //write request
-        if (~wr_fifo_full & ~wbs_ack_o) begin
-          $display("user wrote %h to address %h", wbs_dat_i, wbs_adr_i);
-          wbs_ack_o <= 1;
-          if_write_strobe   <=  1;
+        if (if_write_activate == 0) begin
+          //try and get a FIFO
+          if (if_write_ready > 0) begin
+            if_count                <= if_write_fifo_size;
+            if (if_write_ready[0]) begin
+              if_write_activate[0]  <=  1; 
+            end
+            else begin
+              if_write_activate     <=  1;
+            end
+          end
+        end
+        else begin
+          writing <=  1;
+          //write request
+          if (~wbs_ack_o) begin
+            if (if_count > 0) begin
+              $display("user wrote %h to address %h", wbs_dat_i, wbs_adr_i);
+              wbs_ack_o           <= 1;
+              if_write_strobe     <= 1;
+              if_count            <= if_count - 1;
+            end
+            else begin
+              if_write_activate         <=  0;
+            end
+          end
         end
       end
 
       //Reading
       else if (~writing) begin 
         reading <=  1;
-        if (delay > 0) begin
-          delay <= delay - 1;
+        if (of_read_ready && !of_read_activate) begin
+          of_count              <=  of_read_count;
+          of_read_activate      <=  1;
         end
-        else begin
-          if (wb_reading) begin
-            wbs_ack_o <=  1;
-            wb_reading <=  0;
+        else if (of_read_activate) begin
+          if (of_count > 0) begin
+            if (~wbs_ack_o) begin
+              $display("user wb_reading %h", wbs_dat_o);
+              of_read_strobe    <=  1;
+              wbs_ack_o         <=  1;
+            end
           end
           else begin
-            //read request
-            if (~rd_fifo_empty & ~wbs_ack_o) begin
-            //  $display("user wb_reading %h", wbs_dat_o);
-              of_read_strobe <=  1;
-              wb_reading <=  1;
-              delay   <=  1;
-            end
+            //release the FIFO
+            of_read_activate    <=  0;
           end
         end
       end
