@@ -41,7 +41,6 @@ module ppfifo
   write_strobe,
   write_data,
 
-  starved,
 
   //read
   read_clock,
@@ -49,7 +48,11 @@ module ppfifo
   read_ready,
   read_activate,
   read_count,
-  read_data
+  read_data,
+
+  //general status
+  starved,
+  inactive
 );
 
 parameter FIFO_DEPTH = (1 << ADDRESS_WIDTH);
@@ -73,7 +76,7 @@ input                       read_activate;
 output reg [23:0]           read_count;
 output [DATA_WIDTH - 1: 0]  read_data;
 
-
+output                      inactive;
 
 
 //Local Registers/Wires
@@ -206,6 +209,14 @@ assign fifo1_read_strobe                = ((read_fifo_select[1] == 1) ? read_str
 
 assign both_reset                       = r_reset & w_reset;
 
+
+assign inactive                            = fifo0_empty && 
+                                          fifo1_empty && 
+                                          (write_activate == 0) && 
+                                          !read_activate && 
+                                          !fifo0_ready && 
+                                          !fifo1_ready;
+
 //Cross Clock Domain Signals
 assign  write_clock_pulse_empty0_valid  = (~write_clock_pulse_empty0_valid_sync[2] && write_clock_pulse_empty0_valid_sync[1]);
 assign  write_clock_pulse_empty1_valid  = (~write_clock_pulse_empty1_valid_sync[2] && write_clock_pulse_empty1_valid_sync[1]);
@@ -217,7 +228,6 @@ assign  fifo1_ready = (fifo1_ready_history[1] & fifo1_ready_history[0]);
 
 assign  pos_edge_fifo0_ready  = fifo0_ready & ~prev_fifo0_ready;
 assign  pos_edge_fifo1_ready  = fifo1_ready & ~prev_fifo1_ready;
-
 
 
 
