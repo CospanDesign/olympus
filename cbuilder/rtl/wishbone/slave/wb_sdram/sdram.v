@@ -62,7 +62,9 @@ module sdram (
   address,
   bank,
   data,
-  data_mask
+  data_mask,
+
+  ext_sdram_clk
 );
 
 input               clk;
@@ -99,10 +101,12 @@ output      [11:0]  address;
 output      [1:0]   bank;
 inout       [15:0]  data;
 output      [1:0]   data_mask;
+output              ext_sdram_clk;
 
 
 wire                sdram_clock_ready;
 wire                sdram_clk;
+assign              ext_sdram_clk = sdram_clk;
 
 //Generate the SDRAM Clock
 sdram_clkgen clkgen (
@@ -150,6 +154,7 @@ wire                if_read_strobe;
 wire                if_read_ready;
 wire                if_read_activate;
 wire        [23:0]  if_read_count;
+wire                if_inactive;
 
 ppfifo#(
   .DATA_WIDTH(36),
@@ -173,7 +178,9 @@ ppfifo#(
   .read_ready(if_read_ready),
   .read_activate(if_read_activate),
   .read_count(if_read_count),
-  .read_data(if_read_data)
+  .read_data(if_read_data),
+
+  .inactive(if_inactive)
 );
 
 sdram_write write_path (
@@ -201,7 +208,8 @@ sdram_write write_path (
   .fifo_read(if_read_strobe),
   .fifo_ready(if_read_ready),
   .fifo_activate(if_read_activate),
-  .fifo_size(if_read_count)
+  .fifo_size(if_read_count),
+  .fifo_inactive(if_inactive)
 
 );
 

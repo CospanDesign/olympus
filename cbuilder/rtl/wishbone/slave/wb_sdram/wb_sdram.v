@@ -70,7 +70,9 @@ module wb_sdram (
   sdram_bank,
   sdram_data,
   sdram_data_mask,
-  sdram_ready
+  sdram_ready,
+
+  ext_sdram_clk
 
 );
 
@@ -84,7 +86,7 @@ input             wbs_cyc_i;
 input     [3:0]   wbs_sel_i;
 input     [31:0]  wbs_adr_i;
 input     [31:0]  wbs_dat_i;
-output    [31:0]  wbs_dat_o;
+output reg[31:0]  wbs_dat_o;
 output reg        wbs_ack_o;
 output reg        wbs_int_o;
 
@@ -103,6 +105,8 @@ inout     [15:0]  sdram_data;
 output    [1:0]   sdram_data_mask;
 output            sdram_ready;
 
+output            ext_sdram_clk;
+
 
 reg               if_write_strobe;
 wire      [1:0]   if_write_ready;
@@ -115,6 +119,7 @@ reg               of_read_strobe;
 wire              of_read_ready;
 reg               of_read_activate;
 wire      [23:0]  of_read_count;
+wire      [31:0]  of_read_data;
 reg       [23:0]  of_count;
 
 //wire              wr_fifo_full;
@@ -144,7 +149,7 @@ sdram ram (
 
   //read path
   .of_read_strobe(of_read_strobe),
-  .of_read_data(wbs_dat_o),
+  .of_read_data(of_read_data),
   .of_read_ready(of_read_ready),
   .of_read_activate(of_read_activate),
   .of_read_count(of_read_count),
@@ -165,26 +170,29 @@ sdram ram (
   .address(sdram_addr),
   .bank(sdram_bank),
   .data(sdram_data),
-  .data_mask(sdram_data_mask)
+  .data_mask(sdram_data_mask),
+
+  .ext_sdram_clk(ext_sdram_clk)
 
 );
 
 //blocks
 always @ (posedge clk) begin
   if (rst) begin
-    wbs_ack_o         <= 0;
-    wbs_int_o         <= 0;
-    if_write_strobe   <= 0;
-    of_read_strobe    <= 0;
-    delay             <= 0;
-    wb_reading        <= 0;
-    writing           <= 0;
-    reading           <= 0;
-    if_count          <= 0;
-    of_count          <= 0;
-    if_write_activate <= 0;
-    ram_address       <= 0;
-    first_exchange    <= 0;      
+    wbs_ack_o         <=  0;
+    wbs_int_o         <=  0;
+    if_write_strobe   <=  0;
+    of_read_strobe    <=  0;
+    delay             <=  0;
+    wb_reading        <=  0;
+    writing           <=  0;
+    reading           <=  0;
+    if_count          <=  0;
+    of_count          <=  0;
+    if_write_activate <=  0;
+    ram_address       <=  0;
+    first_exchange    <=  0;      
+    wbs_dat_o         <=  0;
   end
   else begin
     if_write_strobe                 <= 0;
@@ -205,14 +213,9 @@ always @ (posedge clk) begin
         if_count                      <= 0;
         if_write_activate             <= 0;
       end
-      if (of_read_activate) begin
-        //increment to the next location in the read FIFO
-        of_read_strobe    <=  1;
-        of_count          <=  of_count - 1;
-      end
     end
 
-    else if (wbs_stb_i & wbs_cyc_i) begin
+    else if (!wbs_ack_o && wbs_stb_i && wbs_cyc_i) begin
       if (first_exchange) begin
         ram_address                 <=  wbs_adr_i[23:2];
         first_exchange              <=  0;
@@ -243,6 +246,7 @@ always @ (posedge clk) begin
               wbs_ack_o           <= 1;
               if_write_strobe     <= 1;
               if_count            <= if_count - 1;
+
             end
             else begin
               if_write_activate         <=  0;
@@ -261,8 +265,11 @@ always @ (posedge clk) begin
         else if (of_read_activate) begin
           if (of_count > 0) begin
             if (~wbs_ack_o) begin
-              $display("user wb_reading %h", wbs_dat_o);
+              wbs_dat_o         <=  of_read_data;
+              of_count          <=  of_count - 1;
+              of_read_strobe    <=  1;
               wbs_ack_o         <=  1;
+              $display("user wb_reading %h", wbs_dat_o);
             end
           end
           else begin

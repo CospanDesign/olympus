@@ -27,6 +27,7 @@ SOFTWARE.
 
 
 `define MAX_DWORD 512
+`define THRESHOLD 4
 
 module sdram_read (
   rst,
@@ -100,6 +101,8 @@ reg         [23:0]  fifo_count;
 wire        [11:0]  row;
 wire        [7:0]   column;
 
+wire                read_threshold;
+
 
 //edge detection
 wire                neg_edge_enable;
@@ -112,6 +115,8 @@ assign      column  = read_address[7:0];
 //assign idle
 assign      idle    = ((delay == 0) && ((state == IDLE) || (state == WAIT)));
 assign              neg_edge_enable = !enable & prev_enable;
+
+assign      read_threshold  = ((fifo_count + `THRESHOLD) <= fifo_size);
 
 reg         [31:0]  ram_data;
 
@@ -143,6 +148,7 @@ always @ (posedge clk) begin
       fifo_reset        <=  1;
     end
 
+    //read the data
     if (read_top) begin
       fifo_data[31:16]  <=  data_in;
       //fifo_data[31:16]  <=  16'h3C4D;
@@ -173,7 +179,7 @@ always @ (posedge clk) begin
             $display ("SDRAM_READ: IDLE: Read request");
             state               <=  WAIT;
             read_address        <=  app_address;
-            fifo_count          <=  fifo_size;
+            fifo_count          <=  fifo_size - 1;
             if (fifo_ready[0] == 1) begin
               fifo_activate[0]  <=  1;
             end
@@ -196,7 +202,7 @@ always @ (posedge clk) begin
               //we don't have a FIFO to work with right now
               if (fifo_ready > 0) begin
                 //there is a FIFO available
-                fifo_count        <=  fifo_size;
+                fifo_count        <=  fifo_size - 1;
                 if (fifo_ready[0]) begin
                   fifo_activate[0]<=  1;
                 end
@@ -207,7 +213,7 @@ always @ (posedge clk) begin
             end
             else begin
               //we have a FIFO to work with
-              if ((fifo_count < fifo_size) && starved) begin
+              if ((fifo_count < fifo_size - 1) && starved) begin
                 //the user is starved for data so deactivate this
                 //current FIFO
                 fifo_activate     <=  0;
@@ -255,10 +261,7 @@ always @ (posedge clk) begin
           $display ("SDRAM_READ: Reading bottom word");
           command       <=  `SDRAM_CMD_NOP;
           read_bottom   <=  1;
-          if (starved) begin
-            state       <=  BURST_TERMINATE;
-          end
-          if ((fifo_count == 1) || ~enable || (read_address[7:0] == 8'h00) || auto_refresh) begin
+          if ((fifo_count == 1) || !enable || (read_address[7:0] == 8'h00) || auto_refresh || (starved && read_threshold)) begin
             state       <=  BURST_TERMINATE;
           end
           else begin

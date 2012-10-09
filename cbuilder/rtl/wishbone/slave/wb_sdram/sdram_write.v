@@ -46,7 +46,9 @@ module sdram_write (
   fifo_read,
   fifo_ready,
   fifo_activate,
-  fifo_size
+  fifo_size,
+  fifo_inactive
+
 );
 
 input               rst;
@@ -72,6 +74,7 @@ output  reg         fifo_read;
 input               fifo_ready;
 output  reg         fifo_activate;
 input       [23:0]  fifo_size;
+input               fifo_inactive;
 
 parameter           IDLE            = 4'h0;
 parameter           WAIT            = 4'h1;
@@ -133,7 +136,7 @@ always @(posedge clk) begin
     else begin
       case (state)
         IDLE: begin
-          if (enable) begin
+          if (enable || fifo_ready) begin
             //$display ("SDRAM WRITE: IDLE New Data!");
             state           <=  WAIT;
             write_address   <=  app_address;
@@ -141,33 +144,35 @@ always @(posedge clk) begin
           wait_for_refresh  <=  1;
         end
         WAIT: begin
-        if (auto_refresh) begin
-          wait_for_refresh  <=  1;
-        end
-        else begin
-          if (!fifo_activate) begin
-            //if the FIFO is not activated
-            if (fifo_ready) begin
-              //A FIFO is ready
-              fifo_activate <=  1;
-              fifo_count    <=  fifo_size;
-            end
-            else if (!enable) begin
-              //DONE!
-              state         <=  IDLE;
-            end
+          if (auto_refresh) begin
+            wait_for_refresh  <=  1;
           end
-          else
-            //we have an enabled FIFO
-            if (fifo_count == 0) begin
-              //there is no data in this FIFO
-              fifo_activate <=  0;
-              delay         <=  1;
+          else begin
+            if (!fifo_activate) begin
+              //if the FIFO is not activated
+              if (fifo_ready) begin
+                //A FIFO is ready
+                fifo_activate <=  1;
+                fifo_count    <=  fifo_size;
+              end
+              else if (fifo_inactive && !enable) begin
+                //DONE!
+                state         <=  IDLE;
+              end
             end
             else begin
-              //everything is good to go
-              state <=  ACTIVATE;
-              fifo_count    <=  fifo_count - 1;
+              //we have an enabled FIFO
+              if (fifo_count == 0) begin
+                //there is no data in this FIFO
+                fifo_activate <=  0;
+                delay         <=  1;
+              end
+              else begin
+                //everything is good to go
+                state         <=  ACTIVATE;
+                //fifo_read     <=  1;
+                fifo_count    <=  fifo_count - 1;
+              end
             end
           end
         end
@@ -203,20 +208,20 @@ always @(posedge clk) begin
           data_mask     <=  fifo_data[33:32];
           //if there is more data to write then continue on with the write
           //and issue a command to the AFIFO to grab more data
+          fifo_read     <=  1;
           if (fifo_count == 0) begin
             //we could have reached the end of a row here
-            fifo_read     <=  1;
+            //fifo_read     <=  1;
             state         <=  BURST_TERMINATE;
           end
-          else if ((write_address[7:0] == 8'h00) || auto_refresh) begin
+          else if ((column == 8'h00) || auto_refresh) begin
             //the fifo count != 0 so get the next peice of data
-            fifo_read     <=  1;
+            //fifo_read     <=  1;
             state         <=  BURST_TERMINATE;
           end
           else begin
             state         <=  WRITE_TOP;
-            fifo_read     <=  1;
-            fifo_count    <=  fifo_count - 1;
+            //fifo_read     <=  1;
           end
         end
         BURST_TERMINATE: begin
