@@ -117,23 +117,21 @@
 			}
 		}
 	},
-	"bind":{
-    "la_clk"{
-      "port":"clk",
-      "direction":"input"
+  "internal_bind":{
+    "lax1_la_clk" : {
+      "signal":"clk"
     },
-		"la_data[7:0]":{
-			"port":"wbm_debug_out",
-			"direction":"input"
-		},
-    "la_data[31:8]":{
-      "port":"24'h0",
-      "direction":"input"
+    "lax1_la_data[1:0]":{
+      "signal":"button[1:0]"
     },
-    "la_ext_trig":{
-      "port":"0",
-      "direction":"input"
+    "lax1_la_data[31:2]":{
+      "signal":"30'h0"
+    },
+    "lax1_la_ext_trig":{
+      "signal":"0"
     }
+  },
+	"bind":{
 	},
 	
 	"constraint_files":[
