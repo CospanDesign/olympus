@@ -61,6 +61,14 @@
     "lax1":{
       "filename":"wb_logic_analyzer.v",
       "bind":{
+        "la_uart_tx":{
+          "port":"s0",
+          "direction":"output"
+        },
+        "la_uart_rx":{
+          "port":"s1",
+          "direction":"input"
+        }
       }
     }
   },
@@ -119,13 +127,25 @@
 	},
   "internal_bind":{
     "lax1_la_clk" : {
-      "signal":"clk"
+      "signal":"mem1_ext_sdram_clk"
     },
-    "lax1_la_data[1:0]":{
-      "signal":"button[1:0]"
+    "lax1_la_data[0]":{
+      "signal":"ras"
     },
-    "lax1_la_data[31:2]":{
-      "signal":"30'h0"
+    "lax1_la_data[1]":{
+      "signal":"cas"
+    },
+    "lax1_la_data[2]":{
+      "signal":"we"
+    },
+    "lax1_la_data[13:3]":{
+      "signal":"a[10:0]"
+    },
+    "lax1_la_data[15:14]":{
+      "signal":"ba[1:0]"
+    },
+    "lax1_la_data[31:16]":{
+      "signal":"dq[15:0]"
     },
     "lax1_la_ext_trig":{
       "signal":"0"
