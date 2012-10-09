@@ -105,6 +105,16 @@ wire [31:0]       wbm_dat_o;
 wire              wbm_ack_o;
 wire              wbm_int_i;
 
+//wishbone signals
+wire              mem_we_o;
+wire              mem_cyc_o;
+wire              mem_stb_o;
+wire [3:0]        mem_sel_o;
+wire [31:0]       mem_adr_o;
+wire [31:0]       mem_dat_i;
+wire [31:0]       mem_dat_o;
+wire              mem_ack_o;
+wire              mem_int_i;
 
 
 wishbone_master wm (
@@ -133,7 +143,20 @@ wishbone_master wm (
   .wb_msk_o(wbm_msk_o),
   .wb_sel_o(wbm_sel_o),
   .wb_ack_i(wbm_ack_i),
-  .wb_int_i(wbm_int_i)
+  .wb_int_i(wbm_int_i),
+
+  //memory bus
+  .mem_adr_o(mem_adr_o),
+  .mem_dat_o(mem_dat_o),
+  .mem_dat_i(mem_dat_i),
+  .mem_stb_o(mem_stb_o),
+  .mem_cyc_o(mem_cyc_o),
+  .mem_we_o(mem_we_o),
+  .mem_msk_o(mem_msk_o),
+  .mem_sel_o(mem_sel_o),
+  .mem_ack_i(mem_ack_i),
+  .mem_int_i(mem_int_i)
+
 );
 
 //Wishbone Slave 0 (DRT) signals
@@ -148,7 +171,18 @@ wire  [31:0]      wbs0_adr_o;
 wire              wbs0_int_i;
 
 
-//wishbone slave 1 (Unit Under Test) signals
+//wishbone slave 1 signals
+wire              mem0_we_o;
+wire              mem0_cyc_o;
+wire      [31:0]  mem0_dat_o;
+wire              mem0_stb_o;
+wire      [3:0]   mem0_sel_o;
+wire              mem0_ack_i;
+wire      [31:0]  mem0_dat_i;
+wire      [31:0]  mem0_adr_o;
+wire              mem0_int_i;
+
+//slave
 wire              wbs1_we_o;
 wire              wbs1_cyc_o;
 wire  [31:0]      wbs1_dat_o;
@@ -159,13 +193,73 @@ wire  [31:0]      wbs1_dat_i;
 wire  [31:0]      wbs1_adr_o;
 wire              wbs1_int_i;
 
-reg               uart_finished;
+wire              sdram_clk;
+wire              sdram_cke;
+wire              sdram_cs_n;
+wire              sdram_ras;
+wire              sdram_cas;
+wire              sdram_we;
 
-reg               la_clk = 0;
-reg   [31:0]      la_data;
-reg               la_ext_trigger;
-wire              la_uart_tx;
-wire              la_uart_rx;
+wire      [11:0]  sdram_addr;
+wire      [1:0]   sdram_bank;
+wire      [15:0]  sdram_data;
+wire      [1:0]   sdram_data_mask;
+
+wire              sdram_ready;
+
+reg       [15:0]  sdram_in_data;
+//assign    sdram_data = (in_command == 2) ? sdram_in_data : 16'hZZZZ;
+assign            wbs1_ack_o  =  1;
+assign            wbs1_dat_i  =  0; 
+assign            wbs1_int_i  =  0;
+
+
+mt48lc4m16 
+//#(
+//  tdevice_TRCD = 10
+//)
+ram (
+  .A11  (sdram_addr[11]),
+  .A10  (sdram_addr[10]),
+  .A9   (sdram_addr[9]),
+  .A8   (sdram_addr[8]),
+  .A7   (sdram_addr[7]),
+  .A6   (sdram_addr[6]),
+  .A5   (sdram_addr[5]),
+  .A4   (sdram_addr[4]),
+  .A3   (sdram_addr[3]),
+  .A2   (sdram_addr[2]),
+  .A1   (sdram_addr[1]),
+  .A0   (sdram_addr[0]),
+
+  .DQ15 (sdram_data[15]),
+  .DQ14 (sdram_data[14])  ,
+  .DQ13 (sdram_data[13]),
+  .DQ12 (sdram_data[12]),
+  .DQ11 (sdram_data[11]),
+  .DQ10 (sdram_data[10]),
+  .DQ9  (sdram_data[9]),
+  .DQ8  (sdram_data[8]),
+  .DQ7  (sdram_data[7]),
+  .DQ6  (sdram_data[6]),
+  .DQ5  (sdram_data[5]),
+  .DQ4  (sdram_data[4]),
+  .DQ3  (sdram_data[3]),
+  .DQ2  (sdram_data[2]),
+  .DQ1  (sdram_data[1]),
+  .DQ0  (sdram_data[0]),
+
+  .BA0  (sdram_bank[0]),
+  .BA1  (sdram_bank[1]),
+  .DQMH (sdram_data_mask[1]),
+  .DQML (sdram_data_mask[0]),
+  .CLK  (sdram_clk),
+  .CKE  (sdram_cke),
+  .WENeg  (sdram_we),
+  .RASNeg (sdram_ras),
+  .CSNeg  (sdram_cs_n),
+  .CASNeg (sdram_cas)
+);
 
 //slave 1
 wb_sdram s1 (
@@ -173,15 +267,15 @@ wb_sdram s1 (
   .clk(clk),
   .rst(rst),
   
-  .wbs_we_i(wbs1_we_o),
-  .wbs_cyc_i(wbs1_cyc_o),
-  .wbs_dat_i(wbs1_dat_o),
-  .wbs_stb_i(wbs1_stb_o),
-  .wbs_sel_i(wbs1_sel_o),
-  .wbs_ack_o(wbs1_ack_i),
-  .wbs_dat_o(wbs1_dat_i),
-  .wbs_adr_i(wbs1_adr_o),
-  .wbs_int_o(wbs1_int_i),
+  .wbs_we_i(mem0_we_o),
+  .wbs_cyc_i(mem0_cyc_o),
+  .wbs_dat_i(mem0_dat_o),
+  .wbs_stb_i(mem0_stb_o),
+  .wbs_sel_i(mem0_sel_o),
+  .wbs_ack_o(mem0_ack_i),
+  .wbs_dat_o(mem0_dat_i),
+  .wbs_adr_i(mem0_adr_o),
+  .wbs_int_o(mem0_int_i),
 
   .sdram_clk(sdram_clk ),
   .sdram_cke(sdram_cke ),
@@ -198,6 +292,31 @@ wb_sdram s1 (
 
 );
 
+wishbone_mem_interconnect wmi (
+    .clk(clk),
+    .rst(rst),
+
+    .m_we_i(mem_we_o),
+    .m_cyc_i(mem_cyc_o),
+    .m_stb_i(mem_stb_o),
+    .m_ack_o(mem_ack_i),
+    .m_sel_i(mem_sel_o),
+    .m_dat_i(mem_dat_o),
+    .m_dat_o(mem_dat_i),
+    .m_adr_i(mem_adr_o),
+    .m_int_o(mem_int_i),
+
+    .s0_we_o(mem0_we_o),
+    .s0_cyc_o(mem0_cyc_o),
+    .s0_stb_o(mem0_stb_o),
+    .s0_ack_i(mem0_ack_i),
+    .s0_sel_o(mem0_sel_o),
+    .s0_dat_o(mem0_dat_o),
+    .s0_dat_i(mem0_dat_i),
+    .s0_adr_o(mem0_adr_o),
+    .s0_int_i(mem0_int_i)
+
+);
 
 wishbone_interconnect wi (
     .clk(clk),
@@ -235,6 +354,7 @@ wishbone_interconnect wi (
 
 );
 
+
 integer           fd_in;
 integer           fd_out;
 integer           read_count;
@@ -253,7 +373,6 @@ reg     [27:0]    data_write_count;
 
 //Clock rate is 50MHz
 always #10 clk = ~clk;
-always #5 la_clk = ~la_clk;
 
 initial begin
   fd_out                      = 0;
@@ -283,6 +402,12 @@ initial begin
   #80
   rst                         <= 0;
   out_ready                   <= 1;
+
+  #1000
+  while (!sdram_ready) begin
+    #100;
+    execute_command <= 0;
+  end
 
   if (fd_in == 0) begin
     $display ("TB: input stimulus file was not found");
@@ -339,15 +464,12 @@ initial begin
           #20;
           execute_command <= 0;
         end
-        #200
+        #1000
         $display ("TB: finished command");
       end //end read_count == 4
     end //end while ! eof
   end //end not reset
 
-  while (!uart_finished) begin
-    #100;
-  end
   #10000
   $fclose (fd_in);
   $fclose (fd_out);

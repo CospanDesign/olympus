@@ -125,6 +125,8 @@ reg               wb_reading;
 
 reg               writing;
 reg               reading;
+reg       [21:0]  ram_address;
+reg               first_exchange;
 
 
 sdram ram (
@@ -132,7 +134,7 @@ sdram ram (
   .rst(rst),
 
   //write path
-  .if_write_pulse(if_write_strobe),
+  .if_write_strobe(if_write_strobe),
   .if_write_data(wbs_dat_i),
   .if_write_mask(~wbs_sel_i),
   .if_write_ready(if_write_ready),
@@ -141,7 +143,7 @@ sdram ram (
   .if_starved(if_starved),
 
   //read path
-  .of_read_pulse(of_read_strobe),
+  .of_read_strobe(of_read_strobe),
   .of_read_data(wbs_dat_o),
   .of_read_ready(of_read_ready),
   .of_read_activate(of_read_activate),
@@ -150,7 +152,8 @@ sdram ram (
   .sdram_write_enable(writing),
   .sdram_read_enable(reading),
   .sdram_ready(sdram_ready),
-  .app_address(wbs_adr_i[23:2]),
+  //.app_address(wbs_adr_i[23:2]),
+  .app_address(ram_address),
   
   .sd_clk(sdram_clk),
   .cke(sdram_cke),
@@ -178,43 +181,61 @@ always @ (posedge clk) begin
     writing           <= 0;
     reading           <= 0;
     if_count          <= 0;
+    of_count          <= 0;
+    if_write_activate <= 0;
+    ram_address       <= 0;
+    first_exchange    <= 0;      
   end
   else begin
-    if_write_strobe   <= 0;
-    of_read_strobe    <= 0;
+    if_write_strobe                 <= 0;
+    of_read_strobe                  <= 0;
     
     //when the master acks our ack, then put our ack down
     if (~wbs_cyc_i) begin
-      writing           <= 0;
-      reading           <= 0;
-      of_read_activate  <= 0;
+      writing                       <= 0;
+      reading                       <= 0;
+      of_read_activate              <= 0;
+      first_exchange                <= 1;
     end
+    
     if (wbs_ack_o & ~wbs_stb_i)begin
-      wbs_ack_o       <= 0;
+      wbs_ack_o                     <= 0;
+      if ((if_write_activate > 0) && if_starved) begin
+        //release any previously held FIFOs
+        if_count                      <= 0;
+        if_write_activate             <= 0;
+      end
+      if (of_read_activate) begin
+        //increment to the next location in the read FIFO
+        of_read_strobe    <=  1;
+        of_count          <=  of_count - 1;
+      end
     end
 
-    if (if_write_activate > 0 && if_starved) begin
-      //release any previously held FIFOs
-      if_count                      <= 0;
-      if_write_activate             <=  0;
-    end
     else if (wbs_stb_i & wbs_cyc_i) begin
+      if (first_exchange) begin
+        ram_address                 <=  wbs_adr_i[23:2];
+        first_exchange              <=  0;
+      end
       //master is requesting something
       if (wbs_we_i) begin
+        writing <=  1;
         if (if_write_activate == 0) begin
           //try and get a FIFO
           if (if_write_ready > 0) begin
-            if_count                <= if_write_fifo_size;
+            if_count                <= if_write_fifo_size - 1;
             if (if_write_ready[0]) begin
+              $display ("Getting FIFO 0");
               if_write_activate[0]  <=  1; 
             end
             else begin
-              if_write_activate     <=  1;
+              $display ("Getting FIFO 1");
+              if_write_activate[1]  <=  1;
             end
           end
         end
         else begin
-          writing <=  1;
+          $display ("Writing");
           //write request
           if (~wbs_ack_o) begin
             if (if_count > 0) begin
@@ -241,7 +262,6 @@ always @ (posedge clk) begin
           if (of_count > 0) begin
             if (~wbs_ack_o) begin
               $display("user wb_reading %h", wbs_dat_o);
-              of_read_strobe    <=  1;
               wbs_ack_o         <=  1;
             end
           end

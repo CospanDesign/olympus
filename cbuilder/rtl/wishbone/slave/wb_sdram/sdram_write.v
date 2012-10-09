@@ -120,14 +120,10 @@ always @(posedge clk) begin
     wait_for_refresh  <=  0;
     empty             <=  0;
     fifo_count        <=  0;
+    fifo_activate     <=  0;
 
   end
   else begin
-/*
-    if (fifo_activate == 0) begin
-      fifo_count  <=  0;
-    end
-*/
     data_out  <=  16'h0000;
     wait_for_refresh  <=  0;
     if (delay > 0) begin
@@ -137,44 +133,51 @@ always @(posedge clk) begin
     else begin
       case (state)
         IDLE: begin
-          //data_out      <=  16'hZZZZ;
-          if (enable && fifo_ready) begin
+          if (enable) begin
             //$display ("SDRAM WRITE: IDLE New Data!");
             state           <=  WAIT;
             write_address   <=  app_address;
-            fifo_count      <=  fifo_size - 1;
-            fifo_activate   <=  1;
           end
           wait_for_refresh  <=  1;
         end
         WAIT: begin
-          if (auto_refresh) begin
-            wait_for_refresh  <=  1;
-          end
-          else begin
-            if ((fifo_count == 0) && ~enable) begin
+        if (auto_refresh) begin
+          wait_for_refresh  <=  1;
+        end
+        else begin
+          if (!fifo_activate) begin
+            //if the FIFO is not activated
+            if (fifo_ready) begin
+              //A FIFO is ready
+              fifo_activate <=  1;
+              fifo_count    <=  fifo_size;
+            end
+            else if (!enable) begin
+              //DONE!
               state         <=  IDLE;
+            end
+          end
+          else
+            //we have an enabled FIFO
+            if (fifo_count == 0) begin
+              //there is no data in this FIFO
               fifo_activate <=  0;
+              delay         <=  1;
             end
             else begin
+              //everything is good to go
               state <=  ACTIVATE;
+              fifo_count    <=  fifo_count - 1;
             end
           end
         end
         ACTIVATE: begin
           //$display ("SDRAM_WRITE: ACTIVATE ROW %h", row);
-          if (auto_refresh) begin
-            state <=  WAIT;
-          end
-          else begin
-            command       <=  `SDRAM_CMD_ACT;
-            delay         <=  `T_RCD;
-            bank          <=  write_address[21:20];
-            address       <=  row;
-            state         <=  WRITE_COMMAND;
-//XXX: the FIFO data is already available
-            //fifo_read     <=  1;
-          end
+          command       <=  `SDRAM_CMD_ACT;
+          delay         <=  `T_RCD;
+          bank          <=  write_address[21:20];
+          address       <=  row;
+          state         <=  WRITE_COMMAND;
         end
         WRITE_COMMAND: begin
           //$display ("SDRAM_WRITE: Issue the write command");
@@ -185,11 +188,6 @@ always @(posedge clk) begin
           data_mask     <=  fifo_data[35:34];
           state         <=  WRITE_BOTTOM;
           write_address <=  write_address + 2;
-          //increment our local version of the address
-          //if (fifo_empty) begin
-          //  empty       <=  1;
-          //end
-
         end
         WRITE_TOP: begin
           empty         <=  0;
@@ -198,9 +196,6 @@ always @(posedge clk) begin
           data_mask     <=  fifo_data[35:34];
           state         <=  WRITE_BOTTOM;
           write_address <=  write_address + 2;
-          //if (fifo_empty) begin
-          //  empty       <=  1;
-          //end
         end
         WRITE_BOTTOM: begin
           command       <=  `SDRAM_CMD_NOP;
@@ -210,6 +205,7 @@ always @(posedge clk) begin
           //and issue a command to the AFIFO to grab more data
           if (fifo_count == 0) begin
             //we could have reached the end of a row here
+            fifo_read     <=  1;
             state         <=  BURST_TERMINATE;
           end
           else if ((write_address[7:0] == 8'h00) || auto_refresh) begin
@@ -220,6 +216,7 @@ always @(posedge clk) begin
           else begin
             state         <=  WRITE_TOP;
             fifo_read     <=  1;
+            fifo_count    <=  fifo_count - 1;
           end
         end
         BURST_TERMINATE: begin

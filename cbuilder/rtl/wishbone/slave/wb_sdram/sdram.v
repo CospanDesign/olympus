@@ -30,7 +30,7 @@ module sdram (
   rst,
 
   //write path
-  if_write_pulse,
+  if_write_strobe,
   if_write_data,
   if_write_mask,
   if_write_ready,
@@ -39,7 +39,7 @@ module sdram (
   if_starved,
 
   //read path
-  of_read_pulse,
+  of_read_strobe,
   of_read_ready,
   of_read_activate,
   of_read_count,
@@ -68,7 +68,7 @@ module sdram (
 input               clk;
 input               rst;
 
-input               if_write_pulse;
+input               if_write_strobe;
 input       [31:0]  if_write_data;
 input       [3:0]   if_write_mask;
 output      [1:0]   if_write_ready;
@@ -76,7 +76,7 @@ input       [1:0]   if_write_activate;
 output      [23:0]  if_write_fifo_size;
 output              if_starved;
 
-input               of_read_pulse;
+input               of_read_strobe;
 output              of_read_ready;
 input               of_read_activate;
 output      [23:0]  of_read_count;

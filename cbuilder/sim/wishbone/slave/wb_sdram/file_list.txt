@@ -10,6 +10,7 @@ unisims/PLL_ADV.v
 ../../../../rtl/generic/afifo.v
 ../../../../rtl/generic/graycounter.v
 ../../interconnect/example_2port_interconnect/wishbone_interconnect.v
+../../interconnect/example_1port_mem_interconnect/wishbone_mem_interconnect.v
 rtl/wb_sdram.v
 rtl/sdram.v
 rtl/sdram_read.v
