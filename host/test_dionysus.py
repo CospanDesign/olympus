@@ -127,8 +127,11 @@ def test_memory(dyn, dev_index):
   print " "
 
 
+  start = time.time()
   dev_size = (dyn.get_device_size(dev_index) / 4)
-  dev_size = 256/4
+  end = time.time()
+  print "single read time: %f" % (end - start)
+  #dev_size = 4000
   print "Memory size: 0x%X" % (dyn.get_device_size(dev_index))
   
   data_out = Array('B')
@@ -147,15 +150,21 @@ def test_memory(dyn, dev_index):
     sys.exit(1)
  
   print "Writing %d bytes of data" % (len(data_out))
-  dyn.debug = True
+  #dyn.debug = True
+  start = time.time()
   dyn.write_memory(0, data_out)
-  dyn.debug = False
+  end = time.time()
+  print "write time: %f" % (end - start)
+  #dyn.debug = False
   #dyn.write(dev_index, 0, data_out, mem_bus)
   print "Reading %d bytes of data" % (len(data_out))
-  dyn.debug = True
+  #dyn.debug = True
+  start = time.time()
   data_in = dyn.read_memory(0, len(data_out) / 4)
+  end = time.time()
+  print "read time: %f" % (end - start)
   #data_in = dyn.read(dev_index, 0, len(data_out) / 4, mem_bus)
-  dyn.debug = False
+  #dyn.debug = False
 
   print "Comparing values"
   fail = False
@@ -165,7 +174,7 @@ def test_memory(dyn, dev_index):
     print "\totugoing: %d incomming: %d" % (len(data_out), len(data_in))
     fail = True
 
-  else:
+  #else:
     for i in range (0, len(data_out)):
       if data_in[i] != data_out[i]:
         fail = True
