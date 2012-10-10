@@ -171,8 +171,8 @@ reg     [3:0]       oh_status;
 wire    [15:0]      ftdi_debug;
 wire    [15:0]      wdebug;
 //reg     [15:0]      rdebug;
-assign  debug       = wdebug;
-//assign  debug     = ftdi_debug;
+//assign  debug       = wdebug;
+assign  debug     = ftdi_debug;
 
 wire    [7:0]       out_d;
 assign              out_d = out_packet[position];
@@ -473,7 +473,7 @@ always @ (posedge clk ) begin
           else begin
             out_fifo_activate[1]  <=  1;
           end
-          out_fifo_count        <=  out_fifo_write_size;
+          out_fifo_count        <=  out_fifo_write_size - 1;
           if ((     (oh_status == `READ_RESP) || 
                     (oh_status == `CORE_DUMP_RESP)
              ) && (data_count > 0)) begin
