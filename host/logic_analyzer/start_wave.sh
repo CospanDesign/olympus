@@ -1,4 +1,4 @@
 #! /bin/bash
 
-gtkwave --dump=output.vcd
+gtkwave --dump=output.vcd &
 

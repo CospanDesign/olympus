@@ -57,7 +57,7 @@
 `ifndef SIMULATION
   `define T_AR_TIMEOUT	1500
 `else
-  `define T_AR_TIMEOUT	50
+  `define T_AR_TIMEOUT	40
 `endif
 
 `endif

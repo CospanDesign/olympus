@@ -65,11 +65,11 @@ TEST_GPIO = False
 TEST_UART = False
 TEST_I2C = False
 TEST_SPI = False
-TEST_MEMORY = False
+TEST_MEMORY = True
 TEST_CONSOLE = False
 TEST_I2S = False
-TEST_LOGIC_ANALYZER = True
-TEST_GTP = True
+TEST_LOGIC_ANALYZER = False
+TEST_GTP = False
 
 def test_memory(dyn, dev_index):
   print "testing memory @ %d" % dev_index
@@ -97,6 +97,16 @@ def test_memory(dyn, dev_index):
     print str(hex(data_in[i])) + ", ",
   print " "
 
+  '''
+  dev_size = dyn.get_device_size(dev_index)
+  print "Reading memory before writing"
+  data_in = dyn.read_memory((0x164), 8)
+  print "mem data: %s" % str(data_in)
+  print "hex: "
+  for i in range (0, len(data_in)):
+    print str(hex(data_in[i])) + ", ",
+  print " "
+  '''
 
 
   print "Testing a write/read at the end of memory"
@@ -106,13 +116,22 @@ def test_memory(dyn, dev_index):
   print "reading from memory location 0x%08X" % (dev_size - 8)
   data_in = dyn.read_memory(dev_size - 8, 2)
 
+
+
+
+
   print "mem data: %s" % str(data_in)
   print "hex: "
   for i in range (0, len(data_in)):
     print str(hex(data_in[i])) + ", ",
   print " "
 
+
+  start = time.time()
   dev_size = (dyn.get_device_size(dev_index) / 4)
+  end = time.time()
+  print "single read time: %f" % (end - start)
+  #dev_size = 4000
   print "Memory size: 0x%X" % (dyn.get_device_size(dev_index))
   
   data_out = Array('B')
@@ -120,10 +139,10 @@ def test_memory(dyn, dev_index):
   try:
     for i in range (0, 4 * dev_size):
       num = (i) % 255
-      if (i / 256) % 2 == 1:
-        data_out.append( 255 - (num))
-      else:
-        data_out.append(num)
+      #if (i / 256) % 2 == 1:
+      #  data_out.append( 255 - (num))
+      #else:
+      data_out.append(num)
 
 
   except OverflowError as err:
@@ -131,11 +150,21 @@ def test_memory(dyn, dev_index):
     sys.exit(1)
  
   print "Writing %d bytes of data" % (len(data_out))
+  #dyn.debug = True
+  start = time.time()
   dyn.write_memory(0, data_out)
+  end = time.time()
+  print "write time: %f" % (end - start)
+  #dyn.debug = False
   #dyn.write(dev_index, 0, data_out, mem_bus)
   print "Reading %d bytes of data" % (len(data_out))
+  #dyn.debug = True
+  start = time.time()
   data_in = dyn.read_memory(0, len(data_out) / 4)
+  end = time.time()
+  print "read time: %f" % (end - start)
   #data_in = dyn.read(dev_index, 0, len(data_out) / 4, mem_bus)
+  #dyn.debug = False
 
   print "Comparing values"
   fail = False
@@ -145,11 +174,11 @@ def test_memory(dyn, dev_index):
     print "\totugoing: %d incomming: %d" % (len(data_out), len(data_in))
     fail = True
 
-  else:
+  #else:
     for i in range (0, len(data_out)):
       if data_in[i] != data_out[i]:
         fail = True
-        #print "Mismatch at %d: READ DATA %d != WRITE DATA %d" % (i, data_in[i], data_out[i])
+        print "Mismatch at %d: READ DATA %d != WRITE DATA %d" % (i, data_in[i], data_out[i])
         fail_count += 1
 
   if not fail:
@@ -158,6 +187,7 @@ def test_memory(dyn, dev_index):
     print "Data length of data_in and data_out do not match"
   else:
     print "Failed: %d mismatches" % fail_count
+
 
 
 

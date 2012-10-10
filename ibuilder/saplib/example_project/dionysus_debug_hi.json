@@ -4,7 +4,7 @@
 	"PROJECT_NAME":"example_project",
 	"TEMPLATE":"wishbone_template.json",
 	"INTERFACE":{
-		"filename":"ft_host_interface.v",
+		"filename":"ft_master_interface.v",
 		"bind":{
 			"ftdi_clk":{
 				"port":"ftdi_clk",
@@ -127,28 +127,40 @@
 	},
   "internal_bind":{
     "lax1_la_clk" : {
-      "signal":"mem1_ext_sdram_clk"
+      "signal":"ftdi_clk"
     },
-    "lax1_la_data[0]":{
-      "signal":"ras"
+    "lax1_la_data[7:0]":{
+      "signal":"d[7:0]"
     },
-    "lax1_la_data[1]":{
-      "signal":"cas"
+    "lax1_la_data[8]":{
+      "signal":"txe_n"
     },
-    "lax1_la_data[2]":{
-      "signal":"we"
+    "lax1_la_data[9]":{
+      "signal":"wr_n"
     },
-    "lax1_la_data[13:3]":{
-      "signal":"a[10:0]"
+    "lax1_la_data[10]":{
+      "signal":"rxe_n"
     },
-    "lax1_la_data[15:14]":{
-      "signal":"ba[1:0]"
+    "lax1_la_data[11]":{
+      "signal":"rd_n"
     },
-    "lax1_la_data[31:16]":{
-      "signal":"dq[15:0]"
+    "lax1_la_data[12]":{
+      "signal":"oe_n"
+    },
+    "lax1_la_data[13]":{
+      "signal":"siwua"
+    },
+    "lax1_la_data[14]":{
+      "signal":"suspend_n"
+    },
+    "lax1_la_data[30:15]":{
+      "signal":"debug[15:0]"
+    },
+    "lax1_la_data[31]":{
+      "signal":"button[0]"
     },
     "lax1_la_ext_trig":{
-      "signal":"0"
+      "signal":"button[1]"
     }
   },
 	"bind":{
