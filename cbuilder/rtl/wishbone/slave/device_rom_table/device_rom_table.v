@@ -38,6 +38,8 @@ SOFTWARE.
  * defparam DRT_NUM_OF_DEVICES = 2;
  */
 
+`timescale 1 ns/1 ps
+
 `include "project_defines.v"
 //`define DRT_NUM_OF_DEVICES 1
 `define DRT_SIZE_OF_HEADER 	8
