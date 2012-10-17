@@ -258,6 +258,7 @@ class GenTop(Gen):
     
     #generate the IO handler
     io_filename = tags["INTERFACE"]["filename"]
+    #print "io_filename: %s" % io_filename
     absfilepath = saputils.find_rtl_file_location(io_filename)
     io_tags = saputils.get_module_tags(filename = absfilepath, bus = "wishbone")
 
@@ -429,7 +430,6 @@ class GenTop(Gen):
       print "wm_buf: \n" + wm_buf
 
     #Arbitrators
-
 
 
     #Slaves
