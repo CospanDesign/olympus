@@ -48,6 +48,7 @@ SOFTWARE.
   10/26/2011
     -removed the stream commands, future versions will use flags instead of separate commands
 */
+`timescale 1 ns/1 ps
 `include "mg_defines.v"
 
 module wishbone_master (
