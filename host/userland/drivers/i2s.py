@@ -544,7 +544,7 @@ class I2S:
     divisor = self.get_clock_divisor()
     sample_rate = clock_rate / ((divisor * audio_bits * channels) + 1)
     return sample_rate
- 
+
 
   def write_all_audio_data(self, audio_data, block_size=-1):
     """write_audio_data
@@ -581,6 +581,10 @@ class I2S:
     memory_0_base = self.get_memory_base(0)
     memory_1_base = self.get_memory_base(1)
     max_size = memory_1_base - memory_0_base
+    print "Memory Base 0: 0x%08X" % memory_0_base
+    print "Memory Base 1: 0x%08X" % memory_1_base
+    print "Memory Size:   0x%08X" % max_size
+
     if block_size == -1:
       block_size = max_size
 
@@ -602,7 +606,8 @@ class I2S:
     position = 0
     base_index = 0
 
-    print "length of audio_data: %d" % len(audio_data)
+    print "length of audio_data ( 8 bit packet) : %f MBytes" % (len(audio_data) / 1e6)
+    print "length of audio_data (32 bit packet) : %f MDWords" % ((len(audio_data) / 4) / 1e6)
     #writing to the screen may take too long...
     prev_percent = 0.0
     percent_complete = 0.0
@@ -616,8 +621,10 @@ class I2S:
  
       #check to see if there is an available memory block
       available_blocks = self.get_available_memory_blocks()
+
       if (available_blocks == STATUS_MEM_0_EMPTY):
         print "Memory block 0 available"
+        print "writing 0x%08X bytes to mem 0" % (size)
         #memory block 0 is available
         self.o.write_memory(memory_0_base, audio_data[position: position + size])
         self.set_memory_size(0, size)
@@ -625,6 +632,7 @@ class I2S:
 
       elif (available_blocks == STATUS_MEM_1_EMPTY): 
         print "Memory block 1 available"
+        print "writing: 0x%08X MBytes data to mem 1" % (size)
         #memory block 1 is available
         self.o.write_memory(memory_1_base, audio_data[position: position + size])
         self.set_memory_size(1, size)
@@ -633,34 +641,29 @@ class I2S:
       elif (available_blocks == 3):
         print "Both Blocks are available"
         #both blocks are available
-        print "position for mem 0: %d" % position
-        print "writing %d data to mem 0" % size
+        print "position for mem 0: 0x%08X" % memory_0_base
+        print "writing 0x%08X bytes to mem 0" % (size)
         self.o.write_memory(memory_0_base, audio_data[position: position + size])
-        self.set_memory_size(0, size/4)
-        position = position + size + 1
+        self.set_memory_size(0, len(audio_data[position: position + size]))
+        position = position + len(audio_data[position: position + size]) 
 
-        self.enable_i2s(True)
-        break
         size = block_size
         #see if there is enough audio data for the entire block size
         if len(audio_data[position:]) < block_size: 
           print "size > block_size"
           size = len(audio_data[position:])
 
-        print "position for mem 1: %d" % position
+        print "position for mem 1: 0x%08X" % memory_1_base
         if (size > 0):
           #memory block 1 is available
-          print "writing: %d data to mem 1" % size
+          print "writing: 0x%08X MBytes data to mem 1" % (size)
           self.o.write_memory(memory_1_base, audio_data[position: position + size])
           self.set_memory_size(1, size)
           position = position + size
 
-      #precent_complete = ((position * 100.0) / (total_length * 1.0))
-      #if (prev_percent != percent_complete):
-        #print "position:0x%08X" % position
-        #print "total: 0x%08X" % total_length
+        self.enable_i2s(True)
+
       print "percent sent to the core: %f" % ((position * 100.0)/(total_length * 1.0) )
-        #prev_precent = perent_complete
 
       #wait for interrupt
       self.o.wait_for_interrupts(wait_time=10)
@@ -724,13 +727,15 @@ def unit_test(oly, dev_id):
 
 
   #print "Enable sine wave test"
-  #i2s.enable_post_fifo_test(True)
+  i2s.enable_post_fifo_test(False)
 
   #print "Check if sine wave is enabled"
-  #print "enabled: " + str(i2s.is_post_fifo_test_enabled())
+  print "enabled: " + str(i2s.is_post_fifo_test_enabled())
 
   print "Enable sine wave test"
   i2s.enable_pre_fifo_test(True)
+  time.sleep(2)
+  i2s.enable_pre_fifo_test(False)
 
   print "Check if sine wave is enabled"
   print "enabled: " + str(i2s.is_pre_fifo_test_enabled())

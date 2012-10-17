@@ -185,8 +185,11 @@ class I2S_Player:
       Nothing
     """
     byte_array = Array('B')
+
+    size = 35000
+    size = 100000
  
-    for i in range (0, 35000):
+    for i in range (0, size):
 
       byte_array.append(0x00)
       byte_array.append(0x00)
@@ -630,10 +633,10 @@ class I2S_Player:
 
 
 
-    while ((len(byte_array) % 4) > 0):
-      byte_array.append(0x00)
+    #while ((len(byte_array) % 4) > 0):
+    #  byte_array.append(0x00)
 
-    print "length of byte_array: %d, megabytes: %d" % (len(byte_array), (len(byte_array) / 4) / 1e6)
+    print "length of byte_array: %f MBytes" % (len(byte_array) / 1e6)
     self.i2s.write_all_audio_data(byte_array)
     print "Fin"
 
