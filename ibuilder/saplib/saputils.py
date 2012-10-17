@@ -231,7 +231,8 @@ def get_module_tags(filename="", bus="", keywords = [], debug=False):
 
 
   #XXX only working with verilog at this time, need to extend to VHDL
-  print "filename: %s" % filename
+  #print "filename: %s" % filename
+
   with open(filename) as slave_file:
     buf = slave_file.read()
     raw_buf = buf
