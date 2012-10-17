@@ -23,6 +23,7 @@ SOFTWARE.
 */
 
 
+`timescale 1 ns/1 ps
 module i2s_writer (
   rst,
   clk,
@@ -88,7 +89,7 @@ always @ (posedge rst or negedge i2s_clock) begin
     new_audio_lr_bit    <=  0;
     audio_shifter       <=  0;
     state               <=  START;
-    starved             <=  1;
+    starved             <=  0;
     i2s_data            <=  0;
     i2s_lr              <=  0;
     audio_data_request  <=  0;

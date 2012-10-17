@@ -23,6 +23,7 @@ SOFTWARE.
 */
 
 `include "project_defines.v"
+`timescale 1 ns/1 ps
 
 module i2s_mem_controller (
   rst,
@@ -121,7 +122,7 @@ ppfifo #(
 `ifndef SIMULATION
   .ADDRESS_WIDTH(12)
 `else
-  .ADDRESS_WIDTH(2)
+  .ADDRESS_WIDTH(4)
 `endif
 )ping_pong (
 
@@ -197,7 +198,7 @@ always @(posedge clk) begin
             //activate that buffer
             write_activate[1] <=  1;
           end
-          write_count       <=  request_size;
+          write_count       <=  request_size - 1;
         end
         else if (write_activate > 0) begin
           if (write_count > 0) begin

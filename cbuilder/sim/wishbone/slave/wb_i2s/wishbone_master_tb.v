@@ -102,8 +102,9 @@ wire [3:0]        wbm_sel_o;
 wire [31:0]       wbm_adr_o;
 wire [31:0]       wbm_dat_i;
 wire [31:0]       wbm_dat_o;
-wire              wbm_ack_o;
+wire              wbm_ack_i;
 wire              wbm_int_i;
+wire              wbm_msk_o;
 
 //wishbone signals
 wire              mem_we_o;
@@ -113,8 +114,9 @@ wire [3:0]        mem_sel_o;
 wire [31:0]       mem_adr_o;
 wire [31:0]       mem_dat_i;
 wire [31:0]       mem_dat_o;
-wire              mem_ack_o;
+wire              mem_ack_i;
 wire              mem_int_i;
+wire              mem_msk_o;
 
 
 
@@ -217,32 +219,109 @@ wire  [31:0]	    mem0_dat_i;
 wire  [31:0]	    mem0_adr_o;
 wire		          mem0_int_i;
 
+wire              sdram_clk;
+wire              sdram_cke;
+wire              sdram_cs_n;
+wire              sdram_ras;
+wire              sdram_cas;
+wire              sdram_we;
+wire      [11:0]  sdram_addr;
+wire      [1:0]   sdram_bank;
+wire      [15:0]  sdram_data;
+wire      [1:0]   sdram_data_mask;
+wire              sdram_ready;
+reg       [15:0]  sdram_in_data;
+
 
 wire              phy_mclock;
 wire              phy_clock;
 wire              phy_data;
 wire              phy_lr;
 
-//mem 0
-wb_bram #(
-  .DATA_WIDTH(32),
-  .ADDR_WIDTH(12),
-  .MEM_FILE("mem_file.txt"),
-  .MEM_FILE_LENGTH(25)
-)m0 (
 
-	.clk(clk),
-	.rst(rst),
-	
-	.wbs_we_i(arb_we_o),
-	.wbs_cyc_i(arb_cyc_o),
-	.wbs_dat_i(arb_dat_o),
-	.wbs_stb_i(arb_stb_o),
-	.wbs_ack_o(arb_ack_i),
-	.wbs_dat_o(arb_dat_i),
-	.wbs_adr_i(arb_adr_o),
-	.wbs_int_o(arb_int_i)
+
+mt48lc4m16 
+//#(
+//  tdevice_TRCD = 10
+//)
+ram (
+  .A11  (sdram_addr[11]),
+  .A10  (sdram_addr[10]),
+  .A9   (sdram_addr[9]),
+  .A8   (sdram_addr[8]),
+  .A7   (sdram_addr[7]),
+  .A6   (sdram_addr[6]),
+  .A5   (sdram_addr[5]),
+  .A4   (sdram_addr[4]),
+  .A3   (sdram_addr[3]),
+  .A2   (sdram_addr[2]),
+  .A1   (sdram_addr[1]),
+  .A0   (sdram_addr[0]),
+
+  .DQ15 (sdram_data[15]),
+  .DQ14 (sdram_data[14])  ,
+  .DQ13 (sdram_data[13]),
+  .DQ12 (sdram_data[12]),
+  .DQ11 (sdram_data[11]),
+  .DQ10 (sdram_data[10]),
+  .DQ9  (sdram_data[9]),
+  .DQ8  (sdram_data[8]),
+  .DQ7  (sdram_data[7]),
+  .DQ6  (sdram_data[6]),
+  .DQ5  (sdram_data[5]),
+  .DQ4  (sdram_data[4]),
+  .DQ3  (sdram_data[3]),
+  .DQ2  (sdram_data[2]),
+  .DQ1  (sdram_data[1]),
+  .DQ0  (sdram_data[0]),
+
+  .BA0  (sdram_bank[0]),
+  .BA1  (sdram_bank[1]),
+  .DQMH (sdram_data_mask[1]),
+  .DQML (sdram_data_mask[0]),
+  .CLK  (sdram_clk),
+  .CKE  (sdram_cke),
+  .WENeg  (sdram_we),
+  .RASNeg (sdram_ras),
+  .CSNeg  (sdram_cs_n),
+  .CASNeg (sdram_cas)
 );
+
+
+
+
+//mem 0
+wb_sdram m0 (
+
+  .clk(clk),
+  .rst(rst),
+  
+  .wbs_we_i(arb_we_o),
+  .wbs_cyc_i(arb_cyc_o),
+  .wbs_dat_i(arb_dat_o),
+  .wbs_stb_i(arb_stb_o),
+  .wbs_sel_i(arb_sel_o),
+  .wbs_ack_o(arb_ack_i),
+  .wbs_dat_o(arb_dat_i),
+  .wbs_adr_i(arb_adr_o),
+  .wbs_int_o(arb_int_i),
+
+  .sdram_clk(sdram_clk ),
+  .sdram_cke(sdram_cke ),
+  .sdram_cs_n(sdram_cs_n ),
+  .sdram_ras(sdram_ras ),
+  .sdram_cas(sdram_cas ),
+  .sdram_we(sdram_we ),
+
+  .sdram_addr(sdram_addr ),
+  .sdram_bank(sdram_bank ),
+  .sdram_data(sdram_data ),
+  .sdram_data_mask(sdram_data_mask ),
+  .sdram_ready(sdram_ready)
+
+);
+
+
 
 
 //slave 1
@@ -259,6 +338,7 @@ wb_i2s s1 (
   .wbs_dat_o(wbs1_dat_i),
   .wbs_adr_i(wbs1_adr_o),
   .wbs_int_o(wbs1_int_i),
+  .wbs_sel_i(wbs1_sel_o),
 
   //memory bus
   .mem_adr_o(audio_adr_o),
@@ -301,7 +381,7 @@ arbitrator_2_masters arb (
 	.m1_dat_i(audio_dat_o),
 	.m1_dat_o(audio_dat_i),
 	.m1_adr_i(audio_adr_o),
-	.m1_int_o(audio_int_1),
+	.m1_int_o(audio_int_i),
 
 	.s_we_o(arb_we_o),
 	.s_cyc_o(arb_cyc_o),
@@ -328,6 +408,7 @@ wishbone_interconnect wi (
     .m_dat_o(wbm_dat_i),
     .m_adr_i(wbm_adr_o),
     .m_int_o(wbm_int_i),
+    .m_sel_i(wbm_sel_o),
 
     .s0_we_o(wbs0_we_o),
     .s0_cyc_o(wbs0_cyc_o),
@@ -394,7 +475,7 @@ reg     [27:0]    data_write_count;
 
 
 //Clock rate is 50MHz
-always #1 clk = ~clk;
+always #10 clk = ~clk;
 
 initial begin
   fd_out                      = 0;
@@ -430,6 +511,11 @@ initial begin
   rst                         <= 0;
   #20;
 
+  #1000
+  while (!sdram_ready) begin
+    #100;
+    execute_command <= 0;
+  end
   if (fd_in == 0) begin
     $display ("TB: input stimulus file was not found");
   end
@@ -441,8 +527,18 @@ initial begin
 
       if (read_count != 4) begin
         ch = $fgetc(fd_in);
-        $display ("Error: read_count = %h != 4", read_count);
-        $display ("Character: %h", ch);
+        if (ch == 8'h53) begin
+          read_count = $fscanf (fd_in, "%h\n", in_data_count);
+          $display ("Sleep for %d ticks", in_data_count); 
+          for (read_count = in_data_count[27:0]; read_count > 0; read_count = read_count - 1) begin
+            #1;
+          end
+        end
+        else begin
+          ch = $fgetc(fd_in);
+          $display ("Error: read_count = %h != 4", read_count);
+          $display ("Character: %h", ch);
+        end
       end
       else begin
         case (in_command)
@@ -452,7 +548,8 @@ initial begin
           3: $display ("TB: Executing RESET command");
         endcase
         execute_command                 <= 1;
-        #2
+        #20
+
         while (~command_finished) begin
           request_more_data_ack         <= 0;
 
@@ -465,16 +562,16 @@ initial begin
           end
 
           //so time porgresses wait a tick
-          #2
+          #20;
           //this doesn't need to be here, but there is a weird behavior in iverilog
           //that wont allow me to put a delay in right before an 'end' statement
           execute_command <= 1;
         end //while command is not finished
         while (command_finished) begin
-          #2;
+          #20;
           execute_command <= 0;
         end
-        #100
+        #1000
         $display ("TB: finished command");
       end //end read_count == 4
     end //end while ! eof

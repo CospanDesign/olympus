@@ -26,6 +26,7 @@ SOFTWARE.
 `include "i2s_defines.v"
 
 
+`timescale 1 ns/1 ps
 module i2s_controller (
   rst,
   clk,

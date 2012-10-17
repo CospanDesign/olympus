@@ -45,6 +45,7 @@ SOFTWARE.
 
 `include "project_defines.v"
 `include "i2s_defines.v"
+`timescale 1 ns/1 ps
 
 module wb_i2s (
   clk,
@@ -71,6 +72,8 @@ module wb_i2s (
   mem_dat_i,
   mem_ack_i,
   mem_int_i,
+
+  writer_starved,
 
   phy_mclock,
   phy_clock,
@@ -104,6 +107,9 @@ output reg  [31:0]  mem_dat_o;
 input       [31:0]  mem_dat_i;
 input               mem_ack_i;
 input               mem_int_i;
+
+//status
+output              writer_starved;
 
 //i2s signals
 output              phy_mclock;
@@ -139,8 +145,10 @@ wire                mem_ack_pos_edge;
 
 wire        [23:0]  request_size;
 reg                 request_finished;
-wire        [31:0]  memory_data;
+//wire        [31:0]  memory_data;
+reg         [31:0]  memory_data;
 reg                 memory_data_strobe;
+reg                 enable_strobe;
 
 
 reg         [31:0]  control;
@@ -199,6 +207,8 @@ i2s_controller controller (
   .memory_data(memory_data),
   .memory_data_strobe(memory_data_strobe),
 
+  .starved(writer_starved),
+
   .i2s_mclock(phy_mclock),
   .i2s_clock(phy_clock),
   .i2s_data(phy_data),
@@ -207,7 +217,7 @@ i2s_controller controller (
 
 
 //Asynchronous Logic
-assign        memory_data           = mem_dat_i;
+//assign        memory_data           = mem_dat_i;
 
 assign        enable                = control[`CONTROL_ENABLE];
 assign        enable_interrupt      = control[`CONTROL_ENABLE_INTERRUPT];
@@ -285,7 +295,7 @@ always @ (posedge clk) begin
             memory_base[0]    <=  wbs_dat_i;
           end
           REG_MEM_0_SIZE: begin
-            memory_0_size     <=  wbs_dat_i << 2;
+            memory_0_size     <=  wbs_dat_i;
             if (wbs_dat_i > 0) begin
               memory_0_new_data <=  1;
             end
@@ -294,7 +304,7 @@ always @ (posedge clk) begin
             memory_base[1]    <=  wbs_dat_i;
           end
           REG_MEM_1_SIZE: begin
-            memory_1_size     <=  wbs_dat_i << 2;
+            memory_1_size     <=  wbs_dat_i;
             if (wbs_dat_i > 0) begin
               memory_1_new_data <=  1;
             end
@@ -372,11 +382,13 @@ always @ (posedge clk) begin
     memory_pointer[0]   <=  0;
     memory_pointer[1]   <=  0;
 
-    request_count      <=  0;
+    request_count       <=  0;
+
+    enable_strobe       <=  0;
 
   end
   else begin
-    memory_data_strobe  <=  0;
+
     request_finished    <=  0;
 
     if (memory_0_new_data) begin
@@ -386,23 +398,34 @@ always @ (posedge clk) begin
       memory_pointer[1] <=  0;
     end
 
+    //a delay for the strobe so the data can be registered
+    if (enable_strobe) begin
+      enable_strobe     <=  0;
+      memory_data_strobe<=  1;
+    end
+    //memory strobe
+    if (memory_data_strobe) begin
+      memory_data_strobe  <=  0;
+      if (request_count == 0) begin
+        request_finished            <=  1;
+      end
+    end
+
 
     //check to see if the i2s_mem_controller has requested data
     if (request_data_pos_edge) begin
-      request_count     <=  request_size;
+      request_count     <=  request_size - 1;
     end
     //postvie edge of the ack, send the data to the mem controller
     if (mem_ack_pos_edge) begin
+      $display ("got an ack!");
       if (request_count == 1) begin
-        request_finished            <=  1;
+        mem_cyc_o                   <=  0;
       end
-      memory_data_strobe            <=  1;
+      memory_data                   <=  mem_dat_i;
+      enable_strobe                 <=  1;
       request_count                 <=  request_count - 1;
       memory_pointer[active_block]  <=  memory_pointer[active_block] + 4;
-    end
-
-    if (mem_ack_i) begin
-      $display ("got an ack!");
       mem_stb_o                       <=  0;
     end
     if (memory_ready) begin
@@ -415,13 +438,20 @@ always @ (posedge clk) begin
         mem_we_o                      <=  0;
         mem_dat_o                     <=  0;  
         mem_adr_o                     <=  memory_base[active_block] + memory_pointer[active_block];
-        
       end
     end
-    if ((request_count == 0) || (memory_count[active_block] == 0) || (!memory_ready)) begin
+    else begin
+      //the memory is not ready
       mem_stb_o                       <=  0;
       mem_cyc_o                       <=  0;
     end
+/*
+    if (request_count == 0) begin
+      //finished filling up the internal buffer
+      mem_stb_o                       <=  0;
+      mem_cyc_o                       <=  0;
+    end
+*/
   end
 end
 
@@ -446,8 +476,8 @@ always @ (posedge clk) begin
     end
     else begin
       //if we're are currently active and a the active block
-      //is empty then swith to the other block
-      if (active_block == 0 && (memory_count[0] == 0)) begin
+      //is empty then disable the block
+      if      ((active_block == 0) && (memory_count[0] == 0)) begin
         memory_ready    <=  0;
       end
       else if ((active_block == 1) && (memory_count[1] == 0)) begin
