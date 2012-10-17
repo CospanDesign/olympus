@@ -280,6 +280,8 @@ module mt48lc4m16
     parameter read_auto_pre   = 5'd14;
 
     reg [4:0] statebank [hi_bank:0];
+    reg [4:0] debug_state;
+
 
     // Type definition for commands
     parameter desl = 4'd0;
@@ -943,7 +945,7 @@ module mt48lc4m16
             // by default data drive is Z, might get over written in one
             // of the passes below
             DataDrive = 16'bz;
-
+            debug_state <=  statebank[0];
             for (bank = 0; bank <= hi_bank; bank = bank + 1)
             begin
                 case (statebank[bank])
@@ -964,7 +966,7 @@ module mt48lc4m16
 
                 precharge :
                 begin
-                    $display ("\tRAM: Precharge");
+                    //$display ("\tRAM: Precharge");
                     if (cur_bank == bank)
                     // It is only an error if this bank is selected
                         if (command != nop && command != pre)
@@ -1100,13 +1102,13 @@ module mt48lc4m16
 
                 auto_refresh :
                 begin
-                    $display ("\tRAM: Auto Refresh Entered");
+                    //$display ("\tRAM: Auto Refresh Entered");
                     if (Ref_Cnt < 8192)
                         Ref_Cnt = Ref_Cnt + 1;
                     if (command != nop)
                     begin
-                        $display ("Illegal command received during");
-                        $display ("auto_refresh.",$time);
+                        //$display ("Illegal command received during autorefresh: %h", command);
+                        //$display ("auto_refresh.",$time);
                     end
                 end
 
@@ -1205,7 +1207,7 @@ module mt48lc4m16
 
               write :
                 begin
-                    $display ("\tRAM: Write");
+                    $display ("\tRAM: Write: %h", DQIn);
                     if (command == bst)
                     begin
                         statebank[bank] = bank_act;
