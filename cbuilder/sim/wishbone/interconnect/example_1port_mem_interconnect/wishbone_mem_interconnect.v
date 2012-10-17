@@ -23,6 +23,7 @@ SOFTWARE.
 */
 
 
+`timescale 1 ns/1 ps
 
 module wishbone_mem_interconnect (
 	clk,

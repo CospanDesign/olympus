@@ -31,6 +31,7 @@ SOFTWARE.
     www.asics.ws
     rudi@asics.ws
 */
+`timescale 1 ns/1 ps
 
 module wishbone_interconnect (
 	clk,

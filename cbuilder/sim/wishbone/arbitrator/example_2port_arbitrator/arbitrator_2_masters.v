@@ -23,6 +23,8 @@ SOFTWARE.
 */
 
 
+`timescale 1 ns/1 ps
+
 module arbitrator_2_masters (
   clk,
   rst,
@@ -154,6 +156,9 @@ always @ (posedge clk) begin
 				end
 			end
 		endcase
+		if ((master_select != MASTER_NO_SEL) && (priority_select < master_select) && (!s_stb_o && !s_ack_i))begin
+			master_select  <=  MASTER_NO_SEL;
+		end
 	end
 end
 
@@ -161,25 +166,22 @@ end
 //priority select
 
 
-parameter PRIORITY_NO_SEL = 8'hFF;
-parameter PRIORITY_0 = 0;
-parameter PRIORITY_1 = 1;
 
 
 always @ (posedge clk) begin
 	if (rst) begin
-		priority_select <= PRIORITY_NO_SEL;
+		priority_select <= MASTER_NO_SEL;
 	end
 	else begin
 		//find the highest priority
 		if (m0_cyc_i) begin
-			priority_select  <= PRIORITY_0;
+			priority_select  <= MASTER_0;
 		end
 		else if (m1_cyc_i) begin
-			priority_select  <= PRIORITY_1;
+			priority_select  <= MASTER_1;
 		end
 		else begin
-			priority_select  <= PRIORITY_NO_SEL;
+			priority_select  <= MASTER_NO_SEL;
 		end
 	end
 end
