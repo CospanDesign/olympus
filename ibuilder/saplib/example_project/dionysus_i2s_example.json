@@ -4,7 +4,7 @@
 	"PROJECT_NAME":"example_project",
 	"TEMPLATE":"wishbone_template.json",
 	"INTERFACE":{
-		"filename":"ft_host_interface.v",
+		"filename":"ft_master_interface.v",
 		"bind":{
 			"ftdi_clk":{
 				"port":"ftdi_clk",
@@ -51,6 +51,10 @@
 				"mem":"mem1"	
 			},
 			"bind":{
+       "writer_starved":{
+        "port":"s0",
+        "direction":"output"
+       },
        "phy_mclock":{
           "port":"pmoda1",
           "direction":"output"
