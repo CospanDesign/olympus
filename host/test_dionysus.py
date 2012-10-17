@@ -67,7 +67,7 @@ TEST_I2C = False
 TEST_SPI = False
 TEST_MEMORY = True
 TEST_CONSOLE = False
-TEST_I2S = False
+TEST_I2S = True
 TEST_LOGIC_ANALYZER = False
 TEST_GTP = False
 
