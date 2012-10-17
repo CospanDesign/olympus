@@ -24,6 +24,7 @@ SOFTWARE.
 
 
 //sdram_clkgen.v
+`timescale 1 ns/1 ps
 
 
 module sdram_clkgen (
@@ -43,6 +44,7 @@ wire  clkout2;
 wire  clkout3;
 wire  clkout4;
 wire  clkout5;
+wire  phy_bufout;
 
 
 PLL_BASE #(

@@ -6,7 +6,7 @@
 `else
 `define SDRAM_INCLUDE_V
 
-`timescale 1ns/10ps
+`timescale 1 ns/1 ps
 
 
 
@@ -57,7 +57,7 @@
 `ifndef SIMULATION
   `define T_AR_TIMEOUT	1500
 `else
-  `define T_AR_TIMEOUT	40
+  `define T_AR_TIMEOUT	200
 `endif
 
 `endif

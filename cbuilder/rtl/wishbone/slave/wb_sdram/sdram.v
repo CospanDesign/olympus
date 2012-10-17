@@ -21,7 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-`timescale 1 ns/100 ps
+`timescale 1 ns/1 ps
 `include "sdram_include.v"
 
 
@@ -155,6 +155,9 @@ wire                if_read_ready;
 wire                if_read_activate;
 wire        [23:0]  if_read_count;
 wire                if_inactive;
+wire                wwfr;
+wire                rwfr;
+wire                of_starved;
 
 ppfifo#(
   .DATA_WIDTH(36),

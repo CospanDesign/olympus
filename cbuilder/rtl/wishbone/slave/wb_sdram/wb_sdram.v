@@ -40,6 +40,7 @@ SOFTWARE.
   DRT_SIZE:  8388607
 
 */
+`timescale 1 ns/1 ps
 
 
 module wb_sdram (
@@ -217,7 +218,7 @@ always @ (posedge clk) begin
 
     else if (!wbs_ack_o && wbs_stb_i && wbs_cyc_i) begin
       if (first_exchange) begin
-        ram_address                 <=  wbs_adr_i[23:2];
+        ram_address                 <=  wbs_adr_i[22:1];
         first_exchange              <=  0;
       end
       //master is requesting something
