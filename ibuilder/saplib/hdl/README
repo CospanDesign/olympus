@@ -1,0 +1,131 @@
+
+Directory Structure:
+
+rtl/	    the HDL that will go into hardware
+
+sim/	    the HDL and tools used to simulate the HDL
+
+boards/*	Contains a subdirectory for each supported board. Each directory
+        contains ucf used within the HDL as well as any board level
+        defines
+
+How Tos:
+
+  Make your own wishbone slave device:
+
+  Want to make your own slave that will work with Olympus? its easy...
+  well sort of:
+
+	1.  go to <Olympus base>/cbuilder/scripts
+  2.  run this script: "./generate_slave.py -h"
+      you can use this script to generate you wishbone slave that will
+      integrate with Olympus
+
+      As an example, to build a new wishbone image that controls GPIOs
+
+      "./generate_slave.py --id=1 --flags=1 --size=3 gpio
+
+      this will create slave called 'gpio' and can be found in
+      <Olympus base>/cbuilder/rtl/wishbone/slave/gpio
+
+      the support infrastructure will be in:
+      <Olympus base>/cbuilder/sim/wishbone/slave/gpio
+
+	3.  go to <Olympus base>/ibuilder/sim/slave/<slave_name>/
+
+      among other generated files there is a 'Makefile' which you can use to
+      test your core by typing:
+
+  4.  'compile' your code and check for syntactical errors by typing:
+
+      'make'
+
+      if your code 'compiles' correctly then everything works! Huzzah!
+
+  5.  Simulate your code by typeing:
+
+      'make sim'
+
+      The simulator works by reading commands from the
+      
+      'master_input_test_data.txt'
+
+      The format of the command is as follows:
+
+      <Length of Data to send down>:<Command>:<Address>:<1st piece of data>
+
+      As an example to send down a 0x01234567 down to the 2nd register in your
+      core the format of the command would look like this
+
+      00000001:00000001:01000002:01234567
+
+      the fist column specified that your sending 1 packet of data (0x01234567)
+      the second column specifies that your writing 
+        (write command = 1, read command = 2, ping command = 0)
+
+      the third column specifies the address of your device, the high 8 bit is
+      used to identify the peripheral on the bus, for examaple with three
+      devices on the bus:
+
+      00: first device (usually reserved for the DRT)
+      01: second device
+      02: third device
+
+      so each device has a 24-bit adderss space with a 8-bit device specifier
+      to access the 2nd address of the second device:
+
+      01000002
+
+      the 4th column specifies the data that will be send down to the device,
+      in this case 0x01234567
+
+  6.  Not satisfied? want to see waveforms from your core?
+
+      'make wave'
+
+      this will open up 'gtkwave' with the simulation output and you can
+      view all the waveform of your design
+
+      as a note, after you run 'make wave' you don't have to keep closing
+      gtkwave and re-openning it to view and updated simulation, all that is
+      required to load information from the simulation just focus on gtkwave
+      and type 'CTRL + SHIFT + R'
+
+
+  7.  You can add models and custom stimultion to the testbench file called
+      "wishbone_master_tb.v"
+
+
+  Expanding your design:
+
+  To simplify the compilation process whenever you add a new verilog file 
+  to your project just add the location to the 'file_list.txt'
+
+  For example: add a new verilog file called 'gpio_controller.v' that will
+  be used to control the GPIOs at a high level, you can use the 'sim links'
+  to jummp to the RTL directory.
+
+  1. go to rtl:
+  2. create a new gpio_controller.v
+  3. add some boilerplate code:
+    module gpio_controller (
+    clk,
+    rst
+    );
+    input clk;
+    input rst;
+
+    endmodule
+
+  4. save and exit
+  5. change back to the sim directory 'cd -'
+  6. add the filename to the file_list.txt
+    rtl/gpio_controller.v
+
+
+host_interface: build a new interface to some host:
+	Want to interface with the wishbone bus in a new way (PCIE, PCI, SPI, FSMC)?
+  its... easy.. ish... FOLLOW this guide
+
+  :( it's still a work in progress
+
