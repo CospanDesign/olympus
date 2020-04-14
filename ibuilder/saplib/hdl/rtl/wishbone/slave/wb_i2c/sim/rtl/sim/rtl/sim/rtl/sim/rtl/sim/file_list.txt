@@ -1,9 +1,0 @@
-rtl/i2c_master_bit_ctrl.v
-rtl/i2c_master_byte_ctrl.v
-rtl/i2c_master_defines.v
-rtl/timescale.v
-../../interconnect/example_2port_interconnect/wishbone_interconnect.v
-rtl/wb_i2c.v
-../../../../rtl/wishbone/slave/device_rom_table/device_rom_table.v
-../../../../rtl/wishbone/master/wishbone_master.v
-wishbone_master_tb.v
